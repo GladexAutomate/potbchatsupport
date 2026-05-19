@@ -58,6 +58,7 @@ export default function ChatbotConfig() {
       setConfigId(created.id);
     }
     setForm(prev => ({ ...prev, embed_url: cleanUrl }));
+    setEditingEmbed(false);
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
