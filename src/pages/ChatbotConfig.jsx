@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Bot, Save, Eye, Loader2, CheckCircle } from 'lucide-react';
+import { Bot, Save, Eye, Loader2, CheckCircle, Pencil, X } from 'lucide-react';
 
 export default function ChatbotConfig() {
   const [config, setConfig] = useState(null);
@@ -15,6 +15,7 @@ export default function ChatbotConfig() {
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [editingEmbed, setEditingEmbed] = useState(false);
   const [form, setForm] = useState({
     embed_url: '',
     embed_type: 'iframe',
@@ -88,14 +89,36 @@ export default function ChatbotConfig() {
 
             <div className="space-y-1.5">
               <Label className="text-xs text-muted-foreground">Chatbot URL / Embed Code</Label>
-              <Input
-                placeholder="https://your-chatbot-url.com/widget"
-                value={form.embed_url}
-                onChange={e => setForm({...form, embed_url: e.target.value})}
-              />
-              <p className="text-xs text-muted-foreground">
-                Paste the URL from your chatbot provider (Tidio, Intercom, Crisp, etc.)
-              </p>
+              {editingEmbed ? (
+                <div className="space-y-2">
+                  <Input
+                    placeholder="https://your-chatbot-url.com/widget"
+                    value={form.embed_url}
+                    onChange={e => setForm({...form, embed_url: e.target.value})}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Paste the URL from your chatbot provider (Tidio, Intercom, Crisp, etc.)
+                  </p>
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => handleSave()} disabled={saving} className="flex-1 bg-primary hover:bg-primary/90">
+                      {saving ? <Loader2 className="w-3 h-3 mr-1 animate-spin" /> : <Save className="w-3 h-3 mr-1" />}
+                      Save Embed Code
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => setEditingEmbed(false)}>
+                      <X className="w-3 h-3" />
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <div className="p-3 rounded-lg bg-muted/40 border border-border/50 break-all text-sm font-mono text-muted-foreground">
+                    {form.embed_url || 'No embed code configured'}
+                  </div>
+                  <Button size="sm" variant="outline" onClick={() => setEditingEmbed(true)} className="gap-2">
+                    <Pencil className="w-3 h-3" /> Edit Embed Code
+                  </Button>
+                </div>
+              )}
             </div>
 
             {form.embed_url && (
@@ -132,15 +155,17 @@ export default function ChatbotConfig() {
           </CardContent>
         </Card>
 
-        <Button onClick={handleSave} disabled={saving} className="w-full bg-primary hover:bg-primary/90">
-          {saving ? (
-            <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
-          ) : saved ? (
-            <><CheckCircle className="w-4 h-4 mr-2" /> Saved!</>
-          ) : (
-            <><Save className="w-4 h-4 mr-2" /> Save Configuration</>
-          )}
-        </Button>
+        {!editingEmbed && (
+          <Button onClick={handleSave} disabled={saving} className="w-full bg-primary hover:bg-primary/90">
+            {saving ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
+            ) : saved ? (
+              <><CheckCircle className="w-4 h-4 mr-2" /> Saved!</>
+            ) : (
+              <><Save className="w-4 h-4 mr-2" /> Save Configuration</>
+            )}
+          </Button>
+        )}
       </div>
     </div>
   );
