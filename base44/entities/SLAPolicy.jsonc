@@ -1,0 +1,26 @@
+{
+  "name": "SLAPolicy",
+  "type": "object",
+  "properties": {
+    "priority": {
+      "type": "string",
+      "enum": [
+        "Low",
+        "Medium",
+        "High",
+        "Critical"
+      ]
+    },
+    "response_time_hours": {
+      "type": "number",
+      "description": "Max hours for first response"
+    },
+    "resolution_time_hours": {
+      "type": "number",
+      "description": "Max hours for full resolution"
+    }
+  },
+  "required": [
+    "priority"
+  ]
+}

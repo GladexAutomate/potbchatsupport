@@ -1,0 +1,31 @@
+{
+  "name": "ChatbotConfig",
+  "type": "object",
+  "properties": {
+    "embed_url": {
+      "type": "string",
+      "description": "iFrame/script URL for the AI chatbot"
+    },
+    "embed_type": {
+      "type": "string",
+      "enum": [
+        "iframe",
+        "script"
+      ],
+      "default": "iframe"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    },
+    "greeting_message": {
+      "type": "string",
+      "default": "Hi! How can we help you today?"
+    },
+    "escalation_message": {
+      "type": "string",
+      "default": "Would you like to connect with a live agent?"
+    }
+  },
+  "required": []
+}

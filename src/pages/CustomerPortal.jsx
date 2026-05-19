@@ -1,0 +1,245 @@
+import { useState, useEffect } from 'react';
+import { base44 } from '@/api/base44Client';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { MessageSquare, Ticket, CheckCircle, ChevronRight, Bot, User, X, Loader2, ShieldCheck } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+export default function CustomerPortal() {
+  const [view, setView] = useState('home'); // home | chat | ticket | success
+  const [chatConfig, setChatConfig] = useState(null);
+  const [showTicketForm, setShowTicketForm] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [ticketNum, setTicketNum] = useState('');
+  const [form, setForm] = useState({
+    customer_name: '', customer_email: '', subject: '', description: '', category: 'General', priority: 'Medium'
+  });
+
+  useEffect(() => {
+    base44.entities.ChatbotConfig.list().then(configs => {
+      if (configs?.[0]) setChatConfig(configs[0]);
+    }).catch(() => {});
+  }, []);
+
+  const generateTicketNumber = () => {
+    const now = new Date();
+    return `TKT-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${Math.floor(Math.random()*9000+1000)}`;
+  };
+
+  const handleSubmitTicket = async () => {
+    if (!form.customer_name || !form.customer_email || !form.subject || !form.description) return;
+    setSubmitting(true);
+    const num = generateTicketNumber();
+    const slaHours = { Low: 72, Medium: 24, High: 8, Critical: 2 };
+    const deadline = new Date(Date.now() + (slaHours[form.priority] || 24) * 3600000);
+    await base44.entities.Ticket.create({
+      ...form,
+      ticket_number: num,
+      status: 'Open',
+      source: 'AI Chat',
+      sla_deadline: deadline.toISOString(),
+      escalated: true
+    });
+    setTicketNum(num);
+    setSubmitting(false);
+    setView('success');
+  };
+
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col">
+      {/* Header */}
+      <header className="flex items-center gap-3 px-6 py-4">
+        <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
+          <ShieldCheck className="w-5 h-5 text-white" />
+        </div>
+        <div>
+          <span className="font-sora font-bold text-white text-lg">LakbayHub</span>
+          <span className="text-white/40 text-sm ml-2">Support</span>
+        </div>
+        <div className="ml-auto">
+          <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10" onClick={() => window.location.href = '/dashboard'}>
+            Staff Login
+          </Button>
+        </div>
+      </header>
+
+      <div className="flex-1 flex items-center justify-center p-4">
+        <AnimatePresence mode="wait">
+
+          {/* Home */}
+          {view === 'home' && (
+            <motion.div key="home" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+              className="w-full max-w-2xl text-center">
+              <div className="mb-8">
+                <div className="inline-flex items-center gap-2 bg-primary/20 text-primary border border-primary/30 rounded-full px-4 py-1.5 text-sm font-medium mb-4">
+                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
+                  Support Available 24/7
+                </div>
+                <h1 className="font-sora text-4xl md:text-5xl font-bold text-white mb-3">
+                  How can we <span className="text-primary">help you</span>?
+                </h1>
+                <p className="text-white/50 text-lg">Get instant answers or connect with our support team.</p>
+              </div>
+
+              <div className="grid md:grid-cols-2 gap-4">
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                  onClick={() => setView('chat')}
+                  className="group bg-white/5 hover:bg-primary/20 border border-white/10 hover:border-primary/50 rounded-2xl p-6 text-left transition-all">
+                  <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center mb-4 group-hover:bg-primary transition-colors">
+                    <Bot className="w-6 h-6 text-primary group-hover:text-white" />
+                  </div>
+                  <h3 className="font-sora font-semibold text-white text-lg mb-2">AI Chat Support</h3>
+                  <p className="text-white/50 text-sm">Get instant answers to FAQs. Available 24/7 with no wait time.</p>
+                  <div className="flex items-center gap-1 mt-4 text-primary text-sm font-medium">
+                    Start chatting <ChevronRight className="w-4 h-4" />
+                  </div>
+                </motion.button>
+
+                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
+                  onClick={() => setView('ticket')}
+                  className="group bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/30 rounded-2xl p-6 text-left transition-all">
+                  <div className="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center mb-4">
+                    <Ticket className="w-6 h-6 text-white/70" />
+                  </div>
+                  <h3 className="font-sora font-semibold text-white text-lg mb-2">Submit a Ticket</h3>
+                  <p className="text-white/50 text-sm">Need human support? Create a ticket and our CSR team will assist you.</p>
+                  <div className="flex items-center gap-1 mt-4 text-white/60 text-sm font-medium">
+                    Create ticket <ChevronRight className="w-4 h-4" />
+                  </div>
+                </motion.button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* AI Chat */}
+          {view === 'chat' && (
+            <motion.div key="chat" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+              className="w-full max-w-3xl">
+              <div className="flex items-center gap-3 mb-4">
+                <Button variant="ghost" size="sm" onClick={() => setView('home')} className="text-white/60 hover:text-white">
+                  ← Back
+                </Button>
+                <h2 className="font-sora font-semibold text-white">AI Chat Support</h2>
+              </div>
+              <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden" style={{ height: '70vh' }}>
+                {chatConfig?.embed_url ? (
+                  <iframe src={chatConfig.embed_url} className="w-full h-full border-0" title="AI Support Chat" allow="microphone" />
+                ) : (
+                  <div className="flex flex-col items-center justify-center h-full text-center px-6">
+                    <Bot className="w-16 h-16 text-primary/30 mb-4" />
+                    <p className="text-white/60 font-medium mb-2">AI Chat not configured</p>
+                    <p className="text-white/30 text-sm mb-6">An admin needs to set up the chatbot embed URL first.</p>
+                  </div>
+                )}
+              </div>
+              <div className="mt-4 p-4 bg-white/5 border border-white/10 rounded-xl flex items-center justify-between">
+                <p className="text-white/50 text-sm">Can't find your answer? Connect with a live agent.</p>
+                <Button size="sm" onClick={() => setView('ticket')} className="bg-primary hover:bg-primary/90">
+                  Request Live Agent
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Ticket Form */}
+          {view === 'ticket' && (
+            <motion.div key="ticket-form" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+              className="w-full max-w-xl">
+              <div className="flex items-center gap-3 mb-4">
+                <Button variant="ghost" size="sm" onClick={() => setView('home')} className="text-white/60 hover:text-white">
+                  ← Back
+                </Button>
+                <h2 className="font-sora font-semibold text-white">Submit a Support Ticket</h2>
+              </div>
+              <Card className="bg-white/5 border-white/10 backdrop-blur">
+                <CardContent className="p-6 space-y-4">
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-white/70 text-xs">Full Name *</Label>
+                      <Input placeholder="Your name" value={form.customer_name}
+                        onChange={e => setForm({...form, customer_name: e.target.value})}
+                        className="bg-white/10 border-white/20 text-white placeholder:text-white/30" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-white/70 text-xs">Email *</Label>
+                      <Input type="email" placeholder="your@email.com" value={form.customer_email}
+                        onChange={e => setForm({...form, customer_email: e.target.value})}
+                        className="bg-white/10 border-white/20 text-white placeholder:text-white/30" />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-white/70 text-xs">Subject *</Label>
+                    <Input placeholder="Brief subject of your concern" value={form.subject}
+                      onChange={e => setForm({...form, subject: e.target.value})}
+                      className="bg-white/10 border-white/20 text-white placeholder:text-white/30" />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-white/70 text-xs">Description *</Label>
+                    <Textarea placeholder="Describe your concern in detail..." value={form.description}
+                      onChange={e => setForm({...form, description: e.target.value})}
+                      className="bg-white/10 border-white/20 text-white placeholder:text-white/30 min-h-[100px]" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-white/70 text-xs">Category</Label>
+                      <Select value={form.category} onValueChange={v => setForm({...form, category: v})}>
+                        <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {['General','Sales','IT','Accounting','Sign-Ups','On-Boarding','Corp/Training','Admin','TL/Management'].map(c => (
+                            <SelectItem key={c} value={c}>{c}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-white/70 text-xs">Priority</Label>
+                      <Select value={form.priority} onValueChange={v => setForm({...form, priority: v})}>
+                        <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {['Low','Medium','High','Critical'].map(p => (
+                            <SelectItem key={p} value={p}>{p}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <Button onClick={handleSubmitTicket} disabled={submitting} className="w-full bg-primary hover:bg-primary/90">
+                    {submitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Submitting...</> : 'Submit Ticket'}
+                  </Button>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
+          {/* Success */}
+          {view === 'success' && (
+            <motion.div key="success" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
+              className="w-full max-w-md text-center">
+              <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-6">
+                <CheckCircle className="w-10 h-10 text-green-400" />
+              </div>
+              <h2 className="font-sora text-2xl font-bold text-white mb-2">Ticket Submitted!</h2>
+              <p className="text-white/50 mb-4">Our CSR team will reach out to you shortly.</p>
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-6">
+                <p className="text-white/40 text-xs mb-1">Ticket Reference</p>
+                <p className="font-mono text-primary font-semibold text-lg">{ticketNum}</p>
+              </div>
+              <Button onClick={() => { setView('home'); setForm({ customer_name:'',customer_email:'',subject:'',description:'',category:'General',priority:'Medium' }); }}
+                className="bg-primary hover:bg-primary/90">Back to Home</Button>
+            </motion.div>
+          )}
+
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+}

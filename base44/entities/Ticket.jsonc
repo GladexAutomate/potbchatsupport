@@ -1,0 +1,111 @@
+{
+  "name": "Ticket",
+  "type": "object",
+  "properties": {
+    "ticket_number": {
+      "type": "string",
+      "description": "Auto-generated ticket ID"
+    },
+    "customer_name": {
+      "type": "string"
+    },
+    "customer_email": {
+      "type": "string"
+    },
+    "subject": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "category": {
+      "type": "string",
+      "enum": [
+        "Sales",
+        "IT",
+        "Accounting",
+        "Sign-Ups",
+        "On-Boarding",
+        "Corp/Training",
+        "Admin",
+        "TL/Management",
+        "General"
+      ]
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "Low",
+        "Medium",
+        "High",
+        "Critical"
+      ],
+      "default": "Medium"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Open",
+        "In Progress",
+        "Pending Department",
+        "Resolved",
+        "Closed"
+      ],
+      "default": "Open"
+    },
+    "assigned_to": {
+      "type": "string",
+      "description": "CSR agent email"
+    },
+    "department": {
+      "type": "string",
+      "enum": [
+        "Sales",
+        "IT",
+        "Accounting",
+        "Sign-Ups",
+        "On-Boarding",
+        "Corp/Training",
+        "Admin",
+        "TL/Management"
+      ]
+    },
+    "source": {
+      "type": "string",
+      "default": "AI Chat"
+    },
+    "escalated": {
+      "type": "boolean",
+      "default": false
+    },
+    "sla_deadline": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "resolution_notes": {
+      "type": "string"
+    },
+    "customer_feedback": {
+      "type": "string",
+      "enum": [
+        "Satisfied",
+        "Neutral",
+        "Unsatisfied"
+      ]
+    },
+    "first_response_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "required": [
+    "customer_name",
+    "customer_email",
+    "subject",
+    "description"
+  ]
+}
