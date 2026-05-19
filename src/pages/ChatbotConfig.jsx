@@ -40,14 +40,24 @@ export default function ChatbotConfig() {
     }).catch(() => {});
   }, []);
 
+  const extractUrlFromEmbed = (code) => {
+    // Extract src URL from iframe HTML if full code is pasted
+    const match = code.match(/src=["']([^"']+)["']/);
+    return match ? match[1] : code;
+  };
+
   const handleSave = async () => {
     setSaving(true);
+    const cleanUrl = extractUrlFromEmbed(form.embed_url);
+    const dataToSave = { ...form, embed_url: cleanUrl };
+    
     if (configId) {
-      await base44.entities.ChatbotConfig.update(configId, form);
+      await base44.entities.ChatbotConfig.update(configId, dataToSave);
     } else {
-      const created = await base44.entities.ChatbotConfig.create(form);
+      const created = await base44.entities.ChatbotConfig.create(dataToSave);
       setConfigId(created.id);
     }
+    setForm(prev => ({ ...prev, embed_url: cleanUrl }));
     setSaving(false);
     setSaved(true);
     setTimeout(() => setSaved(false), 2500);
