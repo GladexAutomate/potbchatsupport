@@ -1,21 +1,52 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
 import StaffMessenger from '@/components/StaffMessenger';
 
+// Roles that can see ALL tickets
+const CSR_ROLES = ['admin', 'csr'];
+
+// Map role to department name as stored on the ticket
+const ROLE_TO_DEPT = {
+  it: 'IT',
+  sales: 'Sales',
+  accounting: 'Accounting',
+  sign_ups: 'Sign-Ups',
+  on_boarding: 'On-Boarding',
+  corp_training: 'Corp/Training',
+  tl_management: 'TL/Management',
+};
+
 export default function Tickets() {
+  const { user } = useAuth();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  const filterTicketsForUser = (allTickets) => {
+    if (!user) return [];
+    const role = user.role;
+    if (CSR_ROLES.includes(role)) return allTickets;
+
+    const dept = ROLE_TO_DEPT[role];
+    return allTickets.filter(t =>
+      t.assigned_to === user.email ||
+      (dept && t.department === dept)
+    );
+  };
+
   useEffect(() => {
+    if (!user) return;
     base44.entities.Ticket.list('-created_date', 200).then(data => {
-      setTickets(data || []);
+      setTickets(filterTicketsForUser(data || []));
       setLoading(false);
     });
     const unsub = base44.entities.Ticket.subscribe(() => {
-      base44.entities.Ticket.list('-created_date', 200).then(data => setTickets(data || []));
+      base44.entities.Ticket.list('-created_date', 200).then(data => {
+        setTickets(filterTicketsForUser(data || []));
+      });
     });
     return () => unsub();
-  }, []);
+  }, [user]);
 
   return (
     <div className="p-4 md:p-6 h-full">
