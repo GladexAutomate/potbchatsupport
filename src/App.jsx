@@ -14,6 +14,7 @@ import KPI from './pages/KPI';
 import ChatbotConfig from './pages/ChatbotConfig';
 import Settings from './pages/Settings';
 import MyTickets from './pages/MyTickets';
+import UserManagement from './pages/UserManagement';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -37,11 +38,11 @@ const AuthenticatedApp = () => {
 
   return (
     <Routes>
-      {/* Public customer portal */}
+      {/* Public customer portal - customers & unauthenticated */}
       <Route path="/" element={<CustomerPortal />} />
       <Route path="/my-tickets" element={<MyTickets />} />
 
-      {/* Staff portal with layout */}
+      {/* Staff portal with layout - role-gated in Layout */}
       <Route element={<Layout />}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/tickets" element={<Tickets />} />
@@ -49,6 +50,7 @@ const AuthenticatedApp = () => {
         <Route path="/kpi" element={<KPI />} />
         <Route path="/chatbot-config" element={<ChatbotConfig />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/users" element={<UserManagement />} />
       </Route>
 
       <Route path="*" element={<PageNotFound />} />

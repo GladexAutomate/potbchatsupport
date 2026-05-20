@@ -1,0 +1,42 @@
+{
+  "name": "User",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "enum": [
+        "customer",
+        "csr",
+        "it",
+        "sales",
+        "accounting",
+        "sign_ups",
+        "on_boarding",
+        "corp_training",
+        "admin",
+        "tl_management"
+      ],
+      "default": "customer",
+      "description": "User role. Customers get portal-only access. Staff roles get internal access."
+    },
+    "department": {
+      "type": "string",
+      "enum": [
+        "CSR/L1",
+        "IT",
+        "Sales",
+        "Accounting",
+        "Sign-Ups",
+        "On-Boarding",
+        "Corp/Training",
+        "Admin",
+        "TL/Management"
+      ],
+      "description": "Staff department"
+    },
+    "is_active": {
+      "type": "boolean",
+      "default": true
+    }
+  }
+}

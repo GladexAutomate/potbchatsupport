@@ -1,18 +1,21 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import {
   LayoutDashboard, Ticket, BarChart2, Settings, MessageSquare,
-  ChevronLeft, ChevronRight, LogOut, Menu, X, ShieldCheck
+  ChevronLeft, ChevronRight, LogOut, Menu, X, ShieldCheck, Users
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
+const STAFF_ROLES = ['admin', 'csr', 'it', 'sales', 'accounting', 'sign_ups', 'on_boarding', 'corp_training', 'tl_management'];
+
 const navItems = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: ['admin', 'csr', 'department'] },
-  { label: 'Tickets', href: '/tickets', icon: Ticket, roles: ['admin', 'csr', 'department'] },
-  { label: 'KPI & SLA', href: '/kpi', icon: BarChart2, roles: ['admin', 'csr'] },
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: STAFF_ROLES },
+  { label: 'Tickets', href: '/tickets', icon: Ticket, roles: STAFF_ROLES },
+  { label: 'KPI & SLA', href: '/kpi', icon: BarChart2, roles: ['admin', 'csr', 'tl_management'] },
+  { label: 'User Management', href: '/users', icon: Users, roles: ['admin'] },
   { label: 'Chatbot Config', href: '/chatbot-config', icon: MessageSquare, roles: ['admin'] },
   { label: 'Settings', href: '/settings', icon: Settings, roles: ['admin'] },
 ];
@@ -24,7 +27,15 @@ export default function Layout() {
   const { user } = useAuth();
   const navigate = useNavigate();
 
-  const role = user?.role || 'csr';
+  const role = user?.role || 'customer';
+
+  // Customers should not access the staff portal — redirect them
+  useEffect(() => {
+    if (user && role === 'customer') {
+      navigate('/');
+    }
+  }, [user, role]);
+
   const filtered = navItems.filter(n => n.roles.includes(role));
 
   const handleLogout = () => base44.auth.logout('/');

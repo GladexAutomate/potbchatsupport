@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, ChevronLeft } from 'lucide-react';
+import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, ChevronLeft, ArrowRightLeft } from 'lucide-react';
+import RerouteTicketModal from '@/components/RerouteTicketModal';
 import { format, formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
@@ -40,6 +41,7 @@ export default function StaffMessenger({ tickets, loading }) {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const [allMessages, setAllMessages] = useState([]);
+  const [rerouteOpen, setRerouteOpen] = useState(false);
 
   // Load all messages once for unread badge computation
   useEffect(() => {
@@ -154,6 +156,7 @@ export default function StaffMessenger({ tickets, loading }) {
   });
 
   return (
+    <>
     <div className="flex h-[calc(100vh-120px)] bg-background rounded-xl border border-border/50 overflow-hidden">
       {/* LEFT PANEL - Ticket List */}
       <div className={`flex flex-col border-r border-border/50 bg-card ${selectedTicket ? 'hidden md:flex' : 'flex'} w-full md:w-80 lg:w-96 flex-shrink-0`}>
@@ -268,6 +271,9 @@ export default function StaffMessenger({ tickets, loading }) {
                   <span className={`text-xs px-2 py-0.5 rounded-full ${PRIORITY_COLOR[selectedTicket.priority]}`}>{selectedTicket.priority}</span>
                 )}
                 <Badge className={`text-xs border ${STATUS_COLOR[selectedTicket.status] || ''}`}>{selectedTicket.status}</Badge>
+                <Button size="sm" variant="outline" className="gap-1.5 text-xs h-7 px-2.5" onClick={() => setRerouteOpen(true)}>
+                  <ArrowRightLeft className="w-3 h-3" /> Reroute
+                </Button>
               </div>
             </div>
 
@@ -358,5 +364,14 @@ export default function StaffMessenger({ tickets, loading }) {
         )}
       </div>
     </div>
+
+    {rerouteOpen && selectedTicket && (
+      <RerouteTicketModal
+        ticket={selectedTicket}
+        onClose={() => setRerouteOpen(false)}
+        onSaved={() => loadMessages(selectedTicket.id)}
+      />
+    )}
+  </>
   );
 }
