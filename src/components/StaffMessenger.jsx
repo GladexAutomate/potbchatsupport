@@ -218,7 +218,7 @@ export default function StaffMessenger({ tickets, loading }) {
                         {t.customer_name}
                       </span>
                       <span className="text-xs text-muted-foreground ml-1 flex-shrink-0">
-                        {formatDistanceToNow(new Date(t.updated_date || t.created_date), { addSuffix: false })}
+                        {formatDistanceToNow(new Date(new Date(t.updated_date || t.created_date).toLocaleString('en-US', { timeZone: 'Asia/Manila' })), { addSuffix: false })}
                       </span>
                     </div>
                     <p className={`text-xs truncate mb-1 ${hasUnread ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
@@ -314,7 +314,7 @@ export default function StaffMessenger({ tickets, loading }) {
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-1 px-1">
-                          {format(new Date(msg.created_date), 'MMM d, HH:mm')}
+                          {format(new Date(new Date(msg.created_date).toLocaleString('en-US', { timeZone: 'Asia/Manila' })), 'MMM d, HH:mm')}
                         </p>
                       </div>
                     </motion.div>
