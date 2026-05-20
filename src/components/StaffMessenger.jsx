@@ -372,6 +372,6 @@ export default function StaffMessenger({ tickets, loading }) {
         onSaved={() => loadMessages(selectedTicket.id)}
       />
     )}
-  </>
+    </>
   );
 }
