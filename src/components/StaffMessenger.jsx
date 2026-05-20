@@ -6,7 +6,22 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, ChevronLeft, ArrowRightLeft } from 'lucide-react';
 import RerouteTicketModal from '@/components/RerouteTicketModal';
-import { format, formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
+
+const toPHTime = (dateStr) => {
+  const date = new Date(dateStr);
+  // Add 8 hours offset for PH time (UTC+8)
+  return new Date(date.getTime() + 8 * 60 * 60 * 1000);
+};
+
+const formatPHTime = (dateStr) => {
+  const d = toPHTime(dateStr);
+  const month = d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
+  const day = d.getUTCDate();
+  const hours = String(d.getUTCHours()).padStart(2, '0');
+  const mins = String(d.getUTCMinutes()).padStart(2, '0');
+  return `${month} ${day}, ${hours}:${mins}`;
+};
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -218,7 +233,7 @@ export default function StaffMessenger({ tickets, loading }) {
                         {t.customer_name}
                       </span>
                       <span className="text-xs text-muted-foreground ml-1 flex-shrink-0">
-                        {formatDistanceToNow(new Date(new Date(t.updated_date || t.created_date).toLocaleString('en-US', { timeZone: 'Asia/Manila' })), { addSuffix: false })}
+                        {formatDistanceToNow(toPHTime(t.updated_date || t.created_date), { addSuffix: false })}
                       </span>
                     </div>
                     <p className={`text-xs truncate mb-1 ${hasUnread ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
@@ -314,7 +329,7 @@ export default function StaffMessenger({ tickets, loading }) {
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-1 px-1">
-                          {format(new Date(new Date(msg.created_date).toLocaleString('en-US', { timeZone: 'Asia/Manila' })), 'MMM d, HH:mm')}
+                          {formatPHTime(msg.created_date)}
                         </p>
                       </div>
                     </motion.div>
