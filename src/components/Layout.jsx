@@ -29,9 +29,9 @@ export default function Layout() {
 
   const role = user?.role || 'customer';
 
-  // Customers should not access the staff portal — redirect them
+  // Only staff roles can access the staff portal — redirect everyone else
   useEffect(() => {
-    if (user && role === 'customer') {
+    if (user && !STAFF_ROLES.includes(role)) {
       navigate('/');
     }
   }, [user, role]);

@@ -96,9 +96,16 @@ export default function CustomerPortal() {
               <ClipboardList className="w-4 h-4" /> My Tickets
             </Button>
           </Link>
-          <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10" onClick={() => window.location.href = '/dashboard'}>
-            Staff Login
-          </Button>
+          {user && ['admin','csr','it','sales','accounting','sign_ups','on_boarding','corp_training','tl_management'].includes(user.role) && (
+            <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10" onClick={() => window.location.href = '/dashboard'}>
+              Staff Login
+            </Button>
+          )}
+          {!user && (
+            <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10" onClick={() => window.location.href = '/dashboard'}>
+              Staff Login
+            </Button>
+          )}
         </div>
       </header>
 
@@ -148,21 +155,7 @@ export default function CustomerPortal() {
                 </motion.button>
               </div>
 
-              <Link to="/my-tickets">
-                <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
-                  className="group bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/30 rounded-2xl p-4 flex items-center justify-between transition-all cursor-pointer">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-                      <ClipboardList className="w-5 h-5 text-white/70" />
-                    </div>
-                    <div className="text-left">
-                      <h3 className="font-sora font-semibold text-white text-sm">View My Existing Tickets</h3>
-                      <p className="text-white/40 text-xs">Check status and chat with support on your tickets</p>
-                    </div>
-                  </div>
-                  <ChevronRight className="w-5 h-5 text-white/40 group-hover:text-white/60" />
-                </motion.div>
-              </Link>
+
             </motion.div>
           )}
 
