@@ -13,6 +13,7 @@ import TicketDetail from './pages/TicketDetail';
 import KPI from './pages/KPI';
 import ChatbotConfig from './pages/ChatbotConfig';
 import Settings from './pages/Settings';
+import MyTickets from './pages/MyTickets';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -38,6 +39,7 @@ const AuthenticatedApp = () => {
     <Routes>
       {/* Public customer portal */}
       <Route path="/" element={<CustomerPortal />} />
+      <Route path="/my-tickets" element={<MyTickets />} />
 
       {/* Staff portal with layout */}
       <Route element={<Layout />}>

@@ -1,28 +1,35 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { MessageSquare, Ticket, CheckCircle, ChevronRight, Bot, User, X, Loader2, ShieldCheck } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
+import { MessageSquare, Ticket, CheckCircle, ChevronRight, Bot, Loader2, ShieldCheck, Upload, X, FileText, ClipboardList } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Link } from 'react-router-dom';
 
 export default function CustomerPortal() {
   const [view, setView] = useState('home'); // home | chat | ticket | success
   const [chatConfig, setChatConfig] = useState(null);
-  const [showTicketForm, setShowTicketForm] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [ticketNum, setTicketNum] = useState('');
-  const [form, setForm] = useState({
-    customer_name: '', customer_email: '', subject: '', description: '', category: 'General', priority: 'Medium'
-  });
+  const [user, setUser] = useState(null);
+  const [form, setForm] = useState({ customer_name: '', subject: '', description: '' });
+  const [attachments, setAttachments] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef(null);
 
   useEffect(() => {
     base44.entities.ChatbotConfig.list().then(configs => {
       if (configs?.[0]) setChatConfig(configs[0]);
+    }).catch(() => {});
+    base44.auth.me().then(u => {
+      if (u) {
+        setUser(u);
+        setForm(f => ({ ...f, customer_name: u.full_name || '' }));
+      }
     }).catch(() => {});
   }, []);
 
@@ -31,19 +38,41 @@ export default function CustomerPortal() {
     return `TKT-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${Math.floor(Math.random()*9000+1000)}`;
   };
 
+  const handleFiles = async (files) => {
+    const remaining = 5 - attachments.length;
+    const toUpload = Array.from(files).slice(0, remaining);
+    if (!toUpload.length) return;
+    setUploading(true);
+    for (const file of toUpload) {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setAttachments(prev => [...prev, { name: file.name, url: file_url }]);
+    }
+    setUploading(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    setDragOver(false);
+    handleFiles(e.dataTransfer.files);
+  };
+
   const handleSubmitTicket = async () => {
-    if (!form.customer_name || !form.customer_email || !form.subject || !form.description) return;
+    if (!form.customer_name || !form.subject || !form.description) return;
     setSubmitting(true);
     const num = generateTicketNumber();
-    const slaHours = { Low: 72, Medium: 24, High: 8, Critical: 2 };
-    const deadline = new Date(Date.now() + (slaHours[form.priority] || 24) * 3600000);
+    const deadline = new Date(Date.now() + 24 * 3600000); // default 24h SLA, CSR will update priority
     await base44.entities.Ticket.create({
-      ...form,
+      customer_name: form.customer_name,
+      customer_email: user?.email || '',
+      subject: form.subject,
+      description: form.description,
+      attachments: attachments.map(a => a.url),
       ticket_number: num,
       status: 'Open',
-      source: 'AI Chat',
+      priority: 'Medium',
+      source: 'Customer Portal',
       sla_deadline: deadline.toISOString(),
-      escalated: true
+      escalated: false,
     });
     setTicketNum(num);
     setSubmitting(false);
@@ -61,7 +90,12 @@ export default function CustomerPortal() {
           <span className="font-sora font-bold text-white text-lg">LakbayHub</span>
           <span className="text-white/40 text-sm ml-2">Support</span>
         </div>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
+          <Link to="/my-tickets">
+            <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10 gap-2">
+              <ClipboardList className="w-4 h-4" /> My Tickets
+            </Button>
+          </Link>
           <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10" onClick={() => window.location.href = '/dashboard'}>
             Staff Login
           </Button>
@@ -86,7 +120,7 @@ export default function CustomerPortal() {
                 <p className="text-white/50 text-lg">Get instant answers or connect with our support team.</p>
               </div>
 
-              <div className="grid md:grid-cols-2 gap-4">
+              <div className="grid md:grid-cols-2 gap-4 mb-4">
                 <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
                   onClick={() => setView('chat')}
                   className="group bg-white/5 hover:bg-primary/20 border border-white/10 hover:border-primary/50 rounded-2xl p-6 text-left transition-all">
@@ -113,6 +147,22 @@ export default function CustomerPortal() {
                   </div>
                 </motion.button>
               </div>
+
+              <Link to="/my-tickets">
+                <motion.div whileHover={{ scale: 1.01 }} whileTap={{ scale: 0.99 }}
+                  className="group bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/30 rounded-2xl p-4 flex items-center justify-between transition-all cursor-pointer">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                      <ClipboardList className="w-5 h-5 text-white/70" />
+                    </div>
+                    <div className="text-left">
+                      <h3 className="font-sora font-semibold text-white text-sm">View My Existing Tickets</h3>
+                      <p className="text-white/40 text-xs">Check status and chat with support on your tickets</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-white/40 group-hover:text-white/60" />
+                </motion.div>
+              </Link>
             </motion.div>
           )}
 
@@ -158,20 +208,15 @@ export default function CustomerPortal() {
               </div>
               <Card className="bg-white/5 border-white/10 backdrop-blur">
                 <CardContent className="p-6 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-white/70 text-xs">Full Name *</Label>
-                      <Input placeholder="Your name" value={form.customer_name}
-                        onChange={e => setForm({...form, customer_name: e.target.value})}
-                        className="bg-white/10 border-white/20 text-white placeholder:text-white/30" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-white/70 text-xs">Email *</Label>
-                      <Input type="email" placeholder="your@email.com" value={form.customer_email}
-                        onChange={e => setForm({...form, customer_email: e.target.value})}
-                        className="bg-white/10 border-white/20 text-white placeholder:text-white/30" />
-                    </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-white/70 text-xs">Full Name *</Label>
+                    <Input placeholder="Your name" value={form.customer_name}
+                      onChange={e => setForm({...form, customer_name: e.target.value})}
+                      className="bg-white/10 border-white/20 text-white placeholder:text-white/30" />
                   </div>
+                  {user?.email && (
+                    <div className="text-xs text-white/40 -mt-2">Submitting as <span className="text-primary">{user.email}</span></div>
+                  )}
                   <div className="space-y-1.5">
                     <Label className="text-white/70 text-xs">Subject *</Label>
                     <Input placeholder="Brief subject of your concern" value={form.subject}
@@ -184,35 +229,50 @@ export default function CustomerPortal() {
                       onChange={e => setForm({...form, description: e.target.value})}
                       className="bg-white/10 border-white/20 text-white placeholder:text-white/30 min-h-[100px]" />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-white/70 text-xs">Category</Label>
-                      <Select value={form.category} onValueChange={v => setForm({...form, category: v})}>
-                        <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {['General','Sales','IT','Accounting','Sign-Ups','On-Boarding','Corp/Training','Admin','TL/Management'].map(c => (
-                            <SelectItem key={c} value={c}>{c}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+
+                  {/* Attachments */}
+                  <div className="space-y-2">
+                    <Label className="text-white/70 text-xs">Attachments <span className="text-white/30">(max 5 files)</span></Label>
+                    <div
+                      onDragOver={e => { e.preventDefault(); setDragOver(true); }}
+                      onDragLeave={() => setDragOver(false)}
+                      onDrop={handleDrop}
+                      onClick={() => attachments.length < 5 && fileInputRef.current?.click()}
+                      className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all ${
+                        dragOver ? 'border-primary bg-primary/10' : 'border-white/20 hover:border-white/40'
+                      } ${attachments.length >= 5 ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    >
+                      {uploading ? (
+                        <div className="flex items-center justify-center gap-2 text-white/50 text-sm">
+                          <Loader2 className="w-4 h-4 animate-spin" /> Uploading...
+                        </div>
+                      ) : (
+                        <div className="flex flex-col items-center gap-1">
+                          <Upload className="w-6 h-6 text-white/30" />
+                          <p className="text-white/50 text-sm">
+                            {attachments.length >= 5 ? 'Maximum 5 files reached' : 'Drag & drop files or click to upload'}
+                          </p>
+                        </div>
+                      )}
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-white/70 text-xs">Priority</Label>
-                      <Select value={form.priority} onValueChange={v => setForm({...form, priority: v})}>
-                        <SelectTrigger className="bg-white/10 border-white/20 text-white">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {['Low','Medium','High','Critical'].map(p => (
-                            <SelectItem key={p} value={p}>{p}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    <input ref={fileInputRef} type="file" multiple className="hidden"
+                      onChange={e => handleFiles(e.target.files)} />
+                    {attachments.length > 0 && (
+                      <div className="space-y-1.5">
+                        {attachments.map((att, i) => (
+                          <div key={i} className="flex items-center gap-2 bg-white/5 rounded-lg px-3 py-2">
+                            <FileText className="w-3.5 h-3.5 text-primary shrink-0" />
+                            <span className="text-white/70 text-xs truncate flex-1">{att.name}</span>
+                            <button onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}>
+                              <X className="w-3.5 h-3.5 text-white/40 hover:text-white/70" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
-                  <Button onClick={handleSubmitTicket} disabled={submitting} className="w-full bg-primary hover:bg-primary/90">
+
+                  <Button onClick={handleSubmitTicket} disabled={submitting || uploading} className="w-full bg-primary hover:bg-primary/90">
                     {submitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Submitting...</> : 'Submit Ticket'}
                   </Button>
                 </CardContent>
@@ -228,13 +288,18 @@ export default function CustomerPortal() {
                 <CheckCircle className="w-10 h-10 text-green-400" />
               </div>
               <h2 className="font-sora text-2xl font-bold text-white mb-2">Ticket Submitted!</h2>
-              <p className="text-white/50 mb-4">Our CSR team will reach out to you shortly.</p>
+              <p className="text-white/50 mb-4">Our CSR team will review and assign your ticket shortly.</p>
               <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-6">
                 <p className="text-white/40 text-xs mb-1">Ticket Reference</p>
                 <p className="font-mono text-primary font-semibold text-lg">{ticketNum}</p>
               </div>
-              <Button onClick={() => { setView('home'); setForm({ customer_name:'',customer_email:'',subject:'',description:'',category:'General',priority:'Medium' }); }}
-                className="bg-primary hover:bg-primary/90">Back to Home</Button>
+              <div className="flex gap-3 justify-center">
+                <Link to="/my-tickets">
+                  <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">View My Tickets</Button>
+                </Link>
+                <Button onClick={() => { setView('home'); setForm({ customer_name: user?.full_name||'', subject:'', description:'' }); setAttachments([]); }}
+                  className="bg-primary hover:bg-primary/90">Back to Home</Button>
+              </div>
             </motion.div>
           )}
 

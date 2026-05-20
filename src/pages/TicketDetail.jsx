@@ -8,13 +8,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { ArrowLeft, Clock, User, Building2, AlertTriangle, CheckCircle, Loader2, Tag } from 'lucide-react';
+import { ArrowLeft, Clock, User, Building2, AlertTriangle, CheckCircle, Loader2, Tag, MessageSquare } from 'lucide-react';
+import TicketChat from '@/components/TicketChat';
 import { format, formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/lib/AuthContext';
 
 const STATUS_OPTIONS = ['Open', 'In Progress', 'Pending Department', 'Resolved', 'Closed'];
 const DEPT_OPTIONS = ['Sales', 'IT', 'Accounting', 'Sign-Ups', 'On-Boarding', 'Corp/Training', 'Admin', 'TL/Management'];
 const PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
+const CATEGORY_OPTIONS = ['General', 'Sales', 'IT', 'Accounting', 'Sign-Ups', 'On-Boarding', 'Corp/Training', 'Admin', 'TL/Management'];
 
 const STATUS_COLOR = {
   'Open': 'bg-blue-500/10 text-blue-400 border-blue-500/20',
@@ -39,6 +41,7 @@ export default function TicketDetail() {
       setTicket(found);
       setEdits({
         status: found?.status || 'Open',
+        category: found?.category || '',
         department: found?.department || '',
         assigned_to: found?.assigned_to || '',
         priority: found?.priority || 'Medium',
@@ -164,11 +167,32 @@ export default function TicketDetail() {
 
         {/* Right - Actions */}
         <div className="space-y-5">
+          {/* Customer Chat */}
+          <Card className="border-border/50">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide flex items-center gap-2">
+                <MessageSquare className="w-4 h-4" /> Customer Chat
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <TicketChat ticketId={id} />
+            </CardContent>
+          </Card>
+
           <Card className="border-border/50">
             <CardHeader className="pb-3">
               <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">Actions</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs text-muted-foreground">Category</Label>
+                <Select value={edits.category || ''} onValueChange={v => setEdits({...edits, category: v})}>
+                  <SelectTrigger><SelectValue placeholder="Assign category" /></SelectTrigger>
+                  <SelectContent>
+                    {CATEGORY_OPTIONS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
               <div className="space-y-1.5">
                 <Label className="text-xs text-muted-foreground">Status</Label>
                 <Select value={edits.status} onValueChange={v => setEdits({...edits, status: v})}>

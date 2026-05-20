@@ -18,6 +18,13 @@
     "description": {
       "type": "string"
     },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs of uploaded attachment files"
+    },
     "category": {
       "type": "string",
       "enum": [
@@ -72,7 +79,7 @@
     },
     "source": {
       "type": "string",
-      "default": "AI Chat"
+      "default": "Customer Portal"
     },
     "escalated": {
       "type": "boolean",

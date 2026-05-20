@@ -1,0 +1,39 @@
+{
+  "name": "TicketMessage",
+  "type": "object",
+  "properties": {
+    "ticket_id": {
+      "type": "string",
+      "description": "Reference to Ticket id"
+    },
+    "sender_email": {
+      "type": "string"
+    },
+    "sender_name": {
+      "type": "string"
+    },
+    "sender_role": {
+      "type": "string",
+      "enum": [
+        "customer",
+        "staff"
+      ],
+      "default": "customer"
+    },
+    "message": {
+      "type": "string"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs of any attached files"
+    }
+  },
+  "required": [
+    "ticket_id",
+    "message",
+    "sender_role"
+  ]
+}
