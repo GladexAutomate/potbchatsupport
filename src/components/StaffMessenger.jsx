@@ -218,7 +218,7 @@ export default function StaffMessenger({ tickets, loading }) {
                         {t.customer_name}
                       </span>
                       <span className="text-xs text-muted-foreground ml-1 flex-shrink-0">
-                        {formatDistanceToNow(new Date(t.created_date), { addSuffix: false })}
+                        {formatDistanceToNow(new Date(t.updated_date || t.created_date), { addSuffix: false })}
                       </span>
                     </div>
                     <p className={`text-xs truncate mb-1 ${hasUnread ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
