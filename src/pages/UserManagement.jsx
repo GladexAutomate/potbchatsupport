@@ -51,6 +51,35 @@ const DEPT_MAP = {
   tl_management: 'TL/Management',
 };
 
+function UserRow({ u, onEdit }) {
+  return (
+    <div className="flex items-center gap-4 px-5 py-3.5 hover:bg-muted/20 transition-colors">
+      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+        <span className="text-sm font-semibold text-primary">{(u.full_name || u.email)?.[0]?.toUpperCase()}</span>
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-foreground truncate">{u.full_name || '—'}</p>
+        <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+      </div>
+      <div className="hidden sm:flex items-center gap-2">
+        {u.department && <span className="text-xs text-muted-foreground">{u.department}</span>}
+        <Badge className={`text-xs border ${ROLE_COLOR[u.role] || 'bg-muted text-muted-foreground'}`}>
+          {ROLE_LABEL[u.role] || u.role}
+        </Badge>
+        {u.is_active === false && (
+          <Badge variant="outline" className="text-xs text-red-400 border-red-400/30">Inactive</Badge>
+        )}
+      </div>
+      <span className="text-xs text-muted-foreground hidden md:block">
+        {u.created_date ? formatDistanceToNow(new Date(u.created_date), { addSuffix: true }) : ''}
+      </span>
+      <Button variant="ghost" size="icon" className="flex-shrink-0" onClick={onEdit}>
+        <Edit2 className="w-4 h-4" />
+      </Button>
+    </div>
+  );
+}
+
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -70,13 +99,22 @@ export default function UserManagement() {
     });
   }, []);
 
-  const filtered = users.filter(u => {
-    const matchSearch = !search
-      || u.email?.toLowerCase().includes(search.toLowerCase())
-      || u.full_name?.toLowerCase().includes(search.toLowerCase());
-    const matchRole = roleFilter === 'All' || u.role === roleFilter;
-    return matchSearch && matchRole;
-  });
+  const matchesSearch = (u) =>
+    !search
+    || u.email?.toLowerCase().includes(search.toLowerCase())
+    || u.full_name?.toLowerCase().includes(search.toLowerCase());
+
+  const filteredStaff = users.filter(u =>
+    STAFF_ROLES.includes(u.role) &&
+    matchesSearch(u) &&
+    (roleFilter === 'All' || u.role === roleFilter)
+  );
+
+  const filteredCustomers = users.filter(u =>
+    !STAFF_ROLES.includes(u.role) &&
+    matchesSearch(u) &&
+    (roleFilter === 'All' || roleFilter === 'customer' || roleFilter === 'All')
+  );
 
   const staffCount = users.filter(u => u.role !== 'customer').length;
   const customerCount = users.filter(u => u.role === 'customer').length;
@@ -153,45 +191,53 @@ export default function UserManagement() {
         </Select>
       </div>
 
-      {/* User Table */}
-      <Card className="border-border/50">
-        <CardContent className="p-0">
-          {loading ? (
-            <div className="p-12 text-center text-muted-foreground">Loading users...</div>
-          ) : filtered.length === 0 ? (
-            <div className="p-12 text-center text-muted-foreground">No users found</div>
-          ) : (
-            <div className="divide-y divide-border/50">
-              {filtered.map(u => (
-                <div key={u.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-muted/20 transition-colors">
-                  <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                    <span className="text-sm font-semibold text-primary">{(u.full_name || u.email)?.[0]?.toUpperCase()}</span>
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium text-foreground truncate">{u.full_name || '—'}</p>
-                    <p className="text-xs text-muted-foreground truncate">{u.email}</p>
-                  </div>
-                  <div className="hidden sm:flex items-center gap-2">
-                    {u.department && <span className="text-xs text-muted-foreground">{u.department}</span>}
-                    <Badge className={`text-xs border ${ROLE_COLOR[u.role] || 'bg-muted text-muted-foreground'}`}>
-                      {ROLE_LABEL[u.role] || u.role}
-                    </Badge>
-                    {u.is_active === false && (
-                      <Badge variant="outline" className="text-xs text-red-400 border-red-400/30">Inactive</Badge>
-                    )}
-                  </div>
-                  <span className="text-xs text-muted-foreground hidden md:block">
-                    {u.created_date ? formatDistanceToNow(new Date(u.created_date), { addSuffix: true }) : ''}
-                  </span>
-                  <Button variant="ghost" size="icon" className="flex-shrink-0" onClick={() => setEditUser({ ...u })}>
-                    <Edit2 className="w-4 h-4" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* Staff Accounts */}
+      <div className="mb-6">
+        <div className="flex items-center gap-2 mb-3">
+          <Shield className="w-4 h-4 text-blue-400" />
+          <h2 className="font-sora font-semibold text-sm">Staff Accounts</h2>
+          <span className="text-xs text-muted-foreground ml-1">({filteredStaff.length})</span>
+        </div>
+        <Card className="border-border/50">
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">Loading...</div>
+            ) : filteredStaff.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">No staff accounts found</div>
+            ) : (
+              <div className="divide-y divide-border/50">
+                {filteredStaff.map(u => (
+                  <UserRow key={u.id} u={u} onEdit={() => setEditUser({ ...u })} />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Customer Accounts */}
+      <div>
+        <div className="flex items-center gap-2 mb-3">
+          <UserCheck className="w-4 h-4 text-green-400" />
+          <h2 className="font-sora font-semibold text-sm">Customer Accounts</h2>
+          <span className="text-xs text-muted-foreground ml-1">({filteredCustomers.length})</span>
+        </div>
+        <Card className="border-border/50">
+          <CardContent className="p-0">
+            {loading ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">Loading...</div>
+            ) : filteredCustomers.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">No customer accounts found</div>
+            ) : (
+              <div className="divide-y divide-border/50">
+                {filteredCustomers.map(u => (
+                  <UserRow key={u.id} u={u} onEdit={() => setEditUser({ ...u })} />
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Edit Role Modal */}
       {editUser && (
