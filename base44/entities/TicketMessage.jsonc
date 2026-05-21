@@ -23,6 +23,11 @@
     "message": {
       "type": "string"
     },
+    "is_internal": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, visible to staff only"
+    },
     "attachments": {
       "type": "array",
       "items": {

@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, ChevronLeft, ArrowRightLeft, MessageSquareText, Tag, History, Download } from 'lucide-react';
+import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, ChevronLeft, ArrowRightLeft, MessageSquareText, Tag, History, Download, Lock } from 'lucide-react';
 import RerouteTicketModal from '@/components/RerouteTicketModal';
 import TicketHistoryModal from '@/components/TicketHistoryModal';
 import TicketInfoSidebar from '@/components/TicketInfoSidebar';
@@ -67,6 +67,7 @@ export default function StaffMessenger({ tickets, loading }) {
   const [showReplyPicker, setShowReplyPicker] = useState(false);
   const [replySearch, setReplySearch] = useState('');
   const replyPickerRef = useRef(null);
+  const [isInternal, setIsInternal] = useState(false);
 
   // Load saved replies and tags once
   useEffect(() => {
@@ -196,6 +197,7 @@ export default function StaffMessenger({ tickets, loading }) {
       sender_name: user?.full_name || user?.email || 'Support',
       sender_role: 'staff',
       message: newMessage.trim(),
+      is_internal: isInternal,
       attachments: attachments.map(a => a.url),
     });
     setNewMessage('');
@@ -426,19 +428,23 @@ export default function StaffMessenger({ tickets, loading }) {
                   const isStaff = msg.sender_role === 'staff';
                   return (
                     <motion.div key={msg.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
-                      className={`flex gap-2.5 ${isStaff ? 'flex-row-reverse' : 'flex-row'}`}>
+                      className={`flex gap-2.5 ${msg.is_internal ? 'flex-row-reverse opacity-90' : isStaff ? 'flex-row-reverse' : 'flex-row'}`}>
                       <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-semibold
-                        ${isStaff ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                        ${msg.is_internal ? 'bg-amber-500/20 text-amber-600' : isStaff ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
                         {isStaff ? (user?.full_name?.[0] || 'S') : (selectedTicket.customer_name?.[0] || 'C')}
                       </div>
-                      <div className={`max-w-[70%] flex flex-col ${isStaff ? 'items-end' : 'items-start'}`}>
-                        <p className="text-xs text-muted-foreground mb-1 px-1">
+                      <div className={`max-w-[70%] flex flex-col ${(msg.is_internal || isStaff) ? 'items-end' : 'items-start'}`}>
+                        <p className="text-xs text-muted-foreground mb-1 px-1 flex items-center gap-1">
+                          {msg.is_internal && <Lock className="w-3 h-3 text-amber-500" />}
                           {isStaff ? (msg.sender_name || 'Staff') : (msg.sender_name || 'Customer')}
+                          {msg.is_internal && <span className="text-amber-500 font-medium">· Internal Note</span>}
                         </p>
                         <div className={`rounded-2xl px-4 py-2.5 shadow-sm
-                          ${isStaff
-                            ? 'bg-primary text-primary-foreground rounded-tr-sm'
-                            : 'bg-card border border-border/50 rounded-tl-sm'
+                          ${msg.is_internal
+                            ? 'bg-amber-500/10 border border-amber-500/30 text-amber-900 dark:text-amber-200 rounded-tr-sm'
+                            : isStaff
+                              ? 'bg-primary text-primary-foreground rounded-tr-sm'
+                              : 'bg-card border border-border/50 rounded-tl-sm'
                           }`}>
                           {msg.message && <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.message}</p>}
                           {msg.attachments?.length > 0 && (
@@ -503,8 +509,24 @@ export default function StaffMessenger({ tickets, loading }) {
               })}
             </div>
 
+            {/* Internal Note Toggle */}
+            <div className="px-4 pt-2 pb-1 bg-card flex items-center gap-2">
+              <button
+                onClick={() => setIsInternal(v => !v)}
+                className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-all font-medium ${
+                  isInternal
+                    ? 'bg-amber-500/10 border-amber-500/40 text-amber-600'
+                    : 'bg-muted border-border/40 text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Lock className="w-3 h-3" />
+                {isInternal ? 'Internal Note' : 'Reply to Customer'}
+              </button>
+              {isInternal && <span className="text-xs text-amber-500/80 italic">Only visible to staff</span>}
+            </div>
+
             {/* Input */}
-            <div className="p-4 pt-2 bg-card flex items-end gap-2 relative">
+            <div className={`p-4 pt-2 flex items-end gap-2 relative transition-colors ${isInternal ? 'bg-amber-500/5' : 'bg-card'}`}>
               <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
                 className="text-muted-foreground hover:text-foreground p-1.5 shrink-0 rounded-lg hover:bg-muted transition-colors">
                 {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
@@ -518,8 +540,8 @@ export default function StaffMessenger({ tickets, loading }) {
                   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
                   if (e.key === '/' && !newMessage) { e.preventDefault(); setShowReplyPicker(true); setReplySearch(''); }
                 }}
-                placeholder="Type a reply..."
-                className="flex-1 rounded-full bg-muted border-0 focus-visible:ring-1"
+                placeholder={isInternal ? 'Add an internal note...' : 'Type a reply...'}
+                className={`flex-1 rounded-full border-0 focus-visible:ring-1 ${isInternal ? 'bg-amber-500/10 placeholder:text-amber-500/50' : 'bg-muted'}`}
               />
 
               {/* Quick Reply Picker */}
