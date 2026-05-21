@@ -1,8 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { User, Clock, ChevronRight, ChevronLeft, AlertTriangle, Send, Loader2 } from 'lucide-react';
-import { formatDistanceToNow, differenceInMinutes } from 'date-fns';
+import { Clock, ChevronRight, ChevronLeft, AlertTriangle, Send, Loader2, Paperclip, X, FileText } from 'lucide-react';
+import { differenceInMinutes, formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/lib/AuthContext';
 
 const toPHTime = (dateStr) => new Date(new Date(dateStr).getTime() + 8 * 60 * 60 * 1000);
@@ -34,8 +34,13 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
   const [slaPolicy, setSlaPolicy] = useState(null);
   const [now, setNow] = useState(new Date());
   const [noteText, setNoteText] = useState('');
-  const [isInternal, setIsInternal] = useState(false);
   const [sendingNote, setSendingNote] = useState(false);
+  const [staffMessages, setStaffMessages] = useState([]);
+  const [attachments, setAttachments] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const messagesEndRef = useRef(null);
+  const fileInputRef = useRef(null);
+  const textareaRef = useRef(null);
 
   useEffect(() => {
     base44.entities.User.list().then(d => setAgents(d || []));
@@ -44,6 +49,54 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
     });
   }, [ticket.priority]);
 
+  // Load internal staff messages for this ticket
+  useEffect(() => {
+    if (!ticket.id) return;
+    loadStaffMessages();
+    const unsub = base44.entities.TicketMessage.subscribe(event => {
+      if (event.data?.ticket_id === ticket.id && event.data?.is_internal) {
+        loadStaffMessages();
+      }
+    });
+    return () => unsub();
+  }, [ticket.id]);
+
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [staffMessages]);
+
+  const loadStaffMessages = async () => {
+    const msgs = await base44.entities.TicketMessage.filter({ ticket_id: ticket.id, is_internal: true }, 'created_date');
+    setStaffMessages(msgs || []);
+  };
+
+  const handleFileUpload = async (files) => {
+    const toUpload = Array.from(files).slice(0, 5 - attachments.length);
+    if (!toUpload.length) return;
+    setUploading(true);
+    for (const file of toUpload) {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setAttachments(prev => [...prev, { name: file.name, url: file_url, isImage: file.type.startsWith('image/') }]);
+    }
+    setUploading(false);
+  };
+
+  const handlePaste = async (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          setUploading(true);
+          const { file_url } = await base44.integrations.Core.UploadFile({ file });
+          setAttachments(prev => [...prev, { name: 'pasted-image.png', url: file_url, isImage: true }]);
+          setUploading(false);
+        }
+      }
+    }
+  };
+
   // Tick every minute for SLA countdown
   useEffect(() => {
     const t = setInterval(() => setNow(new Date()), 60000);
@@ -51,7 +104,7 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
   }, []);
 
   const handleSendNote = async () => {
-    if (!noteText.trim()) return;
+    if (!noteText.trim() && attachments.length === 0) return;
     setSendingNote(true);
     await base44.entities.TicketMessage.create({
       ticket_id: ticket.id,
@@ -59,10 +112,11 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
       sender_name: user?.full_name || user?.email || 'Support',
       sender_role: 'staff',
       message: noteText.trim(),
-      is_internal: isInternal,
-      attachments: [],
+      is_internal: true,
+      attachments: attachments.map(a => a.url),
     });
     setNoteText('');
+    setAttachments([]);
     setSendingNote(false);
   };
 
@@ -198,38 +252,99 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
           <p className="text-xs text-muted-foreground">{formatPHTime(ticket.created_date)}</p>
         </div>
 
-        {/* Quick Note / Reply Box */}
-        <div className="pt-2 border-t border-border/50">
-          <div className="flex gap-1 mb-2">
-            <button
-              onClick={() => setIsInternal(false)}
-              className={`flex-1 text-xs py-1 rounded-md font-medium transition-all border ${!isInternal ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted border-border/40 text-muted-foreground hover:text-foreground'}`}
-            >
-              Reply
-            </button>
-            <button
-              onClick={() => setIsInternal(true)}
-              className={`flex-1 text-xs py-1 rounded-md font-medium transition-all border ${isInternal ? 'bg-amber-500/10 border-amber-500/40 text-amber-600' : 'bg-muted border-border/40 text-muted-foreground hover:text-foreground'}`}
-            >
-              Note
-            </button>
+        {/* Internal Staff Chat */}
+        <div className="pt-2 border-t border-border/50 flex flex-col gap-2">
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            <p className="text-xs font-semibold text-amber-600 uppercase tracking-wide">Internal Staff Chat</p>
           </div>
-          <textarea
-            value={noteText}
-            onChange={e => setNoteText(e.target.value)}
-            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendNote(); } }}
-            placeholder={isInternal ? 'Add internal note...' : 'Reply to customer...'}
-            rows={4}
-            className={`w-full text-xs rounded-lg border px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-ring transition-colors ${isInternal ? 'bg-amber-500/5 border-amber-500/30 placeholder:text-amber-500/40' : 'bg-muted border-border/50 placeholder:text-muted-foreground'}`}
-          />
-          <button
-            onClick={handleSendNote}
-            disabled={sendingNote || !noteText.trim()}
-            className="mt-1.5 w-full flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {sendingNote ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
-            {isInternal ? 'Post Note' : 'Send Reply'}
-          </button>
+
+          {/* Message history */}
+          <div className="h-40 overflow-y-auto flex flex-col gap-2 bg-amber-500/5 rounded-lg p-2 border border-amber-500/20">
+            {staffMessages.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center mt-4 italic">No internal notes yet</p>
+            ) : staffMessages.map(msg => {
+              const isMe = msg.sender_email === user?.email;
+              return (
+                <div key={msg.id} className={`flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                  <span className="text-[10px] text-muted-foreground mb-0.5 px-1">{msg.sender_name || msg.sender_email}</span>
+                  <div className={`max-w-[90%] rounded-xl px-2.5 py-1.5 text-xs ${isMe ? 'bg-amber-500/20 text-amber-900 dark:text-amber-200 rounded-tr-sm' : 'bg-card border border-border/50 rounded-tl-sm'}`}>
+                    {msg.message && <p className="whitespace-pre-wrap leading-relaxed">{msg.message}</p>}
+                    {msg.attachments?.length > 0 && (
+                      <div className="mt-1.5 space-y-1">
+                        {msg.attachments.map((url, i) => {
+                          const isImg = /\.(png|jpg|jpeg|gif|webp)(\?|$)/i.test(url);
+                          return isImg ? (
+                            <a key={i} href={url} target="_blank" rel="noopener noreferrer">
+                              <img src={url} alt="attachment" className="max-w-full rounded-md mt-1 max-h-24 object-cover" />
+                            </a>
+                          ) : (
+                            <a key={i} href={url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 underline opacity-70 hover:opacity-100">
+                              <FileText className="w-3 h-3" /> File {i + 1}
+                            </a>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                  <span className="text-[10px] text-muted-foreground mt-0.5 px-1">{formatPHTime(msg.created_date)}</span>
+                </div>
+              );
+            })}
+            <div ref={messagesEndRef} />
+          </div>
+
+          {/* Attachment previews */}
+          {attachments.length > 0 && (
+            <div className="flex gap-1.5 flex-wrap">
+              {attachments.map((att, i) => (
+                <div key={i} className="relative group">
+                  {att.isImage ? (
+                    <img src={att.url} alt={att.name} className="w-12 h-12 object-cover rounded-md border border-amber-500/30" />
+                  ) : (
+                    <div className="flex items-center gap-1 bg-muted rounded-md px-2 py-1">
+                      <FileText className="w-3 h-3 text-primary" />
+                      <span className="text-xs max-w-[60px] truncate">{att.name}</span>
+                    </div>
+                  )}
+                  <button onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}
+                    className="absolute -top-1 -right-1 w-4 h-4 bg-destructive rounded-full text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    <X className="w-2.5 h-2.5" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Input area */}
+          <div className="flex flex-col gap-1">
+            <textarea
+              ref={textareaRef}
+              value={noteText}
+              onChange={e => setNoteText(e.target.value)}
+              onPaste={handlePaste}
+              onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendNote(); } }}
+              placeholder="Write a note… paste images too"
+              rows={3}
+              className="w-full text-xs rounded-lg border px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-amber-400 bg-amber-500/5 border-amber-500/30 placeholder:text-amber-500/40 transition-colors"
+            />
+            <div className="flex items-center gap-1.5">
+              <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
+                className="text-muted-foreground hover:text-amber-500 p-1 rounded transition-colors" title="Attach file">
+                {uploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Paperclip className="w-3.5 h-3.5" />}
+              </button>
+              <input ref={fileInputRef} type="file" multiple accept="image/*,.pdf,.doc,.docx,.txt,.csv" className="hidden"
+                onChange={e => handleFileUpload(e.target.files)} />
+              <button
+                onClick={handleSendNote}
+                disabled={sendingNote || (!noteText.trim() && attachments.length === 0)}
+                className="flex-1 flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-lg bg-amber-500 text-white font-medium hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              >
+                {sendingNote ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+                Post Note
+              </button>
+            </div>
+          </div>
         </div>
 
       </div>
