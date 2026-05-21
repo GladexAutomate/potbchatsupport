@@ -4,8 +4,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, ChevronLeft, ArrowRightLeft, MessageSquareText, Tag } from 'lucide-react';
+import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, ChevronLeft, ArrowRightLeft, MessageSquareText, Tag, History, Download } from 'lucide-react';
 import RerouteTicketModal from '@/components/RerouteTicketModal';
+import TicketHistoryModal from '@/components/TicketHistoryModal';
+import TicketInfoSidebar from '@/components/TicketInfoSidebar';
 import { formatDistanceToNow } from 'date-fns';
 
 const toPHTime = (dateStr) => {
@@ -57,6 +59,8 @@ export default function StaffMessenger({ tickets, loading }) {
   const fileInputRef = useRef(null);
   const [allMessages, setAllMessages] = useState([]);
   const [rerouteOpen, setRerouteOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [priorityFilter, setPriorityFilter] = useState('All');
   const [savedReplies, setSavedReplies] = useState([]);
   const [allTags, setAllTags] = useState([]);
   const [ticketTags, setTicketTags] = useState({}); // ticketId -> [tagNames]
@@ -139,13 +143,36 @@ export default function StaffMessenger({ tickets, loading }) {
     setMessages(msgs || []);
   };
 
-  const handleSelectTicket = (ticket) => {
+  const handleSelectTicket = async (ticket) => {
     setSelectedTicket(ticket);
     setMessages([]);
     setNewMessage('');
     setAttachments([]);
     setShowReplyPicker(false);
     loadTicketTags(ticket);
+    // Ensure "created" history entry exists
+    const existing = await base44.entities.TicketHistory.filter({ ticket_id: ticket.id }, 'created_date', 1);
+    if (!existing?.length) {
+      await base44.entities.TicketHistory.create({
+        ticket_id: ticket.id,
+        event_type: 'created',
+        description: `Ticket created by ${ticket.customer_name}`,
+        actor: ticket.customer_email || ticket.customer_name,
+      });
+    }
+  };
+
+  const handleExportCSV = () => {
+    const rows = [['Ticket #', 'Customer', 'Subject', 'Status', 'Priority', 'Department', 'Created']];
+    sortedTickets.forEach(t => {
+      rows.push([t.ticket_number, t.customer_name, t.subject, t.status, t.priority, t.department || '', t.created_date]);
+    });
+    const csv = rows.map(r => r.map(c => `"${(c||'').toString().replace(/"/g,'""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'tickets.csv'; a.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleFileUpload = async (files) => {
@@ -180,11 +207,18 @@ export default function StaffMessenger({ tickets, loading }) {
 
   const toggleTag = async (ticketId, tagName) => {
     const current = ticketTags[ticketId] || [];
-    const updated = current.includes(tagName)
-      ? current.filter(t => t !== tagName)
-      : [...current, tagName];
+    const isRemoving = current.includes(tagName);
+    const updated = isRemoving ? current.filter(t => t !== tagName) : [...current, tagName];
     setTicketTags(prev => ({ ...prev, [ticketId]: updated }));
     await base44.entities.Ticket.update(ticketId, { tags: updated });
+    await base44.entities.TicketHistory.create({
+      ticket_id: ticketId,
+      event_type: isRemoving ? 'tag_removed' : 'tag_applied',
+      description: isRemoving ? `Tag "${tagName}" removed` : `Tag "${tagName}" applied`,
+      actor: user?.full_name || user?.email || 'Staff',
+      new_value: isRemoving ? undefined : tagName,
+      old_value: isRemoving ? tagName : undefined,
+    });
   };
 
   // Load ticket tags when ticket selected
@@ -204,7 +238,8 @@ export default function StaffMessenger({ tickets, loading }) {
       || t.customer_name?.toLowerCase().includes(search.toLowerCase())
       || t.ticket_number?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === 'All' || t.status === statusFilter;
-    return matchSearch && matchStatus;
+    const matchPriority = priorityFilter === 'All' || t.priority === priorityFilter;
+    return matchSearch && matchStatus && matchPriority;
   });
 
   // Sort: unread first, then by date
@@ -224,25 +259,40 @@ export default function StaffMessenger({ tickets, loading }) {
         <div className="p-4 border-b border-border/50">
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-sora font-bold text-lg">Tickets</h2>
-            {Object.keys(unread).length > 0 && (
-              <span className="flex items-center gap-1.5 text-xs font-medium text-red-500">
-                <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                {Object.values(unread).reduce((a, b) => a + b, 0)} unread
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              {Object.keys(unread).length > 0 && (
+                <span className="flex items-center gap-1.5 text-xs font-medium text-red-500">
+                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  {Object.values(unread).reduce((a, b) => a + b, 0)} unread
+                </span>
+              )}
+              <button onClick={handleExportCSV} title="Export CSV" className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted transition-colors">
+                <Download className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
           <div className="relative mb-2">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input placeholder="Search tickets..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-8 text-sm" />
           </div>
-          <Select value={statusFilter} onValueChange={setStatusFilter}>
-            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              {['All','Open','In Progress','Pending Department','Resolved','Closed'].map(s => (
-                <SelectItem key={s} value={s}>{s}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="flex gap-2">
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="Status" /></SelectTrigger>
+              <SelectContent>
+                {['All','Open','In Progress','Pending Department','Resolved','Closed'].map(s => (
+                  <SelectItem key={s} value={s}>{s}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select value={priorityFilter} onValueChange={setPriorityFilter}>
+              <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="Priority" /></SelectTrigger>
+              <SelectContent>
+                {['All','Low','Medium','High','Critical'].map(p => (
+                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
         </div>
 
         {/* Ticket list */}
@@ -320,8 +370,9 @@ export default function StaffMessenger({ tickets, loading }) {
         </div>
       </div>
 
-      {/* RIGHT PANEL - Chat */}
-      <div className={`flex-1 flex flex-col min-w-0 ${selectedTicket ? 'flex' : 'hidden md:flex'}`}>
+      {/* RIGHT PANEL - Chat + Info Sidebar */}
+      <div className={`flex-1 flex min-w-0 ${selectedTicket ? 'flex' : 'hidden md:flex'}`}>
+      <div className="flex-1 flex flex-col min-w-0">
         {!selectedTicket ? (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-muted-foreground">
             <MessageSquare className="w-12 h-12 mb-3 opacity-30" />
@@ -335,13 +386,19 @@ export default function StaffMessenger({ tickets, loading }) {
               <button className="md:hidden mr-1 text-muted-foreground" onClick={() => setSelectedTicket(null)}>
                 <ChevronLeft className="w-5 h-5" />
               </button>
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-primary/10 text-primary`}>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-primary/10 text-primary">
                 <User className="w-5 h-5" />
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold text-sm truncate">{selectedTicket.customer_name}</h3>
-                  <span className="font-mono text-xs text-muted-foreground hidden sm:block">{selectedTicket.ticket_number}</span>
+                  <button
+                    onClick={() => setHistoryOpen(true)}
+                    className="font-mono text-xs text-primary/80 hover:text-primary underline decoration-dotted hidden sm:block transition-colors"
+                    title="View ticket history"
+                  >
+                    {selectedTicket.ticket_number}
+                  </button>
                 </div>
                 <p className="text-xs text-muted-foreground truncate">{selectedTicket.subject}</p>
               </div>
@@ -350,6 +407,9 @@ export default function StaffMessenger({ tickets, loading }) {
                   <span className={`text-xs px-2 py-0.5 rounded-full ${PRIORITY_COLOR[selectedTicket.priority]}`}>{selectedTicket.priority}</span>
                 )}
                 <Badge className={`text-xs border ${STATUS_COLOR[selectedTicket.status] || ''}`}>{selectedTicket.status}</Badge>
+                <Button size="sm" variant="ghost" className="gap-1.5 text-xs h-7 px-2" title="Ticket History" onClick={() => setHistoryOpen(true)}>
+                  <History className="w-3.5 h-3.5" />
+                </Button>
                 <Button size="sm" variant="outline" className="gap-1.5 text-xs h-7 px-2.5" onClick={() => setRerouteOpen(true)}>
                   <ArrowRightLeft className="w-3 h-3" /> Reroute
                 </Button>
@@ -454,7 +514,10 @@ export default function StaffMessenger({ tickets, loading }) {
               <Input
                 value={newMessage}
                 onChange={e => setNewMessage(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+                  if (e.key === '/' && !newMessage) { e.preventDefault(); setShowReplyPicker(true); setReplySearch(''); }
+                }}
                 placeholder="Type a reply..."
                 className="flex-1 rounded-full bg-muted border-0 focus-visible:ring-1"
               />
@@ -512,8 +575,19 @@ export default function StaffMessenger({ tickets, loading }) {
           </>
         )}
       </div>
+      {/* Info Sidebar */}
+      {selectedTicket && (
+        <TicketInfoSidebar
+          ticket={selectedTicket}
+          onTicketUpdate={(updated) => setSelectedTicket(updated)}
+        />
+      )}
+      </div>
     </div>
 
+    {historyOpen && selectedTicket && (
+      <TicketHistoryModal ticket={selectedTicket} onClose={() => setHistoryOpen(false)} />
+    )}
     {rerouteOpen && selectedTicket && (
       <RerouteTicketModal
         ticket={selectedTicket}

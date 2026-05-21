@@ -1,0 +1,40 @@
+{
+  "name": "TicketHistory",
+  "type": "object",
+  "properties": {
+    "ticket_id": {
+      "type": "string"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "created",
+        "status_changed",
+        "tag_applied",
+        "tag_removed",
+        "sla_breached",
+        "assigned",
+        "priority_changed",
+        "rerouted"
+      ]
+    },
+    "description": {
+      "type": "string"
+    },
+    "actor": {
+      "type": "string",
+      "description": "Email or name of person who triggered event"
+    },
+    "old_value": {
+      "type": "string"
+    },
+    "new_value": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "ticket_id",
+    "event_type",
+    "description"
+  ]
+}
