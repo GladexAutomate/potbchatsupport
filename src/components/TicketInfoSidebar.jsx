@@ -121,8 +121,20 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
   };
 
   const handleChange = async (field, value, description, oldValue) => {
-    await base44.entities.Ticket.update(ticket.id, { [field]: value });
-    // Log to history
+    let extraFields = {};
+    // When closing/resolving, stop the active SLA entry
+    if (field === 'status' && (value === 'Resolved' || value === 'Closed')) {
+      const log = [...(ticket.dept_sla_log || [])];
+      const activeIdx = log.findIndex(e => e.grade === 'Active');
+      if (activeIdx !== -1) {
+        const active = log[activeIdx];
+        const elapsed = Math.round((Date.now() - new Date(active.started_at).getTime()) / 60000);
+        log[activeIdx] = { ...active, stopped_at: new Date().toISOString(), elapsed_minutes: elapsed, grade: 'Met' };
+        extraFields.dept_sla_log = log;
+      }
+      if (value === 'Resolved') extraFields.resolved_at = new Date().toISOString();
+    }
+    await base44.entities.Ticket.update(ticket.id, { [field]: value, ...extraFields });
     await base44.entities.TicketHistory.create({
       ticket_id: ticket.id,
       event_type: field === 'status' ? 'status_changed' : field === 'priority' ? 'priority_changed' : 'assigned',
@@ -131,7 +143,7 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
       old_value: oldValue,
       new_value: value,
     });
-    if (onTicketUpdate) onTicketUpdate({ ...ticket, [field]: value });
+    if (onTicketUpdate) onTicketUpdate({ ...ticket, [field]: value, ...extraFields });
   };
 
   // SLA countdown
@@ -229,6 +241,44 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
               <span>{slaLabel}</span>
             </div>
             <p className="text-xs text-muted-foreground mt-0.5">{formatPHTime(ticket.sla_deadline)}</p>
+          </div>
+        )}
+
+        {/* Per-Department SLA Log */}
+        {ticket.dept_sla_log?.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Dept SLA Timers</p>
+            <div className="space-y-1.5">
+              {ticket.dept_sla_log.map((entry, i) => {
+                const isActive = entry.grade === 'Active';
+                const elapsed = isActive
+                  ? Math.round((now - new Date(entry.started_at).getTime()) / 60000)
+                  : entry.elapsed_minutes || 0;
+                const hrs = Math.floor(elapsed / 60);
+                const mins = elapsed % 60;
+                const timeStr = hrs > 0 ? `${hrs}h ${mins}m` : `${mins}m`;
+                return (
+                  <div key={i} className={`flex items-center justify-between rounded-lg px-2.5 py-1.5 text-xs border ${
+                    isActive ? 'bg-primary/5 border-primary/20' :
+                    entry.grade === 'Breached' ? 'bg-red-500/5 border-red-500/20' :
+                    'bg-green-500/5 border-green-500/20'
+                  }`}>
+                    <span className="font-medium truncate mr-1">{entry.department}</span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {isActive && <Clock className="w-3 h-3 text-primary animate-pulse" />}
+                      <span className={isActive ? 'text-primary font-semibold' : entry.grade === 'Breached' ? 'text-red-400' : 'text-green-400'}>
+                        {timeStr}
+                      </span>
+                      <span className={`text-[10px] px-1 py-0.5 rounded font-medium ${
+                        isActive ? 'bg-primary/10 text-primary' :
+                        entry.grade === 'Breached' ? 'bg-red-500/10 text-red-400' :
+                        'bg-green-500/10 text-green-400'
+                      }`}>{entry.grade}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         )}
 

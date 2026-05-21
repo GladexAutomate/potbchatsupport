@@ -40,14 +40,44 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
 
+  const stopAndStartSLA = (existingLog, stoppingDept, nextDept) => {
+    const now = new Date().toISOString();
+    const log = [...(existingLog || [])];
+    // Find and stop the active entry for the current dept
+    const activeIdx = log.findIndex(e => e.department === stoppingDept && e.grade === 'Active');
+    if (activeIdx !== -1) {
+      const active = log[activeIdx];
+      const startMs = new Date(active.started_at).getTime();
+      const elapsed = Math.round((Date.now() - startMs) / 60000);
+      log[activeIdx] = {
+        ...active,
+        stopped_at: now,
+        elapsed_minutes: elapsed,
+        grade: 'Met', // will be re-evaluated against SLA policy on the KPI page
+      };
+    }
+    // Start new entry for next dept
+    if (nextDept) {
+      log.push({ department: nextDept, started_at: now, grade: 'Active' });
+    }
+    return log;
+  };
+
   const handleSave = async () => {
     setSaving(true);
+    const nowTs = new Date().toISOString();
+
     if (isCSR) {
-      await base44.entities.Ticket.update(ticket.id, { department, priority, status, escalated });
+      const currentDept = ticket.department || 'CSR';
+      const updatedLog = stopAndStartSLA(ticket.dept_sla_log, currentDept, department);
+      await base44.entities.Ticket.update(ticket.id, { department, priority, status, escalated, dept_sla_log: updatedLog });
     } else {
-      // Non-CSR: route back to L1/CSR by clearing department and resetting to Open
-      await base44.entities.Ticket.update(ticket.id, { department: null, status: 'Open', escalated: false });
+      // Non-CSR: route back to L1/CSR
+      const currentDept = ticket.department || 'CSR';
+      const updatedLog = stopAndStartSLA(ticket.dept_sla_log, currentDept, 'CSR');
+      await base44.entities.Ticket.update(ticket.id, { department: null, status: 'Open', escalated: false, dept_sla_log: updatedLog });
     }
+
     const routeMsg = isCSR
       ? `🔀 Ticket rerouted to ${department} dept | Priority: ${priority} | ${escalated ? '⬆ Escalated' : 'Not escalated'}`
       : `🔀 Ticket returned to L1/CSR queue`;

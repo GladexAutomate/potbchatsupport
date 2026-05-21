@@ -57,6 +57,7 @@ export default function SubmitTicket() {
     setSubmitting(true);
     const num = generateTicketNumber();
     const deadline = new Date(Date.now() + 24 * 3600000);
+    const now = new Date().toISOString();
     await base44.entities.Ticket.create({
       customer_name: form.customer_name,
       customer_email: user?.email || '',
@@ -69,6 +70,7 @@ export default function SubmitTicket() {
       source: 'Customer Portal',
       sla_deadline: deadline.toISOString(),
       escalated: false,
+      dept_sla_log: [{ department: 'CSR', started_at: now, grade: 'Active' }],
     });
     setTicketNum(num);
     setSubmitting(false);
