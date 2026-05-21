@@ -2,7 +2,6 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { User, Mail, Clock, ChevronRight, ChevronLeft, AlertTriangle, Lock } from 'lucide-react';
-import InternalChat from '@/components/InternalChat';
 import { formatDistanceToNow, differenceInMinutes } from 'date-fns';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -28,7 +27,7 @@ const STATUS_COLOR = {
   'Closed': 'text-slate-400',
 };
 
-export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
+export default function TicketInfoSidebar({ ticket, onTicketUpdate, isInternal, onToggleInternal }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(true);
   const [agents, setAgents] = useState([]);
@@ -87,7 +86,7 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
   }
 
   return (
-    <div className="w-64 flex-shrink-0 bg-card border-l border-border/50 flex flex-col overflow-y-auto" style={{ minHeight: 0 }}>
+    <div className="w-64 flex-shrink-0 bg-card border-l border-border/50 flex flex-col overflow-y-auto">
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/50">
         <span className="font-semibold text-sm">Ticket Info</span>
         <button onClick={() => setOpen(false)} className="text-muted-foreground hover:text-foreground">
@@ -180,8 +179,24 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
           <p className="text-xs text-muted-foreground">{formatPHTime(ticket.created_date)}</p>
         </div>
 
+        {/* Internal Note Toggle */}
+        <div className="pt-2 border-t border-border/50">
+          <button
+            onClick={onToggleInternal}
+            className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-all text-xs font-medium ${
+              isInternal
+                ? 'bg-amber-500/10 border-amber-500/40 text-amber-600'
+                : 'bg-muted border-border/40 text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Lock className="w-3.5 h-3.5" />
+            {isInternal ? 'Internal Note' : 'Reply to Customer'}
+          </button>
+          {isInternal && (
+            <p className="text-xs text-amber-500/80 italic mt-1.5 text-center">Only visible to staff</p>
+          )}
+        </div>
       </div>
-      <InternalChat ticket={ticket} />
     </div>
   );
 }

@@ -49,7 +49,7 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
       await base44.entities.Ticket.update(ticket.id, { department: null, status: 'Open', escalated: false });
     }
     const routeMsg = isCSR
-      ? `🔀 Ticket rerouted to ${department} dept`
+      ? `🔀 Ticket rerouted to ${department} dept | Priority: ${priority} | ${escalated ? '⬆ Escalated' : 'Not escalated'}`
       : `🔀 Ticket returned to L1/CSR queue`;
 
     const historyDesc = isCSR
