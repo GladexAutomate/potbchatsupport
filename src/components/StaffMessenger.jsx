@@ -509,6 +509,22 @@ export default function StaffMessenger({ tickets, loading }) {
               })}
             </div>
 
+            {/* Internal Note Toggle */}
+            <div className="px-4 pt-2 pb-1 bg-card flex items-center gap-2">
+              <button
+                onClick={() => setIsInternal(v => !v)}
+                className={`flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-all font-medium ${
+                  isInternal
+                    ? 'bg-amber-500/10 border-amber-500/40 text-amber-600'
+                    : 'bg-muted border-border/40 text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <Lock className="w-3 h-3" />
+                {isInternal ? 'Internal Note' : 'Reply to Customer'}
+              </button>
+              {isInternal && <span className="text-xs text-amber-500/80 italic">Only visible to staff</span>}
+            </div>
+
             {/* Input */}
             <div className={`p-4 pt-2 flex items-end gap-2 relative transition-colors ${isInternal ? 'bg-amber-500/5' : 'bg-card'}`}>
               <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
@@ -586,8 +602,6 @@ export default function StaffMessenger({ tickets, loading }) {
         <TicketInfoSidebar
           ticket={selectedTicket}
           onTicketUpdate={(updated) => setSelectedTicket(updated)}
-          isInternal={isInternal}
-          onToggleInternal={() => setIsInternal(v => !v)}
         />
       )}
       </div>
