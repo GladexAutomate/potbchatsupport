@@ -94,9 +94,7 @@ export default function Dashboard() {
               </Button>
             </div>
           </div>
-
-
-        </CardContent>
+          </CardContent>
       </Card>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
