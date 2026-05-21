@@ -51,14 +51,30 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
     const routeMsg = isCSR
       ? `🔀 Ticket rerouted to ${department} dept | Priority: ${priority} | ${escalated ? '⬆ Escalated' : 'Not escalated'}`
       : `🔀 Ticket returned to L1/CSR queue`;
-    await base44.entities.TicketMessage.create({
-      ticket_id: ticket.id,
-      sender_email: 'system',
-      sender_name: 'System',
-      sender_role: 'staff',
-      message: note.trim() ? `${routeMsg}\nNote: ${note.trim()}` : routeMsg,
-      attachments: [],
-    });
+
+    const historyDesc = isCSR
+      ? `Rerouted to ${department}${note.trim() ? ` — ${note.trim()}` : ''}`
+      : `Returned to L1/CSR queue${note.trim() ? ` — ${note.trim()}` : ''}`;
+
+    await Promise.all([
+      base44.entities.TicketMessage.create({
+        ticket_id: ticket.id,
+        sender_email: 'system',
+        sender_name: 'System',
+        sender_role: 'staff',
+        message: note.trim() ? `${routeMsg}\nNote: ${note.trim()}` : routeMsg,
+        attachments: [],
+      }),
+      base44.entities.TicketHistory.create({
+        ticket_id: ticket.id,
+        event_type: 'rerouted',
+        description: historyDesc,
+        actor: user?.full_name || user?.email || 'Staff',
+        old_value: ticket.department || 'L1/CSR',
+        new_value: isCSR ? department : 'L1/CSR',
+      }),
+    ]);
+
     setSaving(false);
     onSaved?.();
     onClose();
