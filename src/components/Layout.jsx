@@ -17,10 +17,11 @@ const navItems = [
   { label: 'Tickets', href: '/tickets', icon: Ticket, roles: STAFF_ROLES },
   { label: 'KPI & SLA', href: '/kpi', icon: BarChart2, roles: ['admin', 'csr', 'tl_management'] },
   { label: 'User Management', href: '/users', icon: Users, roles: ['admin'] },
-  { label: 'Chatbot Config', href: '/chatbot-config', icon: MessageSquare, roles: ['admin'] },
-  { label: 'Replying Center', href: '/replying-center', icon: MessageSquareText, roles: ['admin'] },
-  { label: 'Conversation Tags', href: '/conversation-tags', icon: Tag, roles: ['admin'] },
-  { label: 'Settings', href: '/settings', icon: Settings, roles: ['admin'] },
+  { label: 'Settings', href: '/settings', icon: Settings, roles: ['admin'], children: [
+    { label: 'Chatbot Config', href: '/chatbot-config', icon: MessageSquare },
+    { label: 'Replying Center', href: '/replying-center', icon: MessageSquareText },
+    { label: 'Conversation Tags', href: '/conversation-tags', icon: Tag },
+  ]},
 ];
 
 export default function Layout() {
@@ -46,6 +47,9 @@ export default function Layout() {
 
   const isCollapsed = collapsed && !hoverCollapsed;
 
+  const settingsOpen = ['/settings', '/chatbot-config', '/replying-center', '/conversation-tags'].includes(location.pathname);
+  const [settingsExpanded, setSettingsExpanded] = useState(settingsOpen);
+
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       <div className={cn("flex items-center gap-3 px-4 py-5 border-b border-sidebar-border", isCollapsed && "justify-center px-2")}>
@@ -63,6 +67,55 @@ export default function Layout() {
       <nav className="flex-1 py-4 px-2 space-y-1">
         {filtered.map((item) => {
           const active = location.pathname === item.href;
+          if (item.children) {
+            const anyChildActive = item.children.some(c => location.pathname === c.href);
+            const expanded = settingsExpanded || anyChildActive;
+            return (
+              <div key={item.href}>
+                <button
+                  onClick={() => setSettingsExpanded(v => !v)}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium",
+                    isCollapsed && "justify-center px-2",
+                    (active || anyChildActive)
+                      ? "bg-primary text-white shadow-lg shadow-primary/30"
+                      : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-white"
+                  )}
+                >
+                  <item.icon className="w-4 h-4 flex-shrink-0" />
+                  {!isCollapsed && (
+                    <>
+                      <span className="flex-1 text-left">{item.label}</span>
+                      <ChevronRight className={cn("w-3 h-3 transition-transform", expanded && "rotate-90")} />
+                    </>
+                  )}
+                </button>
+                {expanded && !isCollapsed && (
+                  <div className="ml-3 mt-1 space-y-1 border-l border-sidebar-border pl-2">
+                    {item.children.map(child => {
+                      const childActive = location.pathname === child.href;
+                      return (
+                        <Link
+                          key={child.href}
+                          to={child.href}
+                          onClick={() => setMobileOpen(false)}
+                          className={cn(
+                            "flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-sm font-medium",
+                            childActive
+                              ? "bg-primary text-white shadow-lg shadow-primary/30"
+                              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-white"
+                          )}
+                        >
+                          <child.icon className="w-4 h-4 flex-shrink-0" />
+                          <span>{child.label}</span>
+                        </Link>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          }
           return (
             <Link
               key={item.href}
