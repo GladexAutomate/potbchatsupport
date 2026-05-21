@@ -273,18 +273,7 @@ export default function StaffMessenger({ tickets, loading }) {
                     <User className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className={`text-sm truncate max-w-[160px] ${hasUnread ? 'font-bold text-foreground' : 'font-medium'}`}>
-                        {t.customer_name}
-                      </span>
-                      <span className="text-xs text-muted-foreground ml-1 flex-shrink-0">
-                        {formatDistanceToNow(toPHTime(t.updated_date || t.created_date), { addSuffix: false })}
-                      </span>
-                    </div>
-                    <p className={`text-xs truncate mb-1 ${hasUnread ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
-                      {t.subject}
-                    </p>
-                    <div className="flex items-center gap-1.5 flex-wrap">
+                    <div className="flex items-center gap-1.5 flex-wrap mb-1">
                       <span className={`text-xs px-1.5 py-0.5 rounded-full ${PRIORITY_COLOR[t.priority] || ''}`}>{t.priority}</span>
                       <span className={`text-xs px-1.5 py-0.5 rounded-full border ${STATUS_COLOR[t.status] || ''}`}>{t.status}</span>
                       {hasUnread && (
@@ -293,6 +282,17 @@ export default function StaffMessenger({ tickets, loading }) {
                         </span>
                       )}
                     </div>
+                    <div className="flex items-center justify-between mb-0.5">
+                      <span className={`text-sm truncate max-w-[160px] ${hasUnread ? 'font-bold text-foreground' : 'font-medium'}`}>
+                        {t.customer_name}
+                      </span>
+                      <span className="text-xs text-muted-foreground ml-1 flex-shrink-0">
+                        {formatDistanceToNow(toPHTime(t.updated_date || t.created_date), { addSuffix: false })}
+                      </span>
+                    </div>
+                    <p className={`text-xs truncate ${hasUnread ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
+                      {t.subject}
+                    </p>
                   </div>
                 </div>
               </button>
@@ -399,27 +399,30 @@ export default function StaffMessenger({ tickets, loading }) {
               </div>
             )}
 
-            {/* Tag Strip */}
-            {allTags.length > 0 && (
-              <div className="px-4 pt-2 pb-1 border-t bg-card flex gap-1.5 flex-wrap items-center">
-                <Tag className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
-                {allTags.map(tag => {
-                  const active = (ticketTags[selectedTicket.id] || []).includes(tag.name);
-                  return (
-                    <button
-                      key={tag.id}
-                      onClick={() => toggleTag(selectedTicket.id, tag.name)}
-                      className={`text-xs px-2 py-0.5 rounded font-semibold transition-all border ${
-                        active ? 'text-white border-transparent' : 'bg-muted text-muted-foreground border-border/50 hover:opacity-80'
-                      }`}
-                      style={active ? { background: tag.color || '#6366f1', borderColor: tag.color || '#6366f1' } : {}}
-                    >
-                      {tag.name}
-                    </button>
-                  );
-                })}
-              </div>
-            )}
+            {/* Tag Strip — shows applied tags + all tags as toggles */}
+            <div className="px-4 pt-2 pb-1 border-t bg-card flex gap-1.5 flex-wrap items-center min-h-[36px]">
+              <Tag className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+              {allTags.length === 0 ? (
+                <span className="text-xs text-muted-foreground italic">No tags available</span>
+              ) : allTags.map(tag => {
+                const active = (ticketTags[selectedTicket.id] || []).includes(tag.name);
+                return (
+                  <button
+                    key={tag.id}
+                    onClick={() => toggleTag(selectedTicket.id, tag.name)}
+                    title={active ? `Remove "${tag.name}"` : `Apply "${tag.name}"`}
+                    className={`text-xs px-2 py-0.5 rounded font-semibold transition-all border ${
+                      active
+                        ? 'text-white border-transparent'
+                        : 'bg-muted/50 text-muted-foreground border-border/40 hover:border-border hover:text-foreground opacity-50 hover:opacity-100'
+                    }`}
+                    style={active ? { background: tag.color || '#6366f1', borderColor: tag.color || '#6366f1' } : {}}
+                  >
+                    {tag.name}
+                  </button>
+                );
+              })}
+            </div>
 
             {/* Input */}
             <div className="p-4 pt-2 bg-card flex items-end gap-2 relative">
