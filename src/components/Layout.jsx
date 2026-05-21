@@ -18,6 +18,7 @@ const navItems = [
   { label: 'KPI & SLA', href: '/kpi', icon: BarChart2, roles: ['admin', 'csr', 'tl_management'] },
   { label: 'User Management', href: '/users', icon: Users, roles: ['admin'] },
   { label: 'Settings', href: '/settings', icon: Settings, roles: ['admin'], children: [
+    { label: 'SLA Settings', href: '/settings', icon: Settings },
     { label: 'Chatbot Config', href: '/chatbot-config', icon: MessageSquare },
     { label: 'Replying Center', href: '/replying-center', icon: MessageSquareText },
     { label: 'Conversation Tags', href: '/conversation-tags', icon: Tag },
