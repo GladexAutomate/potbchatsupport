@@ -15,6 +15,8 @@ import ChatbotConfig from './pages/ChatbotConfig';
 import Settings from './pages/Settings';
 import MyTickets from './pages/MyTickets';
 import UserManagement from './pages/UserManagement';
+import ReplyingCenter from './pages/ReplyingCenter';
+import ConversationTags from './pages/ConversationTags';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -51,6 +53,8 @@ const AuthenticatedApp = () => {
         <Route path="/chatbot-config" element={<ChatbotConfig />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/users" element={<UserManagement />} />
+        <Route path="/replying-center" element={<ReplyingCenter />} />
+        <Route path="/conversation-tags" element={<ConversationTags />} />
       </Route>
 
       <Route path="*" element={<PageNotFound />} />

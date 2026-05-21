@@ -1,0 +1,22 @@
+{
+  "name": "SavedReply",
+  "type": "object",
+  "properties": {
+    "shortcut": {
+      "type": "string",
+      "description": "Short keyword trigger for this reply"
+    },
+    "topic": {
+      "type": "string",
+      "description": "Optional topic/category label"
+    },
+    "message": {
+      "type": "string",
+      "description": "Full reply message content"
+    }
+  },
+  "required": [
+    "shortcut",
+    "message"
+  ]
+}

@@ -4,7 +4,8 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import {
   LayoutDashboard, Ticket, BarChart2, Settings, MessageSquare,
-  ChevronLeft, ChevronRight, LogOut, Menu, X, ShieldCheck, Users
+  ChevronLeft, ChevronRight, LogOut, Menu, X, ShieldCheck, Users,
+  MessageSquareText, Tag
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -17,6 +18,8 @@ const navItems = [
   { label: 'KPI & SLA', href: '/kpi', icon: BarChart2, roles: ['admin', 'csr', 'tl_management'] },
   { label: 'User Management', href: '/users', icon: Users, roles: ['admin'] },
   { label: 'Chatbot Config', href: '/chatbot-config', icon: MessageSquare, roles: ['admin'] },
+  { label: 'Replying Center', href: '/replying-center', icon: MessageSquareText, roles: ['admin'] },
+  { label: 'Conversation Tags', href: '/conversation-tags', icon: Tag, roles: ['admin'] },
   { label: 'Settings', href: '/settings', icon: Settings, roles: ['admin'] },
 ];
 
