@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { User, Mail, Clock, ChevronRight, ChevronLeft, AlertTriangle, Lock } from 'lucide-react';
+import { User, Clock, ChevronRight, ChevronLeft, AlertTriangle, Send, Loader2 } from 'lucide-react';
 import { formatDistanceToNow, differenceInMinutes } from 'date-fns';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -27,12 +27,15 @@ const STATUS_COLOR = {
   'Closed': 'text-slate-400',
 };
 
-export default function TicketInfoSidebar({ ticket, onTicketUpdate, isInternal, onToggleInternal }) {
+export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
   const { user } = useAuth();
   const [open, setOpen] = useState(true);
   const [agents, setAgents] = useState([]);
   const [slaPolicy, setSlaPolicy] = useState(null);
   const [now, setNow] = useState(new Date());
+  const [noteText, setNoteText] = useState('');
+  const [isInternal, setIsInternal] = useState(false);
+  const [sendingNote, setSendingNote] = useState(false);
 
   useEffect(() => {
     base44.entities.User.list().then(d => setAgents(d || []));
@@ -46,6 +49,22 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate, isInternal, 
     const t = setInterval(() => setNow(new Date()), 60000);
     return () => clearInterval(t);
   }, []);
+
+  const handleSendNote = async () => {
+    if (!noteText.trim()) return;
+    setSendingNote(true);
+    await base44.entities.TicketMessage.create({
+      ticket_id: ticket.id,
+      sender_email: user?.email || '',
+      sender_name: user?.full_name || user?.email || 'Support',
+      sender_role: 'staff',
+      message: noteText.trim(),
+      is_internal: isInternal,
+      attachments: [],
+    });
+    setNoteText('');
+    setSendingNote(false);
+  };
 
   const handleChange = async (field, value, description, oldValue) => {
     await base44.entities.Ticket.update(ticket.id, { [field]: value });
@@ -179,25 +198,39 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate, isInternal, 
           <p className="text-xs text-muted-foreground">{formatPHTime(ticket.created_date)}</p>
         </div>
 
-        {/* Internal Note Toggle */}
-        {onToggleInternal !== undefined && (
-          <div className="pt-2 border-t border-border/50">
+        {/* Quick Note / Reply Box */}
+        <div className="pt-2 border-t border-border/50">
+          <div className="flex gap-1 mb-2">
             <button
-              onClick={onToggleInternal}
-              className={`w-full flex items-center gap-2 px-3 py-2 rounded-lg border transition-all text-xs font-medium ${
-                isInternal
-                  ? 'bg-amber-500/10 border-amber-500/40 text-amber-600'
-                  : 'bg-muted border-border/40 text-muted-foreground hover:text-foreground'
-              }`}
+              onClick={() => setIsInternal(false)}
+              className={`flex-1 text-xs py-1 rounded-md font-medium transition-all border ${!isInternal ? 'bg-primary text-primary-foreground border-primary' : 'bg-muted border-border/40 text-muted-foreground hover:text-foreground'}`}
             >
-              <Lock className="w-3.5 h-3.5" />
-              {isInternal ? 'Internal Note' : 'Reply to Customer'}
+              Reply
             </button>
-            {isInternal && (
-              <p className="text-xs text-amber-500/80 italic mt-1.5 text-center">Only visible to staff</p>
-            )}
+            <button
+              onClick={() => setIsInternal(true)}
+              className={`flex-1 text-xs py-1 rounded-md font-medium transition-all border ${isInternal ? 'bg-amber-500/10 border-amber-500/40 text-amber-600' : 'bg-muted border-border/40 text-muted-foreground hover:text-foreground'}`}
+            >
+              Note
+            </button>
           </div>
-        )}
+          <textarea
+            value={noteText}
+            onChange={e => setNoteText(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendNote(); } }}
+            placeholder={isInternal ? 'Add internal note...' : 'Reply to customer...'}
+            rows={4}
+            className={`w-full text-xs rounded-lg border px-3 py-2 resize-none focus:outline-none focus:ring-1 focus:ring-ring transition-colors ${isInternal ? 'bg-amber-500/5 border-amber-500/30 placeholder:text-amber-500/40' : 'bg-muted border-border/50 placeholder:text-muted-foreground'}`}
+          />
+          <button
+            onClick={handleSendNote}
+            disabled={sendingNote || !noteText.trim()}
+            className="mt-1.5 w-full flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-lg bg-primary text-primary-foreground font-medium hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+          >
+            {sendingNote ? <Loader2 className="w-3 h-3 animate-spin" /> : <Send className="w-3 h-3" />}
+            {isInternal ? 'Post Note' : 'Send Reply'}
+          </button>
+        </div>
 
       </div>
     </div>

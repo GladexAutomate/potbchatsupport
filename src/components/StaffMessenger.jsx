@@ -586,8 +586,6 @@ export default function StaffMessenger({ tickets, loading }) {
         <TicketInfoSidebar
           ticket={selectedTicket}
           onTicketUpdate={(updated) => setSelectedTicket(updated)}
-          isInternal={isInternal}
-          onToggleInternal={() => setIsInternal(v => !v)}
         />
       )}
       </div>
