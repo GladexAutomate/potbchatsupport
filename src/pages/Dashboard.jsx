@@ -95,41 +95,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Chat Widget Preview */}
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2 flex items-center gap-1.5">
-              <MessageSquare className="w-3.5 h-3.5" /> Chat Widget Preview
-              <span className="text-[10px] font-normal text-muted-foreground normal-case ml-1">— share this in chat so clients see a clickable button</span>
-            </p>
-            <div className="bg-muted/40 rounded-xl p-4 flex items-start gap-3">
-              {/* Simulated chat bubble */}
-              <div className="flex flex-col gap-2 max-w-xs">
-                <div className="bg-card border border-border rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm">
-                  <p className="text-sm text-foreground mb-2.5">Hi! You can submit a support ticket using the button below:</p>
-                  <a href={ticketUrl} target="_blank" rel="noopener noreferrer"
-                    className="flex items-center gap-2.5 bg-primary hover:bg-primary/90 transition-colors text-white rounded-xl px-4 py-2.5 w-full">
-                    <div className="w-7 h-7 rounded-lg bg-white/20 flex items-center justify-center shrink-0">
-                      <Ticket className="w-3.5 h-3.5 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className="text-xs font-semibold leading-tight">Submit a Support Ticket</p>
-                      <p className="text-[10px] text-white/70 leading-tight truncate">{ticketUrl}</p>
-                    </div>
-                    <ExternalLink className="w-3.5 h-3.5 text-white/60 shrink-0" />
-                  </a>
-                </div>
-                <span className="text-[10px] text-muted-foreground ml-1">Support Agent · now</span>
-              </div>
 
-              {/* Copy message button */}
-              <div className="ml-auto flex flex-col items-end justify-start pt-1">
-                <Button size="sm" variant="outline" onClick={handleCopyMessage} className="gap-1.5 text-xs">
-                  {copiedMsg ? <><Check className="w-3.5 h-3.5 text-green-500" /> Copied!</> : <><Copy className="w-3.5 h-3.5" /> Copy as Message</>}
-                </Button>
-                <p className="text-[10px] text-muted-foreground mt-1.5 text-right max-w-[140px]">Paste this into your chat to send as a message</p>
-              </div>
-            </div>
-          </div>
         </CardContent>
       </Card>
 
