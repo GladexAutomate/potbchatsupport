@@ -17,6 +17,7 @@ import MyTickets from './pages/MyTickets';
 import UserManagement from './pages/UserManagement';
 import ReplyingCenter from './pages/ReplyingCenter';
 import ConversationTags from './pages/ConversationTags';
+import SubmitTicket from './pages/SubmitTicket';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -43,6 +44,7 @@ const AuthenticatedApp = () => {
       {/* Public customer portal - customers & unauthenticated */}
       <Route path="/" element={<CustomerPortal />} />
       <Route path="/my-tickets" element={<MyTickets />} />
+      <Route path="/submit-ticket" element={<SubmitTicket />} />
 
       {/* Staff portal with layout - role-gated in Layout */}
       <Route element={<Layout />}>

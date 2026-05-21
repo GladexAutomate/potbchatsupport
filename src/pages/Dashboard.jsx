@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Ticket, Clock, AlertTriangle, CheckCircle, TrendingUp, ArrowRight, User } from 'lucide-react';
+import { Ticket, Clock, AlertTriangle, CheckCircle, TrendingUp, ArrowRight, User, Copy, Check } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -26,7 +26,15 @@ const PRIORITY_COLOR = {
 export default function Dashboard() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
   const { user } = useAuth();
+
+  const ticketUrl = `${window.location.origin}/submit-ticket`;
+  const handleCopy = () => {
+    navigator.clipboard.writeText(ticketUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
 
   useEffect(() => {
     base44.entities.Ticket.list('-created_date', 100).then(data => {
@@ -66,6 +74,19 @@ export default function Dashboard() {
         <h1 className="font-sora text-2xl font-bold text-foreground">Dashboard</h1>
         <p className="text-muted-foreground text-sm mt-0.5">Welcome back, {user?.full_name || 'Agent'}</p>
       </div>
+
+      {/* Ticket Submission URL */}
+      <Card className="border-border/50 mb-6">
+        <CardContent className="p-4">
+          <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Customer Ticket Submission URL</p>
+          <div className="flex items-center gap-2">
+            <code className="flex-1 text-sm font-mono bg-muted rounded-lg px-3 py-2 text-foreground truncate">{ticketUrl}</code>
+            <Button size="sm" variant="outline" onClick={handleCopy} className="gap-1.5 shrink-0">
+              {copied ? <><Check className="w-3.5 h-3.5 text-green-500" /> Copied!</> : <><Copy className="w-3.5 h-3.5" /> Copy</>}
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard label="Open Tickets" value={open} icon={Ticket} color="text-primary" sub="Awaiting action" />

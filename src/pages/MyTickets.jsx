@@ -166,9 +166,6 @@ export default function MyTickets() {
           ) : tickets.length === 0 ? (
             <div className="flex flex-col items-center justify-center flex-1 py-12 text-center px-4">
               <p className="text-white/40 text-sm">No tickets yet.</p>
-              <Link to="/" className="mt-3">
-                <Button size="sm" className="bg-primary hover:bg-primary/90">Submit a Ticket</Button>
-              </Link>
             </div>
           ) : (
             tickets.map(ticket => (

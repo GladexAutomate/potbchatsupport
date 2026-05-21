@@ -5,13 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { MessageSquare, Ticket, CheckCircle, ChevronRight, Bot, Loader2, ShieldCheck, Upload, X, FileText, ClipboardList } from 'lucide-react';
+import { CheckCircle, Loader2, ShieldCheck, Upload, X, FileText, ClipboardList } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 
-export default function CustomerPortal() {
-  const [view, setView] = useState('home'); // home | chat | ticket | success
-  const [chatConfig, setChatConfig] = useState(null);
+export default function SubmitTicket() {
+  const [view, setView] = useState('form'); // form | success
   const [submitting, setSubmitting] = useState(false);
   const [ticketNum, setTicketNum] = useState('');
   const [user, setUser] = useState(null);
@@ -22,9 +21,6 @@ export default function CustomerPortal() {
   const fileInputRef = useRef(null);
 
   useEffect(() => {
-    base44.entities.ChatbotConfig.list().then(configs => {
-      if (configs?.[0]) setChatConfig(configs[0]);
-    }).catch(() => {});
     base44.auth.me().then(u => {
       if (u) {
         setUser(u);
@@ -60,7 +56,7 @@ export default function CustomerPortal() {
     if (!form.customer_name || !form.subject || !form.description) return;
     setSubmitting(true);
     const num = generateTicketNumber();
-    const deadline = new Date(Date.now() + 24 * 3600000); // default 24h SLA, CSR will update priority
+    const deadline = new Date(Date.now() + 24 * 3600000);
     await base44.entities.Ticket.create({
       customer_name: form.customer_name,
       customer_email: user?.email || '',
@@ -96,91 +92,15 @@ export default function CustomerPortal() {
               <ClipboardList className="w-4 h-4" /> My Tickets
             </Button>
           </Link>
-          {user && ['admin','csr','it','sales','accounting','sign_ups','on_boarding','corp_training','tl_management'].includes(user.role) && (
-            <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10" onClick={() => window.location.href = '/dashboard'}>
-              Staff Login
-            </Button>
-          )}
-          {!user && (
-            <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10" onClick={() => window.location.href = '/dashboard'}>
-              Staff Login
-            </Button>
-          )}
         </div>
       </header>
 
       <div className="flex-1 flex items-center justify-center p-4">
         <AnimatePresence mode="wait">
-
-          {/* Home */}
-          {view === 'home' && (
-            <motion.div key="home" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-              className="w-full max-w-2xl text-center">
-              <div className="mb-8">
-                <div className="inline-flex items-center gap-2 bg-primary/20 text-primary border border-primary/30 rounded-full px-4 py-1.5 text-sm font-medium mb-4">
-                  <span className="w-2 h-2 rounded-full bg-green-400 animate-pulse" />
-                  Support Available 24/7
-                </div>
-                <h1 className="font-sora text-4xl md:text-5xl font-bold text-white mb-3">
-                  How can we <span className="text-primary">help you</span>?
-                </h1>
-                <p className="text-white/50 text-lg">Get instant answers or connect with our support team.</p>
-              </div>
-
-              <div className="grid md:grid-cols-1 gap-4 mb-4 max-w-sm mx-auto w-full">
-                <motion.button whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}
-                  onClick={() => setView('chat')}
-                  className="group bg-white/5 hover:bg-primary/20 border border-white/10 hover:border-primary/50 rounded-2xl p-6 text-left transition-all">
-                  <div className="w-12 h-12 rounded-xl bg-primary/20 flex items-center justify-center mb-4 group-hover:bg-primary transition-colors">
-                    <Bot className="w-6 h-6 text-primary group-hover:text-white" />
-                  </div>
-                  <h3 className="font-sora font-semibold text-white text-lg mb-2">AI Chat Support</h3>
-                  <p className="text-white/50 text-sm">Get instant answers to FAQs. Available 24/7 with no wait time.</p>
-                  <div className="flex items-center gap-1 mt-4 text-primary text-sm font-medium">
-                    Start chatting <ChevronRight className="w-4 h-4" />
-                  </div>
-                </motion.button>
-              </div>
-
-
-            </motion.div>
-          )}
-
-          {/* AI Chat */}
-          {view === 'chat' && (
-            <motion.div key="chat" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-              className="w-full max-w-3xl">
-              <div className="flex items-center gap-3 mb-4">
-                <Button variant="ghost" size="sm" onClick={() => setView('home')} className="text-white/60 hover:text-white">
-                  ← Back
-                </Button>
-                <h2 className="font-sora font-semibold text-white">AI Chat Support</h2>
-              </div>
-              <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden" style={{ height: '70vh' }}>
-                {chatConfig?.embed_url ? (
-                  <iframe src={chatConfig.embed_url} className="w-full h-full border-0" title="AI Support Chat" allow="microphone" />
-                ) : (
-                  <div className="flex flex-col items-center justify-center h-full text-center px-6">
-                    <Bot className="w-16 h-16 text-primary/30 mb-4" />
-                    <p className="text-white/60 font-medium mb-2">AI Chat not configured</p>
-                    <p className="text-white/30 text-sm mb-6">An admin needs to set up the chatbot embed URL first.</p>
-                  </div>
-                )}
-              </div>
-
-            </motion.div>
-          )}
-
-          {/* Ticket Form */}
-          {view === 'ticket' && (
-            <motion.div key="ticket-form" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+          {view === 'form' && (
+            <motion.div key="form" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
               className="w-full max-w-xl">
-              <div className="flex items-center gap-3 mb-4">
-                <Button variant="ghost" size="sm" onClick={() => setView('home')} className="text-white/60 hover:text-white">
-                  ← Back
-                </Button>
-                <h2 className="font-sora font-semibold text-white">Submit a Support Ticket</h2>
-              </div>
+              <h2 className="font-sora font-semibold text-white text-xl mb-4">Submit a Support Ticket</h2>
               <Card className="bg-white/5 border-white/10 backdrop-blur">
                 <CardContent className="p-6 space-y-4">
                   <div className="space-y-1.5">
@@ -205,7 +125,6 @@ export default function CustomerPortal() {
                       className="bg-white/10 border-white/20 text-white placeholder:text-white/30 min-h-[100px]" />
                   </div>
 
-                  {/* Attachments */}
                   <div className="space-y-2">
                     <Label className="text-white/70 text-xs">Attachments <span className="text-white/30">(max 5 files)</span></Label>
                     <div
@@ -247,7 +166,8 @@ export default function CustomerPortal() {
                     )}
                   </div>
 
-                  <Button onClick={handleSubmitTicket} disabled={submitting || uploading} className="w-full bg-primary hover:bg-primary/90">
+                  <Button onClick={handleSubmitTicket} disabled={submitting || uploading || !form.customer_name || !form.subject || !form.description}
+                    className="w-full bg-primary hover:bg-primary/90">
                     {submitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Submitting...</> : 'Submit Ticket'}
                   </Button>
                 </CardContent>
@@ -255,7 +175,6 @@ export default function CustomerPortal() {
             </motion.div>
           )}
 
-          {/* Success */}
           {view === 'success' && (
             <motion.div key="success" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
               className="w-full max-w-md text-center">
@@ -272,12 +191,11 @@ export default function CustomerPortal() {
                 <Link to="/my-tickets">
                   <Button variant="outline" className="border-white/20 text-white hover:bg-white/10">View My Tickets</Button>
                 </Link>
-                <Button onClick={() => { setView('home'); setForm({ customer_name: user?.full_name||'', subject:'', description:'' }); setAttachments([]); }}
-                  className="bg-primary hover:bg-primary/90">Back to Home</Button>
+                <Button onClick={() => { setView('form'); setForm({ customer_name: user?.full_name||'', subject:'', description:'' }); setAttachments([]); }}
+                  className="bg-primary hover:bg-primary/90">Submit Another</Button>
               </div>
             </motion.div>
           )}
-
         </AnimatePresence>
       </div>
     </div>
