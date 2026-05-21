@@ -60,7 +60,7 @@ export default function MyTickets() {
 
   const loadMessages = async (ticketId) => {
     const msgs = await base44.entities.TicketMessage.filter({ ticket_id: ticketId }, 'created_date');
-    setMessages(msgs || []);
+    setMessages((msgs || []).filter(m => !m.is_internal));
   };
 
   const handleFileUpload = async (files) => {
