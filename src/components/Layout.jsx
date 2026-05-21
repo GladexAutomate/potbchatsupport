@@ -25,6 +25,7 @@ const navItems = [
 
 export default function Layout() {
   const [collapsed, setCollapsed] = useState(false);
+  const [hoverCollapsed, setHoverCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
   const { user } = useAuth();
@@ -43,13 +44,15 @@ export default function Layout() {
 
   const handleLogout = () => base44.auth.logout('/');
 
+  const isCollapsed = collapsed && !hoverCollapsed;
+
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      <div className={cn("flex items-center gap-3 px-4 py-5 border-b border-sidebar-border", collapsed && "justify-center px-2")}>
+      <div className={cn("flex items-center gap-3 px-4 py-5 border-b border-sidebar-border", isCollapsed && "justify-center px-2")}>
         <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
           <ShieldCheck className="w-4 h-4 text-white" />
         </div>
-        {!collapsed && (
+        {!isCollapsed && (
           <div>
             <p className="font-sora font-semibold text-sm text-white leading-tight">LakbayHub</p>
             <p className="text-xs text-sidebar-foreground/60">Support Hub</p>
@@ -67,21 +70,21 @@ export default function Layout() {
               onClick={() => setMobileOpen(false)}
               className={cn(
                 "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium",
-                collapsed && "justify-center px-2",
+                isCollapsed && "justify-center px-2",
                 active
                   ? "bg-primary text-white shadow-lg shadow-primary/30"
                   : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-white"
               )}
             >
               <item.icon className="w-4 h-4 flex-shrink-0" />
-              {!collapsed && <span>{item.label}</span>}
+              {!isCollapsed && <span>{item.label}</span>}
             </Link>
           );
         })}
       </nav>
 
-      <div className={cn("p-3 border-t border-sidebar-border", collapsed && "flex justify-center")}>
-        {!collapsed && (
+      <div className={cn("p-3 border-t border-sidebar-border", isCollapsed && "flex justify-center")}>
+        {!isCollapsed && (
           <div className="flex items-center gap-2 mb-3 px-2">
             <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center">
               <span className="text-xs text-primary font-semibold">{user?.full_name?.[0] || 'U'}</span>
@@ -94,12 +97,12 @@ export default function Layout() {
         )}
         <Button
           variant="ghost"
-          size={collapsed ? "icon" : "sm"}
+          size={isCollapsed ? "icon" : "sm"}
           onClick={handleLogout}
           className="w-full text-sidebar-foreground hover:text-white hover:bg-sidebar-accent"
         >
           <LogOut className="w-4 h-4" />
-          {!collapsed && <span className="ml-2">Logout</span>}
+          {!isCollapsed && <span className="ml-2">Logout</span>}
         </Button>
       </div>
     </div>
@@ -108,19 +111,21 @@ export default function Layout() {
   return (
     <div className="flex h-screen bg-background overflow-hidden">
       {/* Desktop Sidebar */}
-      <aside className={cn(
-        "hidden md:flex flex-col bg-sidebar transition-all duration-300 flex-shrink-0",
-        collapsed ? "w-16" : "w-56"
-      )}
+      <aside
+        className={cn(
+          "hidden md:flex flex-col bg-sidebar transition-all duration-300 flex-shrink-0 relative",
+          (collapsed && !hoverCollapsed) ? "w-16" : "w-56"
+        )}
         style={{ background: 'hsl(var(--sidebar-background))' }}
+        onMouseEnter={() => { if (collapsed) setHoverCollapsed(true); }}
+        onMouseLeave={() => { if (collapsed) setHoverCollapsed(false); }}
       >
         <SidebarContent />
         <button
-          onClick={() => setCollapsed(!collapsed)}
-          className="absolute left-0 top-1/2 -translate-y-1/2 translate-x-full w-5 h-10 bg-sidebar-border rounded-r-lg flex items-center justify-center text-sidebar-foreground hover:bg-primary hover:text-white transition-colors z-10"
-          style={{ left: collapsed ? '3.5rem' : '13.5rem' }}
+          onClick={() => { setCollapsed(!collapsed); setHoverCollapsed(false); }}
+          className="absolute top-1/2 -translate-y-1/2 right-0 translate-x-full w-5 h-10 bg-sidebar-border rounded-r-lg flex items-center justify-center text-sidebar-foreground hover:bg-primary hover:text-white transition-colors z-10"
         >
-          {collapsed ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
+          {(collapsed && !hoverCollapsed) ? <ChevronRight className="w-3 h-3" /> : <ChevronLeft className="w-3 h-3" />}
         </button>
       </aside>
 
