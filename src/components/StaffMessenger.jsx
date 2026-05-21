@@ -293,22 +293,25 @@ export default function StaffMessenger({ tickets, loading }) {
                     <p className={`text-xs truncate ${hasUnread ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
                       {t.subject}
                     </p>
-                    {t.tags?.length > 0 && (
-                      <div className="flex gap-1 flex-wrap mt-1">
-                        {t.tags.map(tagName => {
-                          const tagObj = allTags.find(tg => tg.name === tagName);
-                          return (
-                            <span
-                              key={tagName}
-                              className="text-xs px-1.5 py-0.5 rounded font-semibold text-white"
-                              style={{ background: tagObj?.color || '#6366f1' }}
-                            >
-                              {tagName}
-                            </span>
-                          );
-                        })}
-                      </div>
-                    )}
+                    {(() => {
+                      const displayTags = ticketTags[t.id] !== undefined ? ticketTags[t.id] : (t.tags || []);
+                      return displayTags.length > 0 ? (
+                        <div className="flex gap-1 flex-wrap mt-1">
+                          {displayTags.map(tagName => {
+                            const tagObj = allTags.find(tg => tg.name === tagName);
+                            return (
+                              <span
+                                key={tagName}
+                                className="text-xs px-1.5 py-0.5 rounded font-semibold text-white"
+                                style={{ background: tagObj?.color || '#6366f1' }}
+                              >
+                                {tagName}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      ) : null;
+                    })()}
                   </div>
                 </div>
               </button>
