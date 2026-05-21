@@ -77,6 +77,13 @@
         "TL/Management"
       ]
     },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "Conversation tag names applied to this ticket"
+    },
     "source": {
       "type": "string",
       "default": "Customer Portal"

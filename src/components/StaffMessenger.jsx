@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, ChevronLeft, ArrowRightLeft } from 'lucide-react';
+import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, ChevronLeft, ArrowRightLeft, MessageSquareText, Tag } from 'lucide-react';
 import RerouteTicketModal from '@/components/RerouteTicketModal';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -57,6 +57,29 @@ export default function StaffMessenger({ tickets, loading }) {
   const fileInputRef = useRef(null);
   const [allMessages, setAllMessages] = useState([]);
   const [rerouteOpen, setRerouteOpen] = useState(false);
+  const [savedReplies, setSavedReplies] = useState([]);
+  const [allTags, setAllTags] = useState([]);
+  const [ticketTags, setTicketTags] = useState({}); // ticketId -> [tagNames]
+  const [showReplyPicker, setShowReplyPicker] = useState(false);
+  const [replySearch, setReplySearch] = useState('');
+  const replyPickerRef = useRef(null);
+
+  // Load saved replies and tags once
+  useEffect(() => {
+    base44.entities.SavedReply.list('-created_date', 200).then(d => setSavedReplies(d || []));
+    base44.entities.ConversationTag.filter({ is_active: true }, 'name', 100).then(d => setAllTags(d || []));
+  }, []);
+
+  // Close reply picker on outside click
+  useEffect(() => {
+    const handler = (e) => {
+      if (replyPickerRef.current && !replyPickerRef.current.contains(e.target)) {
+        setShowReplyPicker(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   // Load all messages once for unread badge computation
   useEffect(() => {
@@ -121,6 +144,8 @@ export default function StaffMessenger({ tickets, loading }) {
     setMessages([]);
     setNewMessage('');
     setAttachments([]);
+    setShowReplyPicker(false);
+    loadTicketTags(ticket);
   };
 
   const handleFileUpload = async (files) => {
@@ -152,6 +177,26 @@ export default function StaffMessenger({ tickets, loading }) {
     setLastSeenMap(prev => ({ ...prev, [selectedTicket.id]: new Date().toISOString() }));
     setSending(false);
   };
+
+  const toggleTag = async (ticketId, tagName) => {
+    const current = ticketTags[ticketId] || [];
+    const updated = current.includes(tagName)
+      ? current.filter(t => t !== tagName)
+      : [...current, tagName];
+    setTicketTags(prev => ({ ...prev, [ticketId]: updated }));
+    await base44.entities.Ticket.update(ticketId, { tags: updated });
+  };
+
+  // Load ticket tags when ticket selected
+  const loadTicketTags = async (ticket) => {
+    setTicketTags(prev => ({ ...prev, [ticket.id]: ticket.tags || [] }));
+  };
+
+  const filteredReplies = savedReplies.filter(r =>
+    !replySearch ||
+    r.shortcut?.toLowerCase().includes(replySearch.toLowerCase()) ||
+    r.message?.toLowerCase().includes(replySearch.toLowerCase())
+  );
 
   const filteredTickets = tickets.filter(t => {
     const matchSearch = !search
@@ -354,8 +399,30 @@ export default function StaffMessenger({ tickets, loading }) {
               </div>
             )}
 
+            {/* Tag Strip */}
+            {allTags.length > 0 && (
+              <div className="px-4 pt-2 pb-1 border-t bg-card flex gap-1.5 flex-wrap items-center">
+                <Tag className="w-3.5 h-3.5 text-muted-foreground shrink-0" />
+                {allTags.map(tag => {
+                  const active = (ticketTags[selectedTicket.id] || []).includes(tag.name);
+                  return (
+                    <button
+                      key={tag.id}
+                      onClick={() => toggleTag(selectedTicket.id, tag.name)}
+                      className={`text-xs px-2 py-0.5 rounded font-semibold transition-all border ${
+                        active ? 'text-white border-transparent' : 'bg-muted text-muted-foreground border-border/50 hover:opacity-80'
+                      }`}
+                      style={active ? { background: tag.color || '#6366f1', borderColor: tag.color || '#6366f1' } : {}}
+                    >
+                      {tag.name}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+
             {/* Input */}
-            <div className="p-4 border-t bg-card flex items-end gap-2">
+            <div className="p-4 pt-2 bg-card flex items-end gap-2 relative">
               <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
                 className="text-muted-foreground hover:text-foreground p-1.5 shrink-0 rounded-lg hover:bg-muted transition-colors">
                 {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
@@ -369,6 +436,51 @@ export default function StaffMessenger({ tickets, loading }) {
                 placeholder="Type a reply..."
                 className="flex-1 rounded-full bg-muted border-0 focus-visible:ring-1"
               />
+
+              {/* Quick Reply Picker */}
+              <div className="relative shrink-0" ref={replyPickerRef}>
+                <button
+                  onClick={() => { setShowReplyPicker(v => !v); setReplySearch(''); }}
+                  className={`p-1.5 rounded-lg transition-colors ${showReplyPicker ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:text-foreground hover:bg-muted'}`}
+                  title="Quick Replies"
+                >
+                  <MessageSquareText className="w-4 h-4" />
+                </button>
+                {showReplyPicker && (
+                  <div className="absolute bottom-10 right-0 w-80 bg-card border border-border rounded-xl shadow-xl z-50 overflow-hidden">
+                    <div className="p-2 border-b border-border/50">
+                      <div className="relative">
+                        <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-muted-foreground" />
+                        <Input
+                          autoFocus
+                          placeholder="Search shortcuts..."
+                          value={replySearch}
+                          onChange={e => setReplySearch(e.target.value)}
+                          className="pl-8 h-7 text-xs"
+                        />
+                      </div>
+                    </div>
+                    <div className="max-h-56 overflow-y-auto">
+                      {filteredReplies.length === 0 ? (
+                        <p className="text-center text-xs text-muted-foreground py-6">No saved replies found</p>
+                      ) : filteredReplies.map(r => (
+                        <button
+                          key={r.id}
+                          onClick={() => { setNewMessage(r.message); setShowReplyPicker(false); }}
+                          className="w-full text-left px-3 py-2.5 hover:bg-muted/60 transition-colors border-b border-border/20 last:border-0"
+                        >
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <span className="font-mono text-xs font-bold text-primary uppercase">{r.shortcut}</span>
+                            {r.topic && <span className="text-xs bg-accent text-accent-foreground px-1.5 py-0 rounded-full">{r.topic}</span>}
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate">{r.message}</p>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
               <Button onClick={handleSend}
                 disabled={sending || (!newMessage.trim() && attachments.length === 0)}
                 size="icon" className="bg-primary hover:bg-primary/90 rounded-full shrink-0">
