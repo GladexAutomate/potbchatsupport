@@ -63,6 +63,7 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
         sender_name: 'System',
         sender_role: 'staff',
         message: note.trim() ? `${routeMsg}\nNote: ${note.trim()}` : routeMsg,
+        is_internal: true,
         attachments: [],
       }),
       base44.entities.TicketHistory.create({
