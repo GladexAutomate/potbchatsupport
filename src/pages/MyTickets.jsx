@@ -7,6 +7,7 @@ import { ShieldCheck, ArrowLeft, Send, Loader2, ChevronRight, Paperclip, X, File
 import { formatDistanceToNow, format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
+import ImageLightbox from '@/components/ImageLightbox';
 
 const STATUS_COLOR = {
   'Open': 'bg-blue-500/20 text-blue-300 border-blue-500/30',
@@ -26,6 +27,7 @@ export default function MyTickets() {
   const [sending, setSending] = useState(false);
   const [msgAttachments, setMsgAttachments] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -99,6 +101,24 @@ export default function MyTickets() {
     }
   };
 
+  const handlePaste = async (e) => {
+    const items = e.clipboardData?.items;
+    if (!items) return;
+    for (const item of items) {
+      if (item.type.startsWith('image/')) {
+        const file = item.getAsFile();
+        if (file) {
+          setUploading(true);
+          const { file_url } = await base44.integrations.Core.UploadFile({ file });
+          setMsgAttachments(prev => [...prev, { name: 'pasted-image.png', url: file_url }]);
+          setUploading(false);
+        }
+      }
+    }
+  };
+
+  const isImageUrl = (url) => /\.(png|jpg|jpeg|gif|webp)(\?|$)/i.test(url);
+
   if (!user && !loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col items-center justify-center text-center px-4">
@@ -113,6 +133,8 @@ export default function MyTickets() {
   }
 
   return (
+    <>
+    {lightboxUrl && <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col">
       {/* Header */}
       <header className="flex items-center gap-3 px-6 py-4 border-b border-white/10">
@@ -230,12 +252,18 @@ export default function MyTickets() {
                           <div className={`rounded-2xl px-4 py-3 ${isMe ? 'bg-primary rounded-br-sm' : 'bg-white/10 rounded-bl-sm'}`}>
                             {msg.message && <p className={`text-sm whitespace-pre-wrap ${isMe ? 'text-white' : 'text-white/90'}`}>{msg.message}</p>}
                             {msg.attachments?.length > 0 && (
-                              <div className="mt-2 space-y-1">
+                              <div className="mt-2 space-y-1.5">
                                 {msg.attachments.map((url, i) => (
-                                  <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-                                    className="flex items-center gap-1.5 text-white/70 hover:text-white text-xs">
-                                    <FileText className="w-3 h-3" /> Attachment {i+1}
-                                  </a>
+                                  isImageUrl(url) ? (
+                                    <img key={i} src={url} alt={`attachment-${i+1}`}
+                                      onClick={() => setLightboxUrl(url)}
+                                      className="max-w-[200px] max-h-[160px] rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity" />
+                                  ) : (
+                                    <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                                      className="flex items-center gap-1.5 text-white/70 hover:text-white text-xs">
+                                      <FileText className="w-3 h-3" /> Attachment {i+1}
+                                    </a>
+                                  )
                                 ))}
                               </div>
                             )}
@@ -276,11 +304,12 @@ export default function MyTickets() {
                   <input ref={fileInputRef} type="file" multiple className="hidden"
                     onChange={e => handleFileUpload(e.target.files)} />
                   <Input
-                    value={newMessage}
-                    onChange={e => setNewMessage(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder="Type a message..."
-                    className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-white/30"
+                   value={newMessage}
+                   onChange={e => setNewMessage(e.target.value)}
+                   onKeyDown={handleKeyDown}
+                   onPaste={handlePaste}
+                   placeholder="Type a message..."
+                   className="flex-1 bg-white/10 border-white/20 text-white placeholder:text-white/30"
                   />
                   <Button onClick={handleSend} disabled={sending || (!newMessage.trim() && msgAttachments.length === 0)}
                     size="icon" className="bg-primary hover:bg-primary/90 shrink-0">
@@ -297,5 +326,6 @@ export default function MyTickets() {
         </div>
       </div>
     </div>
+    </>
   );
 }

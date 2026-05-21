@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, ChevronLeft, ArrowRightLeft, MessageSquareText, Tag, History, Download, Lock } from 'lucide-react';
+import ImageLightbox from '@/components/ImageLightbox';
 import RerouteTicketModal from '@/components/RerouteTicketModal';
 import TicketHistoryModal from '@/components/TicketHistoryModal';
 import TicketInfoSidebar from '@/components/TicketInfoSidebar';
@@ -68,6 +69,9 @@ export default function StaffMessenger({ tickets, loading }) {
   const [replySearch, setReplySearch] = useState('');
   const replyPickerRef = useRef(null);
   const [isInternal, setIsInternal] = useState(false);
+  const [lightboxUrl, setLightboxUrl] = useState(null);
+
+  const isImageUrl = (url) => /\.(png|jpg|jpeg|gif|webp)(\?|$)/i.test(url);
 
   // Load saved replies and tags once
   useEffect(() => {
@@ -254,6 +258,7 @@ export default function StaffMessenger({ tickets, loading }) {
 
   return (
     <>
+    {lightboxUrl && <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
     <div className="flex h-[calc(100vh-120px)] bg-background rounded-xl border border-border/50 overflow-hidden">
       {/* LEFT PANEL - Ticket List */}
       <div className={`flex flex-col border-r border-border/50 bg-card ${selectedTicket ? 'hidden md:flex' : 'flex'} w-full md:w-80 lg:w-96 flex-shrink-0`}>
@@ -448,12 +453,18 @@ export default function StaffMessenger({ tickets, loading }) {
                           }`}>
                           {msg.message && <p className="text-sm whitespace-pre-wrap leading-relaxed">{msg.message}</p>}
                           {msg.attachments?.length > 0 && (
-                            <div className="mt-2 space-y-1">
+                            <div className="mt-2 space-y-1.5">
                               {msg.attachments.map((url, i) => (
-                                <a key={i} href={url} target="_blank" rel="noopener noreferrer"
-                                  className="flex items-center gap-1.5 text-xs opacity-80 hover:opacity-100 underline">
-                                  <FileText className="w-3 h-3" /> Attachment {i+1}
-                                </a>
+                                isImageUrl(url) ? (
+                                  <img key={i} src={url} alt={`attachment-${i+1}`}
+                                    onClick={() => setLightboxUrl(url)}
+                                    className="max-w-[200px] max-h-[160px] rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity" />
+                                ) : (
+                                  <a key={i} href={url} target="_blank" rel="noopener noreferrer"
+                                    className="flex items-center gap-1.5 text-xs opacity-80 hover:opacity-100 underline">
+                                    <FileText className="w-3 h-3" /> Attachment {i+1}
+                                  </a>
+                                )
                               ))}
                             </div>
                           )}
@@ -523,6 +534,21 @@ export default function StaffMessenger({ tickets, loading }) {
                 onKeyDown={e => {
                   if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
                   if (e.key === '/' && !newMessage) { e.preventDefault(); setShowReplyPicker(true); setReplySearch(''); }
+                }}
+                onPaste={async (e) => {
+                  const items = e.clipboardData?.items;
+                  if (!items) return;
+                  for (const item of items) {
+                    if (item.type.startsWith('image/')) {
+                      const file = item.getAsFile();
+                      if (file) {
+                        setUploading(true);
+                        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+                        setAttachments(prev => [...prev, { name: 'pasted-image.png', url: file_url }]);
+                        setUploading(false);
+                      }
+                    }
+                  }
                 }}
                 placeholder={isInternal ? 'Add an internal note...' : 'Type a reply...'}
                 className={`flex-1 rounded-full border-0 focus-visible:ring-1 ${isInternal ? 'bg-amber-500/10 placeholder:text-amber-500/50' : 'bg-muted'}`}
