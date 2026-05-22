@@ -1,11 +1,12 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+
 import { useAuth } from '@/lib/AuthContext';
 import {
   LayoutDashboard, Ticket, BarChart2, Settings, MessageSquare,
   ChevronLeft, ChevronRight, LogOut, Menu, X, ShieldCheck, Users,
-  MessageSquareText, Tag, Star
+  MessageSquareText, Tag, Star, MessagesSquare
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -15,6 +16,7 @@ const STAFF_ROLES = ['admin', 'csr', 'it', 'sales', 'accounting', 'sign_ups', 'o
 const navItems = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: STAFF_ROLES },
   { label: 'Tickets', href: '/tickets', icon: Ticket, roles: STAFF_ROLES },
+  { label: 'Group Chat', href: '/group-chat', icon: MessagesSquare, roles: STAFF_ROLES, badge: true },
   { label: 'KPI & SLA', href: '/kpi', icon: BarChart2, roles: ['admin', 'csr', 'tl_management'] },
   { label: 'Staff Ratings', href: '/staff-ratings', icon: Star, roles: ['admin', 'tl_management'] },
   { label: 'User Management', href: '/users', icon: Users, roles: ['admin'] },
@@ -30,9 +32,30 @@ export default function Layout() {
   const [collapsed, setCollapsed] = useState(false);
   const [hoverCollapsed, setHoverCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [groupChatUnread, setGroupChatUnread] = useState(0);
   const location = useLocation();
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user) return;
+    const computeUnread = (msgs) => {
+      const count = (msgs || []).filter(m => !m.read_by?.includes(user.email)).length;
+      setGroupChatUnread(count);
+    };
+    base44.entities.GroupChatMessage.list('created_date', 100).then(computeUnread);
+    const unsub = base44.entities.GroupChatMessage.subscribe(() => {
+      base44.entities.GroupChatMessage.list('created_date', 100).then(computeUnread);
+    });
+    return () => unsub();
+  }, [user]);
+
+  // Clear badge when on group chat page
+  useEffect(() => {
+    if (location.pathname === '/group-chat') {
+      setGroupChatUnread(0);
+    }
+  }, [location.pathname]);
 
   const role = user?.role || 'customer';
 
@@ -118,21 +141,38 @@ export default function Layout() {
               </div>
             );
           }
+          const unreadBadge = item.badge && groupChatUnread > 0 ? groupChatUnread : 0;
           return (
             <Link
               key={item.href}
               to={item.href}
               onClick={() => setMobileOpen(false)}
               className={cn(
-                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium",
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium relative",
                 isCollapsed && "justify-center px-2",
                 active
                   ? "bg-primary text-white shadow-lg shadow-primary/30"
                   : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-white"
               )}
             >
-              <item.icon className="w-4 h-4 flex-shrink-0" />
-              {!isCollapsed && <span>{item.label}</span>}
+              <div className="relative flex-shrink-0">
+                <item.icon className="w-4 h-4" />
+                {unreadBadge > 0 && isCollapsed && (
+                  <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                    {unreadBadge > 9 ? '9+' : unreadBadge}
+                  </span>
+                )}
+              </div>
+              {!isCollapsed && (
+                <>
+                  <span className="flex-1">{item.label}</span>
+                  {unreadBadge > 0 && (
+                    <span className="bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 animate-pulse">
+                      {unreadBadge > 9 ? '9+' : unreadBadge}
+                    </span>
+                  )}
+                </>
+              )}
             </Link>
           );
         })}

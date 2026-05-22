@@ -19,6 +19,7 @@ import ReplyingCenter from './pages/ReplyingCenter';
 import ConversationTags from './pages/ConversationTags';
 import SubmitTicket from './pages/SubmitTicket';
 import StaffRatings from './pages/StaffRatings';
+import GroupChat from './pages/GroupChat';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -59,6 +60,7 @@ const AuthenticatedApp = () => {
         <Route path="/replying-center" element={<ReplyingCenter />} />
         <Route path="/conversation-tags" element={<ConversationTags />} />
         <Route path="/staff-ratings" element={<StaffRatings />} />
+        <Route path="/group-chat" element={<GroupChat />} />
       </Route>
 
       <Route path="*" element={<PageNotFound />} />

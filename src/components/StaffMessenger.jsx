@@ -4,7 +4,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, ChevronLeft, ArrowRightLeft, MessageSquareText, Tag, History, Download, Lock } from 'lucide-react';
+import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, ChevronLeft, ArrowRightLeft, MessageSquareText, Tag, History, Download, Lock, Users } from 'lucide-react';
+import EndorseToGroupChatModal from '@/components/groupchat/EndorseToGroupChatModal';
 import ResolutionRequestButton from '@/components/ResolutionRequestButton';
 import ImageLightbox from '@/components/ImageLightbox';
 import RerouteTicketModal from '@/components/RerouteTicketModal';
@@ -71,6 +72,7 @@ export default function StaffMessenger({ tickets, loading }) {
   const replyPickerRef = useRef(null);
   const [isInternal, setIsInternal] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState(null);
+  const [endorseOpen, setEndorseOpen] = useState(false);
 
   const isImageUrl = (url) => /\.(png|jpg|jpeg|gif|webp)(\?|$)/i.test(url);
 
@@ -438,6 +440,9 @@ export default function StaffMessenger({ tickets, loading }) {
                   ticket={selectedTicket}
                   onTicketUpdate={(updated) => setSelectedTicket(updated)}
                 />
+                <Button size="sm" variant="outline" className="gap-1.5 text-xs h-7 px-2.5 text-primary border-primary/30 hover:bg-primary/10" onClick={() => setEndorseOpen(true)}>
+                  <Users className="w-3 h-3" /> Endorse
+                </Button>
                 <Button size="sm" variant="outline" className="gap-1.5 text-xs h-7 px-2.5" onClick={() => setRerouteOpen(true)}>
                   <ArrowRightLeft className="w-3 h-3" /> Reroute
                 </Button>
@@ -646,6 +651,12 @@ export default function StaffMessenger({ tickets, loading }) {
         ticket={selectedTicket}
         onClose={() => setRerouteOpen(false)}
         onSaved={() => loadMessages(selectedTicket.id)}
+      />
+    )}
+    {endorseOpen && selectedTicket && (
+      <EndorseToGroupChatModal
+        ticket={selectedTicket}
+        onClose={() => setEndorseOpen(false)}
       />
     )}
     </>
