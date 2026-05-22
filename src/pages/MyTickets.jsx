@@ -31,6 +31,7 @@ export default function MyTickets() {
   const [lightboxUrl, setLightboxUrl] = useState(null);
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [ratingTicket, setRatingTicket] = useState(null);
+  const [ratedTicketIds, setRatedTicketIds] = useState(new Set());
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -41,6 +42,9 @@ export default function MyTickets() {
         base44.entities.Ticket.filter({ customer_email: u.email }, '-created_date').then(t => {
           setTickets(t || []);
           setLoading(false);
+        });
+        base44.entities.StaffRating.list().then(ratings => {
+          setRatedTicketIds(new Set((ratings || []).map(r => r.ticket_id)));
         });
       } else {
         setLoading(false);
@@ -56,9 +60,11 @@ export default function MyTickets() {
       if (event.data?.id === selectedTicket.id && event.data?.status === 'Closed') {
         setSelectedTicket(event.data);
         setTickets(prev => prev.map(t => t.id === event.data.id ? event.data : t));
-        // Show rating modal if not yet rated
-        setRatingTicket(event.data);
-        setShowRatingModal(true);
+        // Show rating modal only if not yet rated
+        if (!ratedTicketIds.has(event.data.id)) {
+          setRatingTicket(event.data);
+          setShowRatingModal(true);
+        }
       }
     });
     const unsubMsg = base44.entities.TicketMessage.subscribe(event => {
@@ -154,8 +160,10 @@ export default function MyTickets() {
       });
       setSelectedTicket(updatedTicket);
       setTickets(prev => prev.map(t => t.id === selectedTicket.id ? updatedTicket : t));
-      setRatingTicket(updatedTicket);
-      setShowRatingModal(true);
+      if (!ratedTicketIds.has(updatedTicket.id)) {
+        setRatingTicket(updatedTicket);
+        setShowRatingModal(true);
+      }
     } else {
       // Reopen ticket
       await base44.entities.Ticket.update(selectedTicket.id, { status: 'In Progress', resolution_requested_at: null });
@@ -189,7 +197,11 @@ export default function MyTickets() {
     <>
     {lightboxUrl && <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
     {showRatingModal && ratingTicket && (
-      <RatingModal ticket={ratingTicket} onClose={() => setShowRatingModal(false)} />
+      <RatingModal
+        ticket={ratingTicket}
+        onClose={() => setShowRatingModal(false)}
+        onRated={(ticketId) => setRatedTicketIds(prev => new Set([...prev, ticketId]))}
+      />
     )}
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col">
       {/* Header */}
@@ -402,7 +414,7 @@ export default function MyTickets() {
               ) : (
                 <div className="px-4 pb-4 pt-2 border-t border-white/10 text-center">
                   <p className="text-white/30 text-sm">This ticket is {selectedTicket.status.toLowerCase()}.</p>
-                  {(selectedTicket.status === 'Closed') && (
+                  {selectedTicket.status === 'Closed' && !ratedTicketIds.has(selectedTicket.id) && (
                     <button
                       onClick={() => { setRatingTicket(selectedTicket); setShowRatingModal(true); }}
                       className="mt-2 text-xs text-yellow-400 underline hover:text-yellow-300"

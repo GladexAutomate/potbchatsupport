@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Star, Send, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
-export default function RatingModal({ ticket, onClose }) {
+export default function RatingModal({ ticket, onClose, onRated }) {
   const [rating, setRating] = useState(0);
   const [hovered, setHovered] = useState(0);
   const [remarks, setRemarks] = useState('');
@@ -26,6 +26,7 @@ export default function RatingModal({ ticket, onClose }) {
     });
     setDone(true);
     setSubmitting(false);
+    if (onRated) onRated(ticket.id);
     setTimeout(() => onClose(), 2000);
   };
 
