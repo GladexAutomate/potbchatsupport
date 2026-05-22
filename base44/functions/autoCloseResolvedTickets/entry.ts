@@ -6,13 +6,16 @@ Deno.serve(async (req) => {
   // Find tickets with resolution_requested_at set and status still "Pending Resolution"
   const tickets = await base44.asServiceRole.entities.Ticket.filter({ status: 'Pending Resolution' });
 
+  // Read configurable auto-close delay from AppSettings
+  const settings = await base44.asServiceRole.entities.AppSettings.filter({ key: 'resolution_auto_close_minutes' });
+  const configMinutes = settings?.[0]?.value ? parseFloat(settings[0].value) : 3;
   const now = Date.now();
-  const THREE_MINUTES = 3 * 60 * 1000;
+  const AUTO_CLOSE_MS = configMinutes * 60 * 1000;
 
   for (const ticket of tickets || []) {
     if (!ticket.resolution_requested_at) continue;
     const requestedAt = new Date(ticket.resolution_requested_at).getTime();
-    if (now - requestedAt >= THREE_MINUTES) {
+    if (now - requestedAt >= AUTO_CLOSE_MS) {
       // Auto-close: stop active SLA entry
       const log = [...(ticket.dept_sla_log || [])];
       const activeIdx = log.findIndex(e => e.grade === 'Active');

@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle, Clock } from 'lucide-react';
+import { Loader2, CheckCircle, Clock, ShieldCheck } from 'lucide-react';
 
 const DEFAULT_SLA = [
   { priority: 'Low', response_time_hours: 24, resolution_time_hours: 72 },
@@ -18,6 +18,12 @@ export default function Settings() {
   const [policyIds, setPolicyIds] = useState({});
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // Resolution auto-close setting
+  const [autoCloseMinutes, setAutoCloseMinutes] = useState(3);
+  const [autoCloseSettingId, setAutoCloseSettingId] = useState(null);
+  const [savingResolution, setSavingResolution] = useState(false);
+  const [savedResolution, setSavedResolution] = useState(false);
 
   useEffect(() => {
     base44.entities.SLAPolicy.list().then(data => {
@@ -35,7 +41,28 @@ export default function Settings() {
         setPolicyIds(ids);
       }
     }).catch(() => {});
+
+    base44.entities.AppSettings.filter({ key: 'resolution_auto_close_minutes' }).then(data => {
+      if (data?.[0]) {
+        setAutoCloseMinutes(parseFloat(data[0].value) || 3);
+        setAutoCloseSettingId(data[0].id);
+      }
+    }).catch(() => {});
   }, []);
+
+  const handleSaveResolution = async () => {
+    setSavingResolution(true);
+    const payload = { key: 'resolution_auto_close_minutes', value: String(autoCloseMinutes), label: 'Resolution Auto-Close (minutes)' };
+    if (autoCloseSettingId) {
+      await base44.entities.AppSettings.update(autoCloseSettingId, payload);
+    } else {
+      const created = await base44.entities.AppSettings.create(payload);
+      setAutoCloseSettingId(created.id);
+    }
+    setSavingResolution(false);
+    setSavedResolution(true);
+    setTimeout(() => setSavedResolution(false), 2500);
+  };
 
   const updatePolicy = (priority, field, value) => {
     setPolicies(prev => prev.map(p => p.priority === priority ? { ...p, [field]: parseFloat(value) || 0 } : p));
@@ -101,6 +128,38 @@ export default function Settings() {
               </div>
             </div>
           ))}
+        </CardContent>
+      </Card>
+
+      {/* Resolution Auto-Close Settings */}
+      <Card className="border-border/50 mb-5">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-primary" /> Mark Resolved Settings
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-xs text-muted-foreground mb-3">
+            When staff marks a ticket as resolved, the customer is notified and the ticket will auto-close if there is no response within this time.
+          </p>
+          <div className="flex items-center gap-3">
+            <div className="space-y-1.5 flex-1">
+              <Label className="text-xs text-muted-foreground">Auto-Close Delay (minutes)</Label>
+              <Input
+                type="number" min="1" step="1"
+                value={autoCloseMinutes}
+                onChange={e => setAutoCloseMinutes(parseFloat(e.target.value) || 1)}
+                className="max-w-[140px]"
+              />
+            </div>
+          </div>
+          <Button onClick={handleSaveResolution} disabled={savingResolution} className="mt-4 bg-primary hover:bg-primary/90">
+            {savingResolution ? (
+              <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Saving...</>
+            ) : savedResolution ? (
+              <><CheckCircle className="w-4 h-4 mr-2" /> Saved!</>
+            ) : 'Save Resolution Settings'}
+          </Button>
         </CardContent>
       </Card>
 
