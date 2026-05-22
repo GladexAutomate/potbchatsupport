@@ -5,8 +5,10 @@ module.exports = {
   theme: {
   	extend: {
   		fontFamily: {
-  			sora: ['var(--font-sora)'],
-  			inter: ['var(--font-inter)'],
+  			sora: ['var(--font-poppins)'],
+  			inter: ['var(--font-montserrat)'],
+  			poppins: ['var(--font-poppins)'],
+  			montserrat: ['var(--font-montserrat)'],
   		},
   		borderRadius: {
   			lg: 'var(--radius)',
