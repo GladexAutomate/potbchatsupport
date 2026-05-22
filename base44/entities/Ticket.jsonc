@@ -55,6 +55,7 @@
         "Open",
         "In Progress",
         "Pending Department",
+        "Pending Resolution",
         "Resolved",
         "Closed"
       ],
@@ -114,6 +115,19 @@
     "first_response_at": {
       "type": "string",
       "format": "date-time"
+    },
+    "resolution_requested_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When staff triggered the resolution check"
+    },
+    "resolution_requested_by": {
+      "type": "string",
+      "description": "Email of staff who triggered resolution check"
+    },
+    "resolution_requested_by_name": {
+      "type": "string",
+      "description": "Name of staff who triggered resolution check"
     },
     "dept_sla_log": {
       "type": "array",

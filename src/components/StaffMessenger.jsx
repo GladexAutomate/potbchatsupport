@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, ChevronLeft, ArrowRightLeft, MessageSquareText, Tag, History, Download, Lock } from 'lucide-react';
+import ResolutionRequestButton from '@/components/ResolutionRequestButton';
 import ImageLightbox from '@/components/ImageLightbox';
 import RerouteTicketModal from '@/components/RerouteTicketModal';
 import TicketHistoryModal from '@/components/TicketHistoryModal';
@@ -417,6 +418,10 @@ export default function StaffMessenger({ tickets, loading }) {
                 <Button size="sm" variant="ghost" className="gap-1.5 text-xs h-7 px-2" title="Ticket History" onClick={() => setHistoryOpen(true)}>
                   <History className="w-3.5 h-3.5" />
                 </Button>
+                <ResolutionRequestButton
+                  ticket={selectedTicket}
+                  onTicketUpdate={(updated) => setSelectedTicket(updated)}
+                />
                 <Button size="sm" variant="outline" className="gap-1.5 text-xs h-7 px-2.5" onClick={() => setRerouteOpen(true)}>
                   <ArrowRightLeft className="w-3 h-3" /> Reroute
                 </Button>

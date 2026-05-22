@@ -3,11 +3,12 @@ import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
-import { ShieldCheck, ArrowLeft, Send, Loader2, ChevronRight, Paperclip, X, FileText } from 'lucide-react';
+import { ShieldCheck, ArrowLeft, Send, Loader2, ChevronRight, Paperclip, X, FileText, ThumbsUp, ThumbsDown } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImageLightbox from '@/components/ImageLightbox';
+import RatingModal from '@/components/RatingModal';
 
 const STATUS_COLOR = {
   'Open': 'bg-blue-500/20 text-blue-300 border-blue-500/30',
@@ -28,6 +29,8 @@ export default function MyTickets() {
   const [msgAttachments, setMsgAttachments] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState(null);
+  const [showRatingModal, setShowRatingModal] = useState(false);
+  const [ratingTicket, setRatingTicket] = useState(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -48,13 +51,23 @@ export default function MyTickets() {
   useEffect(() => {
     if (!selectedTicket) return;
     loadMessages(selectedTicket.id);
-    const unsub = base44.entities.TicketMessage.subscribe(event => {
+    // Subscribe to ticket changes (e.g. auto-close triggers rating modal)
+    const unsubTicket = base44.entities.Ticket.subscribe(event => {
+      if (event.data?.id === selectedTicket.id && event.data?.status === 'Closed') {
+        setSelectedTicket(event.data);
+        setTickets(prev => prev.map(t => t.id === event.data.id ? event.data : t));
+        // Show rating modal if not yet rated
+        setRatingTicket(event.data);
+        setShowRatingModal(true);
+      }
+    });
+    const unsubMsg = base44.entities.TicketMessage.subscribe(event => {
       if (event.data?.ticket_id === selectedTicket.id) {
         loadMessages(selectedTicket.id);
       }
     });
-    return () => unsub();
-  }, [selectedTicket]);
+    return () => { unsubTicket(); unsubMsg(); };
+  }, [selectedTicket?.id]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -119,6 +132,46 @@ export default function MyTickets() {
 
   const isImageUrl = (url) => /\.(png|jpg|jpeg|gif|webp)(\?|$)/i.test(url);
 
+  const handleResolutionResponse = async (resolved) => {
+    if (resolved) {
+      // Close ticket and show rating
+      const log = [...(selectedTicket.dept_sla_log || [])];
+      const activeIdx = log.findIndex(e => e.grade === 'Active');
+      if (activeIdx !== -1) {
+        const active = log[activeIdx];
+        const elapsed = Math.round((Date.now() - new Date(active.started_at).getTime()) / 60000);
+        log[activeIdx] = { ...active, stopped_at: new Date().toISOString(), elapsed_minutes: elapsed, grade: 'Met' };
+      }
+      const updatedTicket = { ...selectedTicket, status: 'Closed', resolved_at: new Date().toISOString(), dept_sla_log: log };
+      await base44.entities.Ticket.update(selectedTicket.id, { status: 'Closed', resolved_at: new Date().toISOString(), dept_sla_log: log });
+      await base44.entities.TicketMessage.create({
+        ticket_id: selectedTicket.id,
+        sender_email: user.email,
+        sender_name: user.full_name || user.email,
+        sender_role: 'customer',
+        message: '✅ Yes, my concern has been resolved. Thank you!',
+        attachments: [],
+      });
+      setSelectedTicket(updatedTicket);
+      setTickets(prev => prev.map(t => t.id === selectedTicket.id ? updatedTicket : t));
+      setRatingTicket(updatedTicket);
+      setShowRatingModal(true);
+    } else {
+      // Reopen ticket
+      await base44.entities.Ticket.update(selectedTicket.id, { status: 'In Progress', resolution_requested_at: null });
+      await base44.entities.TicketMessage.create({
+        ticket_id: selectedTicket.id,
+        sender_email: user.email,
+        sender_name: user.full_name || user.email,
+        sender_role: 'customer',
+        message: '❌ No, my concern has not been resolved yet. I still need assistance.',
+        attachments: [],
+      });
+      setSelectedTicket(prev => ({ ...prev, status: 'In Progress', resolution_requested_at: null }));
+      setTickets(prev => prev.map(t => t.id === selectedTicket.id ? { ...t, status: 'In Progress' } : t));
+    }
+  };
+
   if (!user && !loading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col items-center justify-center text-center px-4">
@@ -135,6 +188,9 @@ export default function MyTickets() {
   return (
     <>
     {lightboxUrl && <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
+    {showRatingModal && ratingTicket && (
+      <RatingModal ticket={ratingTicket} onClose={() => setShowRatingModal(false)} />
+    )}
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col">
       {/* Header */}
       <header className="flex items-center gap-3 px-6 py-4 border-b border-white/10">
@@ -237,8 +293,13 @@ export default function MyTickets() {
 
                 {/* Chat messages */}
                 <AnimatePresence>
-                  {messages.map(msg => {
+                  {messages.map((msg, idx) => {
                     const isMe = msg.sender_role === 'customer';
+                    const isResolutionRequest = msg.message_type === 'resolution_request';
+                    const isLastResolutionRequest = isResolutionRequest &&
+                      idx === messages.map(m => m.message_type).lastIndexOf('resolution_request') &&
+                      selectedTicket.status === 'Pending Resolution';
+
                     return (
                       <motion.div key={msg.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
                         className={`flex ${isMe ? 'justify-end' : 'justify-start'}`}>
@@ -246,7 +307,11 @@ export default function MyTickets() {
                           {!isMe && (
                             <p className="text-white/40 text-xs mb-1 ml-1">Support Team</p>
                           )}
-                          <div className={`rounded-2xl px-4 py-3 ${isMe ? 'bg-primary rounded-br-sm' : 'bg-white/10 rounded-bl-sm'}`}>
+                          <div className={`rounded-2xl px-4 py-3 ${
+                            isResolutionRequest
+                              ? 'bg-green-500/20 border border-green-500/40 rounded-bl-sm'
+                              : isMe ? 'bg-primary rounded-br-sm' : 'bg-white/10 rounded-bl-sm'
+                          }`}>
                             {msg.message && <p className={`text-sm whitespace-pre-wrap ${isMe ? 'text-white' : 'text-white/90'}`}>{msg.message}</p>}
                             {msg.attachments?.length > 0 && (
                               <div className="mt-2 space-y-1.5">
@@ -265,6 +330,23 @@ export default function MyTickets() {
                               </div>
                             )}
                           </div>
+                          {/* YES / NO buttons for resolution request */}
+                          {isLastResolutionRequest && (
+                            <div className="flex gap-2 mt-2 ml-1">
+                              <button
+                                onClick={() => handleResolutionResponse(true)}
+                                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-500 text-white text-sm font-medium hover:bg-green-600 transition-colors"
+                              >
+                                <ThumbsUp className="w-4 h-4" /> Yes, Resolved!
+                              </button>
+                              <button
+                                onClick={() => handleResolutionResponse(false)}
+                                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/10 text-white/80 text-sm font-medium hover:bg-white/20 transition-colors"
+                              >
+                                <ThumbsDown className="w-4 h-4" /> No, Still Need Help
+                              </button>
+                            </div>
+                          )}
                           <p className="text-white/30 text-xs mt-1 text-right">
                             {format(new Date(msg.created_date), 'MMM d, HH:mm')}
                           </p>
@@ -292,7 +374,7 @@ export default function MyTickets() {
               )}
 
               {/* Input */}
-              {selectedTicket.status !== 'Closed' && selectedTicket.status !== 'Resolved' ? (
+              {selectedTicket.status !== 'Closed' && selectedTicket.status !== 'Resolved' && selectedTicket.status !== 'Pending Resolution' ? (
                 <div className="px-4 pb-4 pt-2 border-t border-white/10 flex items-end gap-2">
                   <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
                     className="text-white/40 hover:text-white/70 p-2 shrink-0">
@@ -313,9 +395,21 @@ export default function MyTickets() {
                     {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
                   </Button>
                 </div>
+              ) : selectedTicket.status === 'Pending Resolution' ? (
+                <div className="px-4 pb-4 pt-2 border-t border-white/10 text-center">
+                  <p className="text-white/50 text-sm">👆 Please respond above — is your concern resolved?</p>
+                </div>
               ) : (
                 <div className="px-4 pb-4 pt-2 border-t border-white/10 text-center">
                   <p className="text-white/30 text-sm">This ticket is {selectedTicket.status.toLowerCase()}.</p>
+                  {(selectedTicket.status === 'Closed') && (
+                    <button
+                      onClick={() => { setRatingTicket(selectedTicket); setShowRatingModal(true); }}
+                      className="mt-2 text-xs text-yellow-400 underline hover:text-yellow-300"
+                    >
+                      Rate your experience ⭐
+                    </button>
+                  )}
                 </div>
               )}
             </>

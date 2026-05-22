@@ -18,6 +18,7 @@ import UserManagement from './pages/UserManagement';
 import ReplyingCenter from './pages/ReplyingCenter';
 import ConversationTags from './pages/ConversationTags';
 import SubmitTicket from './pages/SubmitTicket';
+import StaffRatings from './pages/StaffRatings';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -57,6 +58,7 @@ const AuthenticatedApp = () => {
         <Route path="/users" element={<UserManagement />} />
         <Route path="/replying-center" element={<ReplyingCenter />} />
         <Route path="/conversation-tags" element={<ConversationTags />} />
+        <Route path="/staff-ratings" element={<StaffRatings />} />
       </Route>
 
       <Route path="*" element={<PageNotFound />} />

@@ -23,6 +23,16 @@
     "message": {
       "type": "string"
     },
+    "message_type": {
+      "type": "string",
+      "enum": [
+        "regular",
+        "resolution_request",
+        "system_auto_close"
+      ],
+      "default": "regular",
+      "description": "Type of message for special rendering"
+    },
     "is_internal": {
       "type": "boolean",
       "default": false,

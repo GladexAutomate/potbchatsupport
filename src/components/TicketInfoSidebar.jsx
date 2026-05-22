@@ -16,7 +16,7 @@ const formatPHTime = (dateStr) => {
   return `${month} ${day}, ${hours}:${mins}`;
 };
 
-const STATUS_OPTIONS = ['Open', 'In Progress', 'Pending Department', 'Resolved', 'Closed'];
+const STATUS_OPTIONS = ['Open', 'In Progress', 'Pending Department', 'Resolved'];
 const PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
 
 const STATUS_COLOR = {
