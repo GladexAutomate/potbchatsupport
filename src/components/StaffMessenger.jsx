@@ -114,6 +114,8 @@ export default function StaffMessenger({ tickets, loading }) {
       const lastStaffReply = sorted.filter(m => m.sender_role === 'staff').pop();
       const customerMsgsAfterStaff = sorted.filter(m => {
         const isCustomer = m.sender_role === 'customer';
+        const isSystemMsg = m.message_type === 'system_auto_close' || m.message_type === 'resolution_request';
+        if (isSystemMsg) return false;
         if (!lastStaffReply) return isCustomer;
         return isCustomer && new Date(m.created_date) > new Date(lastStaffReply.created_date);
       });
@@ -268,12 +270,18 @@ export default function StaffMessenger({ tickets, loading }) {
           <div className="flex items-center justify-between mb-3">
             <h2 className="font-sora font-bold text-lg">Tickets</h2>
             <div className="flex items-center gap-2">
-              {Object.keys(unread).length > 0 && (
-                <span className="flex items-center gap-1.5 text-xs font-medium text-red-500">
-                  <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  {Object.values(unread).reduce((a, b) => a + b, 0)} unread
-                </span>
-              )}
+              {(() => {
+                const nonClosedUnread = Object.entries(unread).filter(([tid]) => {
+                  const t = tickets.find(tk => tk.id === tid);
+                  return t && t.status !== 'Closed';
+                });
+                return nonClosedUnread.length > 0 ? (
+                  <span className="flex items-center gap-1.5 text-xs font-medium text-red-500">
+                    <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                    {nonClosedUnread.reduce((a, [, v]) => a + v, 0)} unread
+                  </span>
+                ) : null;
+              })()}
               <button onClick={handleExportCSV} title="Export CSV" className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted transition-colors">
                 <Download className="w-3.5 h-3.5" />
               </button>
@@ -311,44 +319,52 @@ export default function StaffMessenger({ tickets, loading }) {
             <div className="p-8 text-center text-muted-foreground text-sm">No tickets found</div>
           ) : sortedTickets.map(t => {
             const hasUnread = unread[t.id] > 0;
+            const isClosed = t.status === 'Closed';
             const isSelected = selectedTicket?.id === t.id;
+            // Closed tickets get blue highlight; other unread tickets get red
+            const showBlue = isClosed;
+            const showRed = hasUnread && !isClosed;
             return (
               <button
                 key={t.id}
                 onClick={() => handleSelectTicket(t)}
                 className={`w-full text-left px-4 py-3.5 border-b border-border/30 transition-colors relative
                   ${isSelected ? 'bg-primary/10 border-l-2 border-l-primary' : 'hover:bg-muted/40'}
-                  ${hasUnread ? 'bg-red-500/5' : ''}
+                  ${showRed && !isSelected ? 'bg-red-500/5' : ''}
+                  ${showBlue && !isSelected ? 'bg-blue-500/5' : ''}
                 `}
               >
-                {/* Unread blinking dot */}
-                {hasUnread && !isSelected && (
+                {/* Unread blinking dot — red for normal, blue for closed */}
+                {showRed && !isSelected && (
                   <span className="absolute top-3.5 right-3 w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_6px_2px_rgba(239,68,68,0.5)]" />
+                )}
+                {showBlue && !isSelected && (
+                  <span className="absolute top-3.5 right-3 w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse shadow-[0_0_6px_2px_rgba(96,165,250,0.5)]" />
                 )}
                 <div className="flex items-start gap-2.5 pr-4">
                   <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5
-                    ${hasUnread ? 'bg-red-100 text-red-500' : 'bg-muted text-muted-foreground'}`}>
+                    ${showRed ? 'bg-red-100 text-red-500' : showBlue ? 'bg-blue-100 text-blue-500' : 'bg-muted text-muted-foreground'}`}>
                     <User className="w-4 h-4" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 flex-wrap mb-1">
                       <span className={`text-xs px-1.5 py-0.5 rounded-full ${PRIORITY_COLOR[t.priority] || ''}`}>{t.priority}</span>
                       <span className={`text-xs px-1.5 py-0.5 rounded-full border ${STATUS_COLOR[t.status] || ''}`}>{t.status}</span>
-                      {hasUnread && (
+                      {showRed && (
                         <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 animate-bounce">
                           {unread[t.id]}
                         </span>
                       )}
                     </div>
                     <div className="flex items-center justify-between mb-0.5">
-                      <span className={`text-sm truncate max-w-[160px] ${hasUnread ? 'font-bold text-foreground' : 'font-medium'}`}>
+                      <span className={`text-sm truncate max-w-[160px] ${showRed || showBlue ? 'font-bold text-foreground' : 'font-medium'}`}>
                         {t.customer_name}
                       </span>
                       <span className="text-xs text-muted-foreground ml-1 flex-shrink-0">
                         {formatDistanceToNow(toPHTime(t.updated_date || t.created_date), { addSuffix: false })}
                       </span>
                     </div>
-                    <p className={`text-xs truncate ${hasUnread ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
+                    <p className={`text-xs truncate ${showRed ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
                       {t.subject}
                     </p>
                     {(() => {
