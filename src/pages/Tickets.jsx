@@ -22,6 +22,7 @@ export default function Tickets() {
   const { user } = useAuth();
   const location = useLocation();
   const [tickets, setTickets] = useState([]);
+  const [vipEmails, setVipEmails] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const autoOpenId = new URLSearchParams(location.search).get('open');
 
@@ -38,18 +39,26 @@ export default function Tickets() {
   };
 
   useEffect(() => {
+    base44.entities.VIPCustomer.list().then(vips => {
+      setVipEmails(new Set((vips || []).map(v => v.email?.toLowerCase())));
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (!user) return;
-    base44.entities.Ticket.list('-created_date', 200).then(data => {
-      setTickets(filterTicketsForUser(data || []));
-      setLoading(false);
-    });
-    const unsub = base44.entities.Ticket.subscribe(() => {
+    const load = () => {
       base44.entities.Ticket.list('-created_date', 200).then(data => {
-        setTickets(filterTicketsForUser(data || []));
+        const filtered = filterTicketsForUser(data || []);
+        // Exclude VIP tickets — they live on the VIP Tickets page
+        const nonVip = filtered.filter(t => !vipEmails.has(t.customer_email?.toLowerCase()));
+        setTickets(nonVip);
+        setLoading(false);
       });
-    });
+    };
+    load();
+    const unsub = base44.entities.Ticket.subscribe(load);
     return () => unsub();
-  }, [user]);
+  }, [user, vipEmails]);
 
   return (
     <div className="p-4 md:p-6 h-full">

@@ -3,6 +3,7 @@ import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import StaffMessenger from '@/components/StaffMessenger';
 import { Crown } from 'lucide-react';
+import { useLocation } from 'react-router-dom';
 
 const CSR_ROLES = ['admin', 'csr'];
 const ROLE_TO_DEPT = {
@@ -17,9 +18,11 @@ const ROLE_TO_DEPT = {
 
 export default function VIPTickets() {
   const { user } = useAuth();
+  const location = useLocation();
   const [tickets, setTickets] = useState([]);
   const [vipEmails, setVipEmails] = useState(new Set());
   const [loading, setLoading] = useState(true);
+  const autoOpenId = new URLSearchParams(location.search).get('open');
 
   const filterTicketsForUser = (allTickets) => {
     if (!user) return [];
@@ -73,7 +76,12 @@ export default function VIPTickets() {
           {tickets.length} VIP ticket{tickets.length !== 1 ? 's' : ''} — priority customers only
         </p>
       </div>
-      <StaffMessenger tickets={tickets} loading={loading} />
+      <StaffMessenger
+        tickets={tickets}
+        loading={loading}
+        autoOpenTicketId={autoOpenId}
+        isVIPPage={true}
+      />
     </div>
   );
 }

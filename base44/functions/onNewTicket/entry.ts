@@ -32,6 +32,7 @@ Deno.serve(async (req) => {
           priority: 'Critical',
           department: ticket.department || '',
           customer_name: ticket.customer_name,
+          is_vip: true,
         },
       });
 

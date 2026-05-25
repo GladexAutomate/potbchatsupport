@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, ChevronLeft, ArrowRightLeft, MessageSquareText, Tag, History, Download, Lock, Users } from 'lucide-react';
+import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, ChevronLeft, ArrowRightLeft, MessageSquareText, Tag, History, Download, Lock, Users, Bell } from 'lucide-react';
 import EndorseToGroupChatModal from '@/components/groupchat/EndorseToGroupChatModal';
 import TicketRow from '@/components/TicketRow';
 import ResolutionRequestButton from '@/components/ResolutionRequestButton';
@@ -46,10 +46,11 @@ const PRIORITY_COLOR = {
   'Critical': 'bg-red-500/10 text-red-500',
 };
 
-export default function StaffMessenger({ tickets, loading, autoOpenTicketId }) {
+export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isVIPPage = false }) {
   const { user } = useAuth();
   const [selectedTicket, setSelectedTicket] = useState(null);
   const [autoOpened, setAutoOpened] = useState(false);
+  const [renotifying, setRenotifying] = useState(false);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -286,6 +287,27 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId }) {
   const vipTickets = sortedTickets.filter(t => isVIP(t));
   const regularTickets = sortedTickets.filter(t => !isVIP(t));
 
+  const handleRenotify = async () => {
+    if (!selectedTicket || renotifying) return;
+    setRenotifying(true);
+    await base44.entities.GroupChatMessage.create({
+      sender_email: user?.email || 'system@potb.com',
+      sender_name: '⭐ VIP Alert',
+      message: `⭐ VIP Customer **${selectedTicket.customer_name}** (${selectedTicket.customer_email}) needs attention on ticket #${selectedTicket.ticket_number}. Please prioritize!`,
+      message_type: 'ticket_endorsement',
+      ticket_ref: {
+        ticket_id: selectedTicket.id,
+        ticket_number: selectedTicket.ticket_number || '',
+        subject: selectedTicket.subject,
+        status: selectedTicket.status || 'Open',
+        priority: selectedTicket.priority || 'Critical',
+        department: selectedTicket.department || '',
+        customer_name: selectedTicket.customer_name,
+      },
+    });
+    setRenotifying(false);
+  };
+
   return (
     <>
     {lightboxUrl && <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
@@ -419,6 +441,11 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId }) {
                   ticket={selectedTicket}
                   onTicketUpdate={(updated) => setSelectedTicket(updated)}
                 />
+                {isVIPPage && (
+                  <Button size="sm" variant="outline" className="gap-1.5 text-xs h-7 px-2.5 text-yellow-600 border-yellow-500/40 hover:bg-yellow-500/10" onClick={handleRenotify} disabled={renotifying}>
+                    {renotifying ? <Loader2 className="w-3 h-3 animate-spin" /> : <Bell className="w-3 h-3" />} Renotify
+                  </Button>
+                )}
                 <Button size="sm" variant="outline" className="gap-1.5 text-xs h-7 px-2.5 text-primary border-primary/30 hover:bg-primary/10" onClick={() => setEndorseOpen(true)}>
                   <Users className="w-3 h-3" /> Endorse
                 </Button>
