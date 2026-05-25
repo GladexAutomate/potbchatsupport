@@ -4,7 +4,16 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ShieldCheck, ArrowLeft, Send, Loader2, ChevronRight, Paperclip, X, FileText, ThumbsUp, ThumbsDown } from 'lucide-react';
-import { formatDistanceToNow, format } from 'date-fns';
+import { formatDistanceToNow } from 'date-fns';
+
+const formatPHTime = (dateStr) => {
+  const d = new Date(new Date(dateStr).getTime() + 8 * 60 * 60 * 1000);
+  const month = d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
+  const day = d.getUTCDate();
+  const hours = String(d.getUTCHours()).padStart(2, '0');
+  const mins = String(d.getUTCMinutes()).padStart(2, '0');
+  return `${month} ${day}, ${hours}:${mins}`;
+};
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImageLightbox from '@/components/ImageLightbox';
@@ -298,7 +307,7 @@ export default function MyTickets() {
                       )}
                     </div>
                     <p className="text-white/30 text-xs mt-1 text-right">
-                      {format(new Date(selectedTicket.created_date), 'MMM d, HH:mm')} · You
+                      {formatPHTime(selectedTicket.created_date)} · You
                     </p>
                   </div>
                 </div>
@@ -360,7 +369,7 @@ export default function MyTickets() {
                             </div>
                           )}
                           <p className="text-white/30 text-xs mt-1 text-right">
-                            {format(new Date(msg.created_date), 'MMM d, HH:mm')}
+                            {formatPHTime(msg.created_date)}
                           </p>
                         </div>
                       </motion.div>
