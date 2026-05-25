@@ -119,7 +119,7 @@ export default function GroupChatMessageBubble({ msg, currentUser, isMe, onReply
               <p className="text-xs italic text-muted-foreground border-t border-border/50 pt-2 mt-1">"{msg.message}"</p>
             )}
             <button
-              onClick={() => navigate(`/tickets/${msg.ticket_ref.ticket_id}`)}
+              onClick={() => navigate(`/tickets?open=${msg.ticket_ref.ticket_id}`)}
               className="mt-2 flex items-center gap-1 text-xs text-primary hover:underline font-medium"
             >
               <ExternalLink className="w-3 h-3" /> Open Ticket

@@ -18,12 +18,21 @@ Deno.serve(async (req) => {
       // 1. Auto-escalate to Critical
       await base44.asServiceRole.entities.Ticket.update(ticket.id, { priority: 'Critical' });
 
-      // 2. Post Group Chat alert
+      // 2. Post Group Chat alert as ticket_endorsement so staff can click "Open Ticket"
       await base44.asServiceRole.entities.GroupChatMessage.create({
         sender_email: 'system@potb.com',
         sender_name: '⭐ VIP Alert',
-        message: `⭐ VIP Customer **${ticket.customer_name}** (${ticket.customer_email}) just opened a new ticket!\n\n📋 **${ticket.subject}**\n🏷️ Category: ${ticket.category || 'General'}\n\nPlease prioritize this ticket promptly.`,
-        message_type: 'text',
+        message: `⭐ VIP Customer **${ticket.customer_name}** (${ticket.customer_email}) just opened a new ticket! Please prioritize this ticket promptly.`,
+        message_type: 'ticket_endorsement',
+        ticket_ref: {
+          ticket_id: ticket.id,
+          ticket_number: ticket.ticket_number || '',
+          subject: ticket.subject,
+          status: ticket.status || 'Open',
+          priority: 'Critical',
+          department: ticket.department || '',
+          customer_name: ticket.customer_name,
+        },
       });
 
       // 3. Log to ticket history

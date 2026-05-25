@@ -46,9 +46,10 @@ const PRIORITY_COLOR = {
   'Critical': 'bg-red-500/10 text-red-500',
 };
 
-export default function StaffMessenger({ tickets, loading }) {
+export default function StaffMessenger({ tickets, loading, autoOpenTicketId }) {
   const { user } = useAuth();
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const [autoOpened, setAutoOpened] = useState(false);
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -77,6 +78,17 @@ export default function StaffMessenger({ tickets, loading }) {
   const [vipEmails, setVipEmails] = useState(new Set());
 
   const isImageUrl = (url) => /\.(png|jpg|jpeg|gif|webp)(\?|$)/i.test(url);
+
+  // Auto-open ticket from URL param (e.g. from Group Chat "Open Ticket" link)
+  useEffect(() => {
+    if (autoOpenTicketId && !autoOpened && !loading && tickets.length > 0) {
+      const target = tickets.find(t => t.id === autoOpenTicketId);
+      if (target) {
+        handleSelectTicket(target);
+        setAutoOpened(true);
+      }
+    }
+  }, [autoOpenTicketId, tickets, loading]);
 
   // Load saved replies, tags, and VIP emails once
   useEffect(() => {

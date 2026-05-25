@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import StaffMessenger from '@/components/StaffMessenger';
+import { useLocation } from 'react-router-dom';
 
 // Roles that can see ALL tickets
 const CSR_ROLES = ['admin', 'csr'];
@@ -19,8 +20,10 @@ const ROLE_TO_DEPT = {
 
 export default function Tickets() {
   const { user } = useAuth();
+  const location = useLocation();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
+  const autoOpenId = new URLSearchParams(location.search).get('open');
 
   const filterTicketsForUser = (allTickets) => {
     if (!user) return [];
@@ -54,7 +57,7 @@ export default function Tickets() {
         <h1 className="font-sora text-2xl font-bold">Tickets</h1>
         <p className="text-muted-foreground text-sm mt-0.5">{tickets.length} ticket{tickets.length !== 1 ? 's' : ''}</p>
       </div>
-      <StaffMessenger tickets={tickets} loading={loading} />
+      <StaffMessenger tickets={tickets} loading={loading} autoOpenTicketId={autoOpenId} />
     </div>
   );
 }
