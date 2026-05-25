@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/AuthContext';
 import {
   LayoutDashboard, Ticket, BarChart2, Settings, MessageSquare,
   ChevronLeft, ChevronRight, LogOut, Menu, X, ShieldCheck, Users,
-  MessageSquareText, Tag, Star, MessagesSquare
+  MessageSquareText, Tag, Star, MessagesSquare, Crown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -16,6 +16,7 @@ const STAFF_ROLES = ['admin', 'csr', 'it', 'sales', 'accounting', 'sign_ups', 'o
 const navItems = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: STAFF_ROLES },
   { label: 'Tickets', href: '/tickets', icon: Ticket, roles: STAFF_ROLES },
+  { label: 'VIP Tickets', href: '/vip-tickets', icon: Crown, roles: STAFF_ROLES },
   { label: 'Group Chat', href: '/group-chat', icon: MessagesSquare, roles: STAFF_ROLES, badge: true },
   { label: 'KPI & SLA', href: '/kpi', icon: BarChart2, roles: ['admin', 'csr', 'tl_management'] },
   { label: 'Staff Ratings', href: '/staff-ratings', icon: Star, roles: ['admin', 'tl_management'] },

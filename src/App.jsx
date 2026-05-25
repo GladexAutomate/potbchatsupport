@@ -20,6 +20,7 @@ import ConversationTags from './pages/ConversationTags';
 import SubmitTicket from './pages/SubmitTicket';
 import StaffRatings from './pages/StaffRatings';
 import GroupChat from './pages/GroupChat';
+import VIPTickets from './pages/VIPTickets';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -61,6 +62,7 @@ const AuthenticatedApp = () => {
         <Route path="/conversation-tags" element={<ConversationTags />} />
         <Route path="/staff-ratings" element={<StaffRatings />} />
         <Route path="/group-chat" element={<GroupChat />} />
+        <Route path="/vip-tickets" element={<VIPTickets />} />
       </Route>
 
       <Route path="*" element={<PageNotFound />} />
