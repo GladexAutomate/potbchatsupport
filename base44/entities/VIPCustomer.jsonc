@@ -1,0 +1,22 @@
+{
+  "name": "VIPCustomer",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "Customer full name"
+    },
+    "email": {
+      "type": "string",
+      "description": "Customer email address"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Optional internal notes"
+    }
+  },
+  "required": [
+    "name",
+    "email"
+  ]
+}

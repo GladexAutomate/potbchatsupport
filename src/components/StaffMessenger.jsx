@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, ChevronLeft, ArrowRightLeft, MessageSquareText, Tag, History, Download, Lock, Users } from 'lucide-react';
 import EndorseToGroupChatModal from '@/components/groupchat/EndorseToGroupChatModal';
+import TicketRow from '@/components/TicketRow';
 import ResolutionRequestButton from '@/components/ResolutionRequestButton';
 import ImageLightbox from '@/components/ImageLightbox';
 import RerouteTicketModal from '@/components/RerouteTicketModal';
@@ -73,13 +74,17 @@ export default function StaffMessenger({ tickets, loading }) {
   const [isInternal, setIsInternal] = useState(false);
   const [lightboxUrl, setLightboxUrl] = useState(null);
   const [endorseOpen, setEndorseOpen] = useState(false);
+  const [vipEmails, setVipEmails] = useState(new Set());
 
   const isImageUrl = (url) => /\.(png|jpg|jpeg|gif|webp)(\?|$)/i.test(url);
 
-  // Load saved replies and tags once
+  // Load saved replies, tags, and VIP emails once
   useEffect(() => {
     base44.entities.SavedReply.list('-created_date', 200).then(d => setSavedReplies(d || []));
     base44.entities.ConversationTag.filter({ is_active: true }, 'name', 100).then(d => setAllTags(d || []));
+    base44.entities.VIPCustomer.list('created_date', 500).then(d => {
+      setVipEmails(new Set((d || []).map(v => v.email?.toLowerCase())));
+    });
   }, []);
 
   // Close reply picker on outside click
@@ -253,13 +258,21 @@ export default function StaffMessenger({ tickets, loading }) {
     return matchSearch && matchStatus && matchPriority;
   });
 
-  // Sort: unread first, then by date
+  const isVIP = (ticket) => vipEmails.has(ticket.customer_email?.toLowerCase());
+
+  // Sort: VIP first, then unread, then by date
   const sortedTickets = [...filteredTickets].sort((a, b) => {
+    const aVip = isVIP(a) ? 1 : 0;
+    const bVip = isVIP(b) ? 1 : 0;
+    if (aVip !== bVip) return bVip - aVip;
     const aUnread = unread[a.id] || 0;
     const bUnread = unread[b.id] || 0;
     if (aUnread !== bUnread) return bUnread - aUnread;
     return new Date(b.created_date) - new Date(a.created_date);
   });
+
+  const vipTickets = sortedTickets.filter(t => isVIP(t));
+  const regularTickets = sortedTickets.filter(t => !isVIP(t));
 
   return (
     <>
@@ -319,80 +332,29 @@ export default function StaffMessenger({ tickets, loading }) {
             <div className="p-8 text-center text-muted-foreground text-sm">Loading...</div>
           ) : sortedTickets.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground text-sm">No tickets found</div>
-          ) : sortedTickets.map(t => {
-            const hasUnread = unread[t.id] > 0;
-            const isClosed = t.status === 'Closed';
-            const isSelected = selectedTicket?.id === t.id;
-            // Closed tickets get blue highlight; other unread tickets get red
-            const showBlue = isClosed;
-            const showRed = hasUnread && !isClosed;
-            return (
-              <button
-                key={t.id}
-                onClick={() => handleSelectTicket(t)}
-                className={`w-full text-left px-4 py-3.5 border-b border-border/30 transition-colors relative
-                  ${isSelected ? 'bg-primary/10 border-l-2 border-l-primary' : 'hover:bg-muted/40'}
-                  ${showRed && !isSelected ? 'bg-red-500/5' : ''}
-                  ${showBlue && !isSelected ? 'bg-blue-500/5' : ''}
-                `}
-              >
-                {/* Unread blinking dot — red for normal, blue for closed */}
-                {showRed && !isSelected && (
-                  <span className="absolute top-3.5 right-3 w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse shadow-[0_0_6px_2px_rgba(239,68,68,0.5)]" />
-                )}
-                {showBlue && !isSelected && (
-                  <span className="absolute top-3.5 right-3 w-2.5 h-2.5 rounded-full bg-blue-400 animate-pulse shadow-[0_0_6px_2px_rgba(96,165,250,0.5)]" />
-                )}
-                <div className="flex items-start gap-2.5 pr-4">
-                  <div className={`w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 mt-0.5
-                    ${showRed ? 'bg-red-100 text-red-500' : showBlue ? 'bg-blue-100 text-blue-500' : 'bg-muted text-muted-foreground'}`}>
-                    <User className="w-4 h-4" />
+          ) : (
+            <>
+              {/* VIP Section */}
+              {vipTickets.length > 0 && (
+                <>
+                  <div className="px-4 py-2 bg-yellow-500/10 border-b border-yellow-500/20 flex items-center gap-1.5">
+                    <span className="text-xs font-bold text-yellow-600 flex items-center gap-1">
+                      ⭐ VIP Tickets
+                    </span>
+                    <span className="text-xs text-yellow-600/70">({vipTickets.length})</span>
                   </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 flex-wrap mb-1">
-                      <span className={`text-xs px-1.5 py-0.5 rounded-full ${PRIORITY_COLOR[t.priority] || ''}`}>{t.priority}</span>
-                      <span className={`text-xs px-1.5 py-0.5 rounded-full border ${STATUS_COLOR[t.status] || ''}`}>{t.status}</span>
-                      {showRed && (
-                        <span className="ml-auto bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 animate-bounce">
-                          {unread[t.id]}
-                        </span>
-                      )}
+                  {vipTickets.map(t => <TicketRow key={t.id} t={t} isVip={true} unread={unread} selectedTicket={selectedTicket} handleSelectTicket={handleSelectTicket} ticketTags={ticketTags} allTags={allTags} toPHTime={toPHTime} formatDistanceToNow={formatDistanceToNow} />)}
+                  {regularTickets.length > 0 && (
+                    <div className="px-4 py-2 bg-muted/30 border-b border-border/30">
+                      <span className="text-xs font-semibold text-muted-foreground">Regular Tickets</span>
                     </div>
-                    <div className="flex items-center justify-between mb-0.5">
-                      <span className={`text-sm truncate max-w-[160px] ${showRed || showBlue ? 'font-bold text-foreground' : 'font-medium'}`}>
-                        {t.customer_name}
-                      </span>
-                      <span className="text-xs text-muted-foreground ml-1 flex-shrink-0">
-                        {formatDistanceToNow(toPHTime(t.updated_date || t.created_date), { addSuffix: false })}
-                      </span>
-                    </div>
-                    <p className={`text-xs truncate ${showRed ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>
-                      {t.subject}
-                    </p>
-                    {(() => {
-                      const displayTags = ticketTags[t.id] !== undefined ? ticketTags[t.id] : (t.tags || []);
-                      return displayTags.length > 0 ? (
-                        <div className="flex gap-1 flex-wrap mt-1">
-                          {displayTags.map(tagName => {
-                            const tagObj = allTags.find(tg => tg.name === tagName);
-                            return (
-                              <span
-                                key={tagName}
-                                className="text-xs px-1.5 py-0.5 rounded font-semibold text-white"
-                                style={{ background: tagObj?.color || '#6366f1' }}
-                              >
-                                {tagName}
-                              </span>
-                            );
-                          })}
-                        </div>
-                      ) : null;
-                    })()}
-                  </div>
-                </div>
-              </button>
-            );
-          })}
+                  )}
+                </>
+              )}
+              {/* Regular tickets */}
+              {regularTickets.map(t => <TicketRow key={t.id} t={t} isVip={false} unread={unread} selectedTicket={selectedTicket} handleSelectTicket={handleSelectTicket} ticketTags={ticketTags} allTags={allTags} toPHTime={toPHTime} formatDistanceToNow={formatDistanceToNow} />)}
+            </>
+          )}
         </div>
       </div>
 
@@ -418,6 +380,11 @@ export default function StaffMessenger({ tickets, loading }) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
                   <h3 className="font-semibold text-sm truncate">{selectedTicket.customer_name}</h3>
+                  {isVIP(selectedTicket) && (
+                    <span className="text-xs px-1.5 py-0.5 rounded-full bg-yellow-500/20 text-yellow-600 font-bold border border-yellow-500/30 flex items-center gap-1">
+                      ⭐ VIP
+                    </span>
+                  )}
                   <button
                     onClick={() => setHistoryOpen(true)}
                     className="font-mono text-xs text-primary/80 hover:text-primary underline decoration-dotted hidden sm:block transition-colors"

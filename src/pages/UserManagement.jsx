@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Search, Users, Shield, UserCheck, Loader2, Edit2, UserPlus } from 'lucide-react';
+import { Search, Users, Shield, UserCheck, Loader2, Edit2, UserPlus, Crown } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import VIPCustomerSection from '@/components/VIPCustomerSection';
 
 const STAFF_ROLES = ['csr', 'it', 'sales', 'accounting', 'sign_ups', 'on_boarding', 'corp_training', 'admin', 'tl_management'];
 const ALL_ROLES = ['customer', ...STAFF_ROLES];
@@ -213,6 +214,11 @@ export default function UserManagement() {
             )}
           </CardContent>
         </Card>
+      </div>
+
+      {/* VIP Customers */}
+      <div className="mb-6">
+        <VIPCustomerSection />
       </div>
 
       {/* Customer Accounts */}

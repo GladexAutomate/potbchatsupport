@@ -1,0 +1,44 @@
+import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
+
+Deno.serve(async (req) => {
+  try {
+    const base44 = createClientFromRequest(req);
+    const payload = await req.json();
+    const { data: ticket } = payload;
+
+    if (!ticket) {
+      return Response.json({ ok: true, skipped: 'no ticket data' });
+    }
+
+    // Check if customer is VIP
+    const vips = await base44.asServiceRole.entities.VIPCustomer.filter({ email: ticket.customer_email }, 'created_date', 5);
+    const isVIP = vips && vips.length > 0;
+
+    if (isVIP) {
+      // 1. Auto-escalate to Critical
+      await base44.asServiceRole.entities.Ticket.update(ticket.id, { priority: 'Critical' });
+
+      // 2. Post Group Chat alert
+      await base44.asServiceRole.entities.GroupChatMessage.create({
+        sender_email: 'system@potb.com',
+        sender_name: '⭐ VIP Alert',
+        message: `⭐ VIP Customer **${ticket.customer_name}** (${ticket.customer_email}) just opened a new ticket!\n\n📋 **${ticket.subject}**\n🏷️ Category: ${ticket.category || 'General'}\n\nPlease prioritize this ticket promptly.`,
+        message_type: 'text',
+      });
+
+      // 3. Log to ticket history
+      await base44.asServiceRole.entities.TicketHistory.create({
+        ticket_id: ticket.id,
+        event_type: 'priority_changed',
+        description: 'Priority auto-escalated to Critical — VIP Customer',
+        actor: 'System',
+        old_value: ticket.priority || 'Medium',
+        new_value: 'Critical',
+      });
+    }
+
+    return Response.json({ ok: true, isVIP });
+  } catch (error) {
+    return Response.json({ error: error.message }, { status: 500 });
+  }
+});
