@@ -75,7 +75,21 @@ Deno.serve(async (req) => {
         }
 
         const tableName = toSnakeCase(entityName);
-        await upsertToSupabase(supabaseUrl, supabaseKey, tableName, records);
+        // Strip Base44 internal fields not present in Supabase schema
+        const INTERNAL_FIELDS = ['created_by_id', 'is_sample', '_metadata', '__v'];
+        const stripped = records.map(r => {
+          const out = { ...r };
+          INTERNAL_FIELDS.forEach(f => delete out[f]);
+          return out;
+        });
+        // Normalize: all records must have the same keys (PGRST102 fix)
+        const allKeys = [...new Set(stripped.flatMap(r => Object.keys(r)))];
+        const cleaned = stripped.map(r => {
+          const out = {};
+          allKeys.forEach(k => { out[k] = r[k] !== undefined ? r[k] : null; });
+          return out;
+        });
+        await upsertToSupabase(supabaseUrl, supabaseKey, tableName, cleaned);
         results[entityName] = { synced: records.length };
       } catch (err) {
         results[entityName] = { error: err.message };
