@@ -31,10 +31,16 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL'),
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-    );
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
+    console.log('SUPABASE_URL:', supabaseUrl ? supabaseUrl : 'MISSING');
+    console.log('SUPABASE_KEY set:', supabaseKey ? 'YES' : 'NO');
+
+    if (!supabaseUrl) {
+      return Response.json({ error: 'SUPABASE_URL secret is not set' }, { status: 500 });
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseKey);
 
     const results = {};
 
