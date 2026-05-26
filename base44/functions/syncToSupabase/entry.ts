@@ -1,5 +1,4 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.25';
-import { createClient } from 'npm:@supabase/supabase-js@2';
 
 const ENTITIES_TO_SYNC = [
   'Ticket',
@@ -13,6 +12,31 @@ const ENTITIES_TO_SYNC = [
   'SLAPolicy',
 ];
 
+// Convert CamelCase to snake_case for Supabase table names
+function toSnakeCase(str) {
+  return str
+    .replace(/([A-Z]+)([A-Z][a-z])/g, '$1_$2')
+    .replace(/([a-z\d])([A-Z])/g, '$1_$2')
+    .toLowerCase();
+}
+
+async function upsertToSupabase(supabaseUrl, supabaseKey, tableName, records) {
+  const res = await fetch(`${supabaseUrl}/rest/v1/${tableName}`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${supabaseKey}`,
+      'apikey': supabaseKey,
+      'Prefer': 'resolution=merge-duplicates,return=minimal',
+    },
+    body: JSON.stringify(records),
+  });
+  if (!res.ok) {
+    const text = await res.text();
+    throw new Error(`Supabase error (${res.status}): ${text}`);
+  }
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -23,7 +47,6 @@ Deno.serve(async (req) => {
       const user = await base44.auth.me();
       if (user?.role === 'admin') isAuthorized = true;
     } catch {
-      // Called from automation (no user session) — allow via service role
       isAuthorized = true;
     }
 
@@ -31,16 +54,15 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL') || '';
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') || '';
-    console.log('SUPABASE_URL:', supabaseUrl ? supabaseUrl : 'MISSING');
+    const supabaseUrl = Deno.env.get('SUPABASE_URL');
+    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+
+    console.log('SUPABASE_URL set:', supabaseUrl ? 'YES' : 'NO');
     console.log('SUPABASE_KEY set:', supabaseKey ? 'YES' : 'NO');
 
-    if (!supabaseUrl) {
-      return Response.json({ error: 'SUPABASE_URL secret is not set' }, { status: 500 });
+    if (!supabaseUrl || !supabaseKey) {
+      return Response.json({ error: 'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY secrets' }, { status: 500 });
     }
-
-    const supabase = createClient(supabaseUrl, supabaseKey);
 
     const results = {};
 
@@ -52,17 +74,9 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        // Upsert into Supabase table (table name = lowercase entity name)
-        const tableName = entityName.replace(/([A-Z])/g, (m, l, i) => i === 0 ? l.toLowerCase() : `_${l.toLowerCase()}`);
-        const { error } = await supabase
-          .from(tableName)
-          .upsert(records, { onConflict: 'id' });
-
-        if (error) {
-          results[entityName] = { error: error.message };
-        } else {
-          results[entityName] = { synced: records.length };
-        }
+        const tableName = toSnakeCase(entityName);
+        await upsertToSupabase(supabaseUrl, supabaseKey, tableName, records);
+        results[entityName] = { synced: records.length };
       } catch (err) {
         results[entityName] = { error: err.message };
       }
