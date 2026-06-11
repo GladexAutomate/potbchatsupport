@@ -318,7 +318,12 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
         {/* Header */}
         <div className="p-4 border-b border-border/50">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-sora font-bold text-lg">Tickets</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="font-sora font-bold text-lg">Tickets</h2>
+              <CreateTicketModal onTicketCreated={(newTicket) => {
+                setSelectedTicket(newTicket);
+              }} />
+            </div>
             <div className="flex items-center gap-2">
               {(() => {
                 const nonClosedUnread = Object.entries(unread).filter(([tid]) => {
@@ -332,9 +337,6 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
                   </span>
                 ) : null;
               })()}
-              <CreateTicketModal onTicketCreated={(newTicket) => {
-                setSelectedTicket(newTicket);
-              }} />
               <button onClick={handleExportCSV} title="Export CSV" className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted transition-colors">
                 <Download className="w-3.5 h-3.5" />
               </button>
