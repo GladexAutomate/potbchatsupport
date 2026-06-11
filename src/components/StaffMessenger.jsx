@@ -12,6 +12,7 @@ import ImageLightbox from '@/components/ImageLightbox';
 import RerouteTicketModal from '@/components/RerouteTicketModal';
 import TicketHistoryModal from '@/components/TicketHistoryModal';
 import TicketInfoSidebar from '@/components/TicketInfoSidebar';
+import CreateTicketModal from '@/components/CreateTicketModal';
 import { formatDistanceToNow } from 'date-fns';
 
 const toPHTime = (dateStr) => {
@@ -331,6 +332,9 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
                   </span>
                 ) : null;
               })()}
+              <CreateTicketModal onTicketCreated={(newTicket) => {
+                setSelectedTicket(newTicket);
+              }} />
               <button onClick={handleExportCSV} title="Export CSV" className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted transition-colors">
                 <Download className="w-3.5 h-3.5" />
               </button>
