@@ -7,6 +7,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Loader2, Plus } from 'lucide-react';
 
+const CATEGORY_SUBCATEGORIES = {
+  'Training & Coaching': ['Orientation', 'Refresher', 'Product Update', 'Digital Marketing', 'AI', 'LMS', 'Certificate', 'Coaching'],
+  'Booking': ['Availability', 'Quotation', 'Rebooking', 'Voucher', 'Schedule', 'Booking Status'],
+  'Travel Products': ['Rates', 'Itinerary', 'Inclusions', 'Validity', 'Tariff'],
+  'Refunds': ['Flight', 'Hotel', 'Package', 'Refund Status'],
+  'Payments & Wallet': ['Payment Status', 'Top-Up', 'Wallet Balance', 'Clawback'],
+  'Account Management': ['Password Reset', 'User Update', 'User Access'],
+  'Business Package': ['DTI', 'Business Permit', 'Onboarding Kit', 'Materials'],
+  'Website & Portal': ['B2B Website', 'LakbayHub', 'Portal Access'],
+  'Technical Support': ['System Error', 'Integration Error', 'Application Bug'],
+  'Markup & Pricing': ['Incorrect Rate', 'Incorrect Markup', 'Pricing Issue']
+};
+
 export default function CreateTicketModal({ onTicketCreated }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -15,7 +28,8 @@ export default function CreateTicketModal({ onTicketCreated }) {
     customer_email: '',
     subject: '',
     description: '',
-    category: 'General',
+    category: '',
+    subcategory: '',
     priority: 'Medium',
     department: '',
     source: 'Internal Staff'
@@ -35,7 +49,8 @@ export default function CreateTicketModal({ onTicketCreated }) {
       customer_email: '',
       subject: '',
       description: '',
-      category: 'General',
+      category: '',
+      subcategory: '',
       priority: 'Medium',
       department: '',
       source: 'Internal Staff'
@@ -96,33 +111,46 @@ export default function CreateTicketModal({ onTicketCreated }) {
                 className="text-sm h-20"
               />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-foreground mb-1.5 block">Category</label>
+              <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v, subcategory: '' })}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.keys(CATEGORY_SUBCATEGORIES).map(cat => (
+                    <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            {formData.category && (
               <div>
-                <label className="text-xs font-semibold text-foreground mb-1.5 block">Category</label>
-                <Select value={formData.category} onValueChange={(v) => setFormData({ ...formData, category: v })}>
+                <label className="text-xs font-semibold text-foreground mb-1.5 block">Subcategory</label>
+                <Select value={formData.subcategory} onValueChange={(v) => setFormData({ ...formData, subcategory: v })}>
                   <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
+                    <SelectValue placeholder="Select subcategory" />
                   </SelectTrigger>
                   <SelectContent>
-                    {['Sales', 'IT', 'Accounting', 'Sign-Ups', 'On-Boarding', 'Corp/Training', 'Admin', 'TL/Management', 'General'].map(cat => (
-                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                    {CATEGORY_SUBCATEGORIES[formData.category].map(sub => (
+                      <SelectItem key={sub} value={sub}>{sub}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
-              <div>
-                <label className="text-xs font-semibold text-foreground mb-1.5 block">Priority</label>
-                <Select value={formData.priority} onValueChange={(v) => setFormData({ ...formData, priority: v })}>
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {['Low', 'Medium', 'High', 'Critical'].map(p => (
-                      <SelectItem key={p} value={p}>{p}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+            )}
+            <div>
+              <label className="text-xs font-semibold text-foreground mb-1.5 block">Priority</label>
+              <Select value={formData.priority} onValueChange={(v) => setFormData({ ...formData, priority: v })}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {['Low', 'Medium', 'High', 'Critical'].map(p => (
+                    <SelectItem key={p} value={p}>{p}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <label className="text-xs font-semibold text-foreground mb-1.5 block">Department</label>

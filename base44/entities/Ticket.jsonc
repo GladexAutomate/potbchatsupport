@@ -28,16 +28,21 @@
     "category": {
       "type": "string",
       "enum": [
-        "Sales",
-        "IT",
-        "Accounting",
-        "Sign-Ups",
-        "On-Boarding",
-        "Corp/Training",
-        "Admin",
-        "TL/Management",
-        "General"
+        "Training & Coaching",
+        "Booking",
+        "Travel Products",
+        "Refunds",
+        "Payments & Wallet",
+        "Account Management",
+        "Business Package",
+        "Website & Portal",
+        "Technical Support",
+        "Markup & Pricing"
       ]
+    },
+    "subcategory": {
+      "type": "string",
+      "description": "Subcategory based on selected category"
     },
     "priority": {
       "type": "string",
