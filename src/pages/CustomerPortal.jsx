@@ -80,6 +80,14 @@ export default function CustomerPortal() {
     setSubmitting(true);
     const num = generateTicketNumber();
     const deadline = new Date(Date.now() + 24 * 3600000); // default 24h SLA, CSR will update priority
+    
+    // Check if customer is VIP
+    let isVIP = false;
+    if (user?.email) {
+      const vipList = await base44.entities.VIPCustomer.filter({ email: user.email });
+      isVIP = vipList && vipList.length > 0;
+    }
+    
     await base44.entities.Ticket.create({
       customer_name: form.customer_name,
       customer_email: user?.email || '',
@@ -92,6 +100,7 @@ export default function CustomerPortal() {
       source: 'Customer Portal',
       sla_deadline: deadline.toISOString(),
       escalated: false,
+      is_vip: isVIP,
     });
     setTicketNum(num);
     setSubmitting(false);

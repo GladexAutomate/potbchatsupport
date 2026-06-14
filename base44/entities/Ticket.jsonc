@@ -98,6 +98,11 @@
       "type": "boolean",
       "default": false
     },
+    "is_vip": {
+      "type": "boolean",
+      "default": false,
+      "description": "True if customer was VIP when ticket was created"
+    },
     "sla_deadline": {
       "type": "string",
       "format": "date-time"

@@ -53,6 +53,22 @@ export default function VIPCustomerSection() {
 
   const handleDelete = async (id) => {
     setDeleting(id);
+    const vip = vips.find(v => v.id === id);
+    if (vip) {
+      // Create a regular customer User account
+      try {
+        const existingUser = await base44.entities.User.filter({ email: vip.email.toLowerCase() });
+        if (!existingUser || existingUser.length === 0) {
+          await base44.entities.User.create({
+            email: vip.email,
+            full_name: vip.name,
+            role: 'customer',
+          });
+        }
+      } catch (e) {
+        console.error('Error creating customer account:', e);
+      }
+    }
     await base44.entities.VIPCustomer.delete(id);
     setDeleting(null);
     load();

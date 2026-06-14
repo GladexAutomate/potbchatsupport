@@ -36,18 +36,12 @@ export default function VIPTickets() {
   };
 
   useEffect(() => {
-    base44.entities.VIPCustomer.list().then(vips => {
-      setVipEmails(new Set((vips || []).map(v => v.email?.toLowerCase())));
-    }).catch(() => {});
-  }, []);
-
-  useEffect(() => {
-    if (!user || vipEmails.size === 0) return;
+    if (!user) return;
 
     const loadVIPTickets = () => {
       base44.entities.Ticket.list('-created_date', 200).then(data => {
         const filtered = filterTicketsForUser(data || []);
-        const vipOnly = filtered.filter(t => vipEmails.has(t.customer_email?.toLowerCase()));
+        const vipOnly = filtered.filter(t => t.is_vip === true);
         setTickets(vipOnly);
         setLoading(false);
       });
@@ -56,12 +50,7 @@ export default function VIPTickets() {
     loadVIPTickets();
     const unsub = base44.entities.Ticket.subscribe(() => loadVIPTickets());
     return () => unsub();
-  }, [user, vipEmails]);
-
-  // While VIP list is loading, don't show stale data
-  useEffect(() => {
-    if (vipEmails.size === 0) setLoading(true);
-  }, [vipEmails]);
+  }, [user]);
 
   return (
     <div className="p-4 md:p-6 h-full">
