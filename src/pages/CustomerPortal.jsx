@@ -42,7 +42,10 @@ export default function CustomerPortal() {
   }, []);
 
   const handleStaffLoginClick = () => {
-    if (employeeRecord) {
+    // Allow direct access for admin and staff users; only require verification for non-POTB employees
+    if (user?.role === 'admin' || (user?.role && ['csr', 'it', 'sales', 'accounting', 'sign_ups', 'on_boarding', 'corp_training', 'tl_management'].includes(user.role))) {
+      window.location.href = '/dashboard';
+    } else if (employeeRecord) {
       setShowStaffModal(true);
     } else {
       window.location.href = '/dashboard';
