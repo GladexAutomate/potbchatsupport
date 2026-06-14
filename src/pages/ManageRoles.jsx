@@ -142,39 +142,39 @@ export default function ManageRoles() {
   const filtered = staffList.filter(matchesSearch);
 
   const handleEditOpen = (item) => {
-    setEditItem({ ...item });
-    const suggested = suggestRole(item.job_title);
-    setSuggestedRole(suggested);
+   const suggested = suggestRole(item.job_title);
+   setEditItem({ ...item, role: item.role || suggested || 'csr' });
+   setSuggestedRole(suggested);
   };
 
   const handleSaveRole = async () => {
-    if (!editItem) return;
-    setSaving(true);
-    
-    try {
-      if (editItem.isUser) {
-        // Update existing user
-        await base44.entities.User.update(editItem.userId, { role: editItem.role });
-        // Refresh data to show updated role
-        await loadData();
-        // Trigger logout for this user to force re-login with new permissions
-        try {
-          await base44.functions.invoke('logoutUserByEmail', { target_email: editItem.email });
-        } catch (err) {
-          console.warn('Failed to trigger logout:', err);
-        }
-      } else {
-        // Invite new user for employee
-        await base44.users.inviteUser(editItem.email, editItem.role);
-        // Refresh users list to show the new user
-        await loadData();
-      }
-    } catch (error) {
-      console.error('Error saving role:', error);
-    } finally {
-      setSaving(false);
-      setEditItem(null);
-    }
+   if (!editItem || !editItem.role) return;
+   setSaving(true);
+
+   try {
+     if (editItem.isUser) {
+       // Update existing user
+       await base44.entities.User.update(editItem.userId, { role: editItem.role });
+       // Refresh data to show updated role
+       await loadData();
+       // Trigger logout for this user to force re-login with new permissions
+       try {
+         await base44.functions.invoke('logoutUserByEmail', { target_email: editItem.email });
+       } catch (err) {
+         console.warn('Failed to trigger logout:', err);
+       }
+     } else {
+       // Invite new user for employee
+       await base44.users.inviteUser(editItem.email, editItem.role);
+       // Refresh users list to show the new user
+       await loadData();
+     }
+   } catch (error) {
+     console.error('Error saving role:', error);
+   } finally {
+     setSaving(false);
+     setEditItem(null);
+   }
   };
 
   return (
@@ -279,8 +279,8 @@ export default function ManageRoles() {
             <div className="space-y-4 py-4">
               <div className="space-y-1.5">
                 <Label className="text-xs">Role</Label>
-                <Select value={editItem.role} onValueChange={v => setEditItem(item => ({ ...item, role: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select value={editItem.role || ''} onValueChange={v => setEditItem(item => ({ ...item, role: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger>
                   <SelectContent>
                     {EDITABLE_ROLES.map(r => (
                       <SelectItem key={r} value={r}>
