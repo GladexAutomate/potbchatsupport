@@ -69,7 +69,7 @@ export default function ManageRoles() {
     setLoading(true);
     const [userData, empData] = await Promise.all([
       base44.entities.User.list('-created_date', 500),
-      base44.entities.EmployeeAccount.filter({ status: 'active', is_blocked: false }, '-created_date', 500),
+      base44.entities.EmployeeAccount.list('-created_date', 500),
     ]);
     setUsers(userData || []);
     setEmployees(empData || []);
@@ -88,25 +88,30 @@ export default function ManageRoles() {
     if (emp.email) empByEmail[emp.email.toLowerCase()] = emp;
   }
 
-  // Combine: POTB employees + users without employee records
+  // Combine: (POTB active or non-POTB with access granted) + users without employee records
   const staffList = [];
   const seenEmails = new Set();
 
-  // Add POTB employees (active, not blocked)
+  // Add eligible employees (POTB active + not blocked, OR non-POTB with portal access)
   for (const emp of employees) {
-    const user = userByEmail[emp.email?.toLowerCase()];
-    if (user?.role !== 'super_admin') {
-      staffList.push({
-        id: user?.id || emp.id,
-        full_name: user?.full_name || emp.full_name || emp.name || 'N/A',
-        email: emp.email,
-        job_title: emp.job_title,
-        role: user?.role || null,
-        employee: emp,
-        isUser: !!user,
-        userId: user?.id,
-      });
-      seenEmails.add(emp.email?.toLowerCase());
+    const isPOTB = emp.status === 'active' && !emp.is_blocked;
+    const hasAccess = emp.portal_access_granted === true;
+    
+    if (isPOTB || hasAccess) {
+      const user = userByEmail[emp.email?.toLowerCase()];
+      if (user?.role !== 'super_admin') {
+        staffList.push({
+          id: user?.id || emp.id,
+          full_name: user?.full_name || emp.full_name || emp.name || 'N/A',
+          email: emp.email,
+          job_title: emp.job_title,
+          role: user?.role || null,
+          employee: emp,
+          isUser: !!user,
+          userId: user?.id,
+        });
+        seenEmails.add(emp.email?.toLowerCase());
+      }
     }
   }
 
