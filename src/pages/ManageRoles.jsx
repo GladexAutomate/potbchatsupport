@@ -121,7 +121,8 @@ export default function ManageRoles() {
       if (editItem.isUser) {
         // Update existing user
         await base44.entities.User.update(editItem.userId, { role: editItem.role });
-        setUsers(prev => prev.map(u => u.id === editItem.userId ? { ...u, role: editItem.role } : u));
+        // Refresh data to show updated role
+        await loadData();
         // Trigger logout for this user to force re-login with new permissions
         try {
           await base44.functions.invoke('logoutUserByEmail', { target_email: editItem.email });
@@ -136,10 +137,10 @@ export default function ManageRoles() {
       }
     } catch (error) {
       console.error('Error saving role:', error);
+    } finally {
+      setSaving(false);
+      setEditItem(null);
     }
-    
-    setSaving(false);
-    setEditItem(null);
   };
 
   return (
