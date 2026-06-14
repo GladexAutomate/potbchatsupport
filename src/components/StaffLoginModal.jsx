@@ -24,6 +24,18 @@ export default function StaffLoginModal({ open, onClose, employeeRecord }) {
     const passMatch = password.trim() === (employeeRecord?.generated_password || '');
 
     if (codeMatch && passMatch) {
+      // Block inactive employees
+      if (employeeRecord?.status === 'inactive') {
+        setError('Your account is inactive. Please contact HR or your administrator.');
+        setLoading(false);
+        return;
+      }
+      // Block non-POTB employees
+      if (!employeeRecord?.employee_code?.toUpperCase().startsWith('POTB')) {
+        setError('Access restricted. Only POTB employees are authorized to use this portal.');
+        setLoading(false);
+        return;
+      }
       // Credentials valid — redirect to staff dashboard
       window.location.href = '/dashboard';
     } else {

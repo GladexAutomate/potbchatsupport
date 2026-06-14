@@ -127,6 +127,8 @@ export default function UserManagement() {
 
   const filteredEmployees = employees.filter(e => {
     if (e.email?.toLowerCase() === 'automate@gladextours.com') return false;
+    // Only show POTB employees
+    if (!e.employee_code?.toUpperCase().startsWith('POTB')) return false;
     return !search
       || e.email?.toLowerCase().includes(search.toLowerCase())
       || e.full_name?.toLowerCase().includes(search.toLowerCase())
@@ -221,14 +223,13 @@ export default function UserManagement() {
         <Card className="border-border/50">
           <CardContent className="p-0">
           {/* Column Headers */}
-          <div className="hidden sm:flex items-center gap-4 px-5 py-2 border-b border-border/50 bg-muted/30">
-            <div className="w-9 flex-shrink-0" />
-            <div className="flex-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name / Email</div>
-            <div className="flex items-center gap-2 w-72">
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide w-28">Emp. Code</span>
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide w-16">Status</span>
-              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex-1">Job Title</span>
-            </div>
+          <div className="hidden sm:grid grid-cols-[2.25rem_1fr_8rem_5rem_1fr_6rem] gap-x-4 px-5 py-2 border-b border-border/50 bg-muted/30">
+            <div />
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name / Email</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Emp. Code</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Job Title</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">App User</span>
           </div>
           {loading ? (
             <div className="p-8 text-center text-muted-foreground text-sm">Loading...</div>
@@ -239,26 +240,26 @@ export default function UserManagement() {
               {filteredEmployees.map(emp => {
                   const appUser = empByEmail[emp.email?.toLowerCase()];
                   return (
-                    <div key={emp.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-muted/20 transition-colors">
-                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                    <div key={emp.id} className="hidden sm:grid grid-cols-[2.25rem_1fr_8rem_5rem_1fr_6rem] gap-x-4 items-center px-5 py-3.5 hover:bg-muted/20 transition-colors">
+                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center">
                         <span className="text-sm font-semibold text-primary">{emp.full_name?.[0]?.toUpperCase() || '?'}</span>
                       </div>
-                      <div className="flex-1 min-w-0">
+                      <div className="min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">{emp.full_name || '—'}</p>
                         <p className="text-xs text-muted-foreground truncate">{emp.email}</p>
                       </div>
-                      <div className="hidden sm:flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-mono bg-muted px-2 py-0.5 rounded text-muted-foreground">{emp.employee_code || '—'}</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${emp.status === 'active' ? 'bg-green-500/10 text-green-600 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
-                          {emp.status}
-                        </span>
-                        {emp.job_title && <span className="text-xs text-muted-foreground">{emp.job_title}</span>}
+                      <span className="text-xs font-mono bg-muted px-2 py-0.5 rounded text-muted-foreground truncate">{emp.employee_code || '—'}</span>
+                      <span className={`text-xs px-2 py-0.5 rounded-full border font-medium w-fit ${emp.status === 'active' ? 'bg-green-500/10 text-green-600 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+                        {emp.status}
+                      </span>
+                      <span className="text-xs text-muted-foreground truncate">{emp.job_title || '—'}</span>
+                      <span>
                         {appUser && (
                           <span className="text-xs flex items-center gap-1 text-primary">
                             <BadgeCheck className="w-3.5 h-3.5" /> App User
                           </span>
                         )}
-                      </div>
+                      </span>
                     </div>
                   );
                 })}
