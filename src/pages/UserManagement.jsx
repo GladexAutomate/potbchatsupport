@@ -7,9 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Search, Users, Shield, UserCheck, Loader2, Edit2, UserPlus, RefreshCw, Briefcase, BadgeCheck, Ban, Unlock, ToggleLeft, ToggleRight } from 'lucide-react';
+import { Search, Users, Shield, Loader2, UserPlus, RefreshCw, Briefcase, BadgeCheck, Ban, Unlock, ToggleLeft, ToggleRight, Edit2 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
-import VIPCustomerSection from '@/components/VIPCustomerSection';
 
 const STAFF_ROLES = ['csr', 'it', 'sales', 'accounting', 'sign_ups', 'on_boarding', 'corp_training', 'admin', 'tl_management'];
 const ALL_ROLES = ['customer', ...STAFF_ROLES];
@@ -96,8 +95,6 @@ export default function UserManagement() {
   const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState('');
   const [empTab, setEmpTab] = useState('all');
-  const [editUser, setEditUser] = useState(null);
-  const [saving, setSaving] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('csr');
@@ -176,25 +173,7 @@ export default function UserManagement() {
     blocked: employees.filter(e => e.email?.toLowerCase() !== 'automate@gladextours.com' && !!e.is_blocked).length,
   };
 
-  const filteredCustomers = users.filter(u =>
-    !STAFF_ROLES.includes(u.role) && matchesSearch(u)
-  );
-
   const activeEmpCount = employees.filter(e => e.status === 'active').length;
-  const customerCount = users.filter(u => u.role === 'customer').length;
-
-  const handleSaveRole = async () => {
-    if (!editUser) return;
-    setSaving(true);
-    await base44.entities.User.update(editUser.id, {
-      role: editUser.role,
-      department: DEPT_MAP[editUser.role] || '',
-      is_active: editUser.is_active !== false,
-    });
-    setUsers(prev => prev.map(u => u.id === editUser.id ? { ...u, ...editUser } : u));
-    setSaving(false);
-    setEditUser(null);
-  };
 
   const handleInvite = async () => {
     if (!inviteEmail.trim()) return;
@@ -212,7 +191,7 @@ export default function UserManagement() {
         <div>
           <h1 className="font-sora text-2xl font-bold">User Management</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
-            {activeEmpCount} active staff · {customerCount} customers · {employees.length} employees
+            {activeEmpCount} active staff · {employees.length} employees
           </p>
         </div>
         <Button onClick={() => setInviteOpen(true)} variant="outline" className="gap-2">
@@ -221,11 +200,10 @@ export default function UserManagement() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-2 gap-4 mb-6">
         {[
           { label: 'Total Employees', value: employees.length, icon: Users, color: 'text-primary' },
           { label: 'Active Staff', value: activeEmpCount, icon: Shield, color: 'text-blue-400' },
-          { label: 'Customer Accounts', value: customerCount, icon: UserCheck, color: 'text-green-400' },
         ].map(s => (
           <Card key={s.label} className="border-border/50">
             <CardContent className="p-4 flex items-center gap-3">
@@ -373,101 +351,6 @@ export default function UserManagement() {
           </CardContent>
         </Card>
       </div>
-
-      {/* VIP Customers */}
-      <div className="mb-6">
-        <VIPCustomerSection />
-      </div>
-
-      {/* Customer Accounts */}
-      <div>
-        <div className="flex items-center gap-2 mb-3">
-          <UserCheck className="w-4 h-4 text-green-400" />
-          <h2 className="font-sora font-semibold text-sm">Customer Accounts</h2>
-          <span className="text-xs text-muted-foreground ml-1">({filteredCustomers.length})</span>
-        </div>
-        <Card className="border-border/50">
-          <CardContent className="p-0">
-            {loading ? (
-              <div className="p-8 text-center text-muted-foreground text-sm">Loading...</div>
-            ) : filteredCustomers.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground text-sm">No customer accounts found</div>
-            ) : (
-              <div className="divide-y divide-border/50">
-                {filteredCustomers.map(u => {
-                  const emp = empByEmail[u.email?.toLowerCase()];
-                  return (
-                    <div key={u.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-muted/20 transition-colors">
-                      <div className="w-9 h-9 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
-                        <span className="text-sm font-semibold text-green-600">{(u.full_name || u.email)?.[0]?.toUpperCase()}</span>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">{u.full_name || '—'}</p>
-                        <p className="text-xs text-muted-foreground truncate">{u.email}</p>
-                      </div>
-                      <div className="hidden sm:flex items-center gap-2">
-                        {emp && <span className="text-xs font-mono bg-muted px-2 py-0.5 rounded text-muted-foreground">{emp.employee_code}</span>}
-                        {emp && <span className="text-xs text-muted-foreground">{emp.job_title}</span>}
-                        <Badge className="bg-muted text-muted-foreground border-border text-xs">Customer</Badge>
-                      </div>
-                      <Button variant="ghost" size="icon" className="flex-shrink-0" onClick={() => setEditUser({ ...u })}>
-                        <Edit2 className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Edit Role Modal */}
-      {editUser && (
-        <Dialog open onOpenChange={() => setEditUser(null)}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle>Edit User Role</DialogTitle>
-              <p className="text-xs text-muted-foreground">{editUser.email}</p>
-            </DialogHeader>
-            <div className="space-y-4 py-2">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Role</Label>
-                <Select value={editUser.role} onValueChange={v => setEditUser(u => ({ ...u, role: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {ALL_ROLES.map(r => (
-                      <SelectItem key={r} value={r}>
-                        <div>
-                          <p className="font-medium">{ROLE_LABEL[r]}</p>
-                          {r === 'customer' && <p className="text-xs text-muted-foreground">Customer portal only</p>}
-                          {r === 'admin' && <p className="text-xs text-muted-foreground">Full access to all pages</p>}
-                          {STAFF_ROLES.includes(r) && r !== 'admin' && (
-                            <p className="text-xs text-muted-foreground">Staff — internal dashboard access</p>
-                          )}
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-3 p-3 rounded-lg bg-muted/50">
-                <input type="checkbox" id="active" checked={editUser.is_active !== false}
-                  onChange={e => setEditUser(u => ({ ...u, is_active: e.target.checked }))}
-                  className="w-4 h-4" />
-                <label htmlFor="active" className="text-sm cursor-pointer">Active account</label>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setEditUser(null)}>Cancel</Button>
-              <Button onClick={handleSaveRole} disabled={saving} className="gap-2">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserCheck className="w-4 h-4" />}
-                Save Changes
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
 
       {/* Invite Staff Modal */}
       {inviteOpen && (
