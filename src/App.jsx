@@ -16,6 +16,7 @@ import Settings from './pages/Settings';
 import MyTickets from './pages/MyTickets';
 import UserManagement from './pages/UserManagement';
 import Customers from './pages/Customers';
+import ManageRoles from './pages/ManageRoles';
 import ReplyingCenter from './pages/ReplyingCenter';
 import ConversationTags from './pages/ConversationTags';
 import SubmitTicket from './pages/SubmitTicket';
@@ -59,6 +60,7 @@ const AuthenticatedApp = () => {
         <Route path="/chatbot-config" element={<ChatbotConfig />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/users" element={<UserManagement />} />
+        <Route path="/manage-roles" element={<ManageRoles />} />
         <Route path="/customers" element={<Customers />} />
         <Route path="/replying-center" element={<ReplyingCenter />} />
         <Route path="/conversation-tags" element={<ConversationTags />} />
