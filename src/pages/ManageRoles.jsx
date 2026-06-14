@@ -129,13 +129,10 @@ export default function ManageRoles() {
           console.warn('Failed to trigger logout:', err);
         }
       } else {
-        // Create new user for employee
-        const newUser = await base44.entities.User.create({
-          email: editItem.email,
-          full_name: editItem.full_name,
-          role: editItem.role,
-        });
-        setUsers(prev => [...prev, newUser]);
+        // Invite new user for employee
+        await base44.users.inviteUser(editItem.email, editItem.role);
+        // Refresh users list to show the new user
+        await loadData();
       }
     } catch (error) {
       console.error('Error saving role:', error);
