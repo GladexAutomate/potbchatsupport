@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/AuthContext';
 import {
   LayoutDashboard, Ticket, BarChart2, Settings, MessageSquare,
   ChevronLeft, ChevronRight, LogOut, Menu, X, ShieldCheck, Users,
-  MessageSquareText, Tag, Star, MessagesSquare, Crown, UserCheck, Shield
+  MessageSquareText, Tag, Star, MessagesSquare, Crown, UserCheck, Shield, Lock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -22,6 +22,7 @@ const navItems = [
   { label: 'Staff Ratings', href: '/staff-ratings', icon: Star, roles: ['admin', 'tl_management'] },
   { label: 'User Management', href: '/users', icon: Users, roles: ['admin'] },
   { label: 'Manage Roles', href: '/manage-roles', icon: Shield, roles: ['admin'] },
+  { label: 'Role Permissions', href: '/role-permissions', icon: Lock, roles: ['admin'] },
   { label: 'Customers', href: '/customers', icon: UserCheck, roles: ['admin'] },
   { label: 'Settings', href: '/settings', icon: Settings, roles: ['admin'], children: [
     { label: 'SLA Settings', href: '/settings', icon: Settings },

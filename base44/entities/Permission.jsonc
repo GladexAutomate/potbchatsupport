@@ -1,0 +1,36 @@
+{
+  "name": "Permission",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "description": "User role (admin, CSR, IT, Sales, etc.)"
+    },
+    "resource_type": {
+      "type": "string",
+      "enum": [
+        "page",
+        "feature"
+      ],
+      "description": "Type of resource being controlled"
+    },
+    "resource_name": {
+      "type": "string",
+      "description": "Page path or feature identifier"
+    },
+    "resource_label": {
+      "type": "string",
+      "description": "Display label for the resource"
+    },
+    "has_access": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this role has access to this resource"
+    }
+  },
+  "required": [
+    "role",
+    "resource_type",
+    "resource_name"
+  ]
+}

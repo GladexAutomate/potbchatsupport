@@ -117,18 +117,28 @@ export default function ManageRoles() {
     if (!editItem) return;
     setSaving(true);
     
-    if (editItem.isUser) {
-      // Update existing user
-      await base44.entities.User.update(editItem.userId, { role: editItem.role });
-      setUsers(prev => prev.map(u => u.id === editItem.userId ? { ...u, role: editItem.role } : u));
-    } else {
-      // Create new user for employee
-      const newUser = await base44.entities.User.create({
-        email: editItem.email,
-        full_name: editItem.full_name,
-        role: editItem.role,
-      });
-      setUsers(prev => [...prev, newUser]);
+    try {
+      if (editItem.isUser) {
+        // Update existing user
+        await base44.entities.User.update(editItem.userId, { role: editItem.role });
+        setUsers(prev => prev.map(u => u.id === editItem.userId ? { ...u, role: editItem.role } : u));
+        // Trigger logout for this user to force re-login with new permissions
+        try {
+          await base44.functions.invoke('logoutUserByEmail', { target_email: editItem.email });
+        } catch (err) {
+          console.warn('Failed to trigger logout:', err);
+        }
+      } else {
+        // Create new user for employee
+        const newUser = await base44.entities.User.create({
+          email: editItem.email,
+          full_name: editItem.full_name,
+          role: editItem.role,
+        });
+        setUsers(prev => [...prev, newUser]);
+      }
+    } catch (error) {
+      console.error('Error saving role:', error);
     }
     
     setSaving(false);
