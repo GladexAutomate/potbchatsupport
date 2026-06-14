@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ChevronDown, ChevronUp } from 'lucide-react';
+import { ChevronDown, ChevronUp, Lock, Zap, Shield } from 'lucide-react';
 
 const PAGES = [
   { name: 'dashboard', label: 'Dashboard' },
@@ -39,6 +39,16 @@ const FEATURES = [
 ];
 
 const ROLES = ['admin', 'CSR', 'IT', 'Sales', 'Finance', 'Manager', 'Supervisor'];
+
+const ROLE_COLORS = {
+  admin: 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100',
+  CSR: 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100',
+  IT: 'bg-cyan-50 border-cyan-200 text-cyan-700 hover:bg-cyan-100',
+  Sales: 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100',
+  Finance: 'bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100',
+  Manager: 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100',
+  Supervisor: 'bg-pink-50 border-pink-200 text-pink-700 hover:bg-pink-100',
+};
 
 export default function RolePermissions() {
   const [permissions, setPermissions] = useState([]);
@@ -106,85 +116,127 @@ export default function RolePermissions() {
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <div>
-        <h1 className="text-3xl font-poppins font-bold">Role Permissions</h1>
-        <p className="text-muted-foreground mt-1">Configure page and feature access for each role</p>
+    <div className="space-y-6 p-6 max-w-6xl mx-auto">
+      {/* Header */}
+      <div className="space-y-2">
+        <div className="flex items-center gap-2">
+          <Shield className="w-8 h-8 text-primary" />
+          <h1 className="text-3xl font-poppins font-bold">Role Permissions</h1>
+        </div>
+        <p className="text-muted-foreground">Configure access control for pages and features across different user roles</p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Select Role</CardTitle>
+      {/* Role Selector */}
+      <Card className="border-border/50">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <Lock className="w-5 h-5 text-primary" />
+            Select Role
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-2">
             {ROLES.map(role => (
-              <Button
+              <button
                 key={role}
-                variant={selectedRole === role ? 'default' : 'outline'}
                 onClick={() => setSelectedRole(role)}
-                className="w-full"
+                className={`px-3 py-2 rounded-lg border-2 font-medium text-sm transition-all ${
+                  selectedRole === role
+                    ? `${ROLE_COLORS[role]} border-current`
+                    : 'border-border/50 bg-muted/30 hover:border-border text-foreground'
+                }`}
               >
                 {role}
-              </Button>
+              </button>
             ))}
           </div>
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between cursor-pointer" onClick={() => toggleSection('pages')}>
-            <CardTitle>Page Access</CardTitle>
-            {expandedSections.pages ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-          </div>
-        </CardHeader>
-        {expandedSections.pages && (
-          <CardContent className="space-y-4">
-            {PAGES.map(page => {
-              const perm = getPermission(selectedRole, 'page', page.name);
-              const hasAccess = perm?.has_access ?? false;
-              return (
-                <div key={page.name} className="flex items-center justify-between p-3 border rounded-lg hover:bg-secondary/50">
-                  <span className="font-medium">{page.label}</span>
-                  <Switch
-                    checked={hasAccess}
-                    onCheckedChange={() => togglePermission(selectedRole, 'page', page.name, page.label)}
-                    disabled={saving}
-                  />
-                </div>
-              );
-            })}
-          </CardContent>
-        )}
-      </Card>
+      {/* Permissions Grid */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Page Access */}
+        <Card className="border-border/50">
+          <CardHeader className="pb-3">
+            <div
+              className="flex items-center justify-between cursor-pointer"
+              onClick={() => toggleSection('pages')}
+            >
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Zap className="w-5 h-5 text-amber-500" />
+                Page Access
+              </CardTitle>
+              {expandedSections.pages ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </div>
+          </CardHeader>
+          {expandedSections.pages && (
+            <CardContent className="space-y-2">
+              {PAGES.map(page => {
+                const perm = getPermission(selectedRole, 'page', page.name);
+                const hasAccess = perm?.has_access ?? false;
+                return (
+                  <div
+                    key={page.name}
+                    className={`flex items-center justify-between px-4 py-3 rounded-lg border transition-all ${
+                      hasAccess
+                        ? 'bg-green-50/50 border-green-200/50'
+                        : 'bg-muted/30 border-border/50'
+                    }`}
+                  >
+                    <span className="font-medium text-sm">{page.label}</span>
+                    <Switch
+                      checked={hasAccess}
+                      onCheckedChange={() => togglePermission(selectedRole, 'page', page.name, page.label)}
+                      disabled={saving}
+                    />
+                  </div>
+                );
+              })}
+            </CardContent>
+          )}
+        </Card>
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between cursor-pointer" onClick={() => toggleSection('features')}>
-            <CardTitle>Feature Access</CardTitle>
-            {expandedSections.features ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
-          </div>
-        </CardHeader>
-        {expandedSections.features && (
-          <CardContent className="space-y-4">
-            {FEATURES.map(feature => {
-              const perm = getPermission(selectedRole, 'feature', feature.name);
-              const hasAccess = perm?.has_access ?? false;
-              return (
-                <div key={feature.name} className="flex items-center justify-between p-3 border rounded-lg hover:bg-secondary/50">
-                  <span className="font-medium">{feature.label}</span>
-                  <Switch
-                    checked={hasAccess}
-                    onCheckedChange={() => togglePermission(selectedRole, 'feature', feature.name, feature.label)}
-                    disabled={saving}
-                  />
-                </div>
-              );
-            })}
-          </CardContent>
-        )}
-      </Card>
+        {/* Feature Access */}
+        <Card className="border-border/50">
+          <CardHeader className="pb-3">
+            <div
+              className="flex items-center justify-between cursor-pointer"
+              onClick={() => toggleSection('features')}
+            >
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Zap className="w-5 h-5 text-blue-500" />
+                Feature Access
+              </CardTitle>
+              {expandedSections.features ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+            </div>
+          </CardHeader>
+          {expandedSections.features && (
+            <CardContent className="space-y-2">
+              {FEATURES.map(feature => {
+                const perm = getPermission(selectedRole, 'feature', feature.name);
+                const hasAccess = perm?.has_access ?? false;
+                return (
+                  <div
+                    key={feature.name}
+                    className={`flex items-center justify-between px-4 py-3 rounded-lg border transition-all ${
+                      hasAccess
+                        ? 'bg-green-50/50 border-green-200/50'
+                        : 'bg-muted/30 border-border/50'
+                    }`}
+                  >
+                    <span className="font-medium text-sm">{feature.label}</span>
+                    <Switch
+                      checked={hasAccess}
+                      onCheckedChange={() => togglePermission(selectedRole, 'feature', feature.name, feature.label)}
+                      disabled={saving}
+                    />
+                  </div>
+                );
+              })}
+            </CardContent>
+          )}
+        </Card>
+      </div>
     </div>
   );
 }
