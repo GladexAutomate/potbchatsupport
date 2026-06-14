@@ -92,7 +92,7 @@ export default function ManageRoles() {
       full_name: user?.full_name || emp.full_name || emp.name || 'N/A',
       email: emp.email,
       job_title: emp.job_title,
-      role: user?.role || 'customer',
+      role: user?.role || null,
       employee: emp,
       isUser: !!user,
       userId: user?.id,
@@ -185,10 +185,14 @@ export default function ManageRoles() {
                          <p className="text-sm text-muted-foreground">{item.job_title || '—'}</p>
                        </td>
                        <td className="px-5 py-3">
-                         <Badge variant="outline" className={`text-xs ${ROLE_COLOR[item.role] || ''}`}>
-                           {ROLE_LABEL[item.role]}
-                           {item.role === 'super_admin' && ' 🔒'}
-                         </Badge>
+                         {item.role ? (
+                           <Badge variant="outline" className={`text-xs ${ROLE_COLOR[item.role] || ''}`}>
+                             {ROLE_LABEL[item.role]}
+                             {item.role === 'super_admin' && ' 🔒'}
+                           </Badge>
+                         ) : (
+                           <span className="text-xs text-muted-foreground">—</span>
+                         )}
                        </td>
                        <td className="px-5 py-3">
                          <Badge variant="outline" className="text-xs">
