@@ -125,13 +125,14 @@ export default function UserManagement() {
     || u.email?.toLowerCase().includes(search.toLowerCase())
     || u.full_name?.toLowerCase().includes(search.toLowerCase());
 
-  const filteredEmployees = employees.filter(e =>
-    !search
-    || e.email?.toLowerCase().includes(search.toLowerCase())
-    || e.full_name?.toLowerCase().includes(search.toLowerCase())
-    || e.employee_code?.toLowerCase().includes(search.toLowerCase())
-    || e.job_title?.toLowerCase().includes(search.toLowerCase())
-  );
+  const filteredEmployees = employees.filter(e => {
+    if (e.email?.toLowerCase() === 'automate@gladextours.com') return false;
+    return !search
+      || e.email?.toLowerCase().includes(search.toLowerCase())
+      || e.full_name?.toLowerCase().includes(search.toLowerCase())
+      || e.employee_code?.toLowerCase().includes(search.toLowerCase())
+      || e.job_title?.toLowerCase().includes(search.toLowerCase());
+  });
 
   const filteredCustomers = users.filter(u =>
     !STAFF_ROLES.includes(u.role) && matchesSearch(u)
@@ -238,10 +239,10 @@ export default function UserManagement() {
                       </div>
                       <div className="hidden sm:flex items-center gap-2 flex-wrap">
                         <span className="text-xs font-mono bg-muted px-2 py-0.5 rounded text-muted-foreground">{emp.employee_code || '—'}</span>
-                        {emp.job_title && <span className="text-xs text-muted-foreground">{emp.job_title}</span>}
                         <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${emp.status === 'active' ? 'bg-green-500/10 text-green-600 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
                           {emp.status}
                         </span>
+                        {emp.job_title && <span className="text-xs text-muted-foreground">{emp.job_title}</span>}
                         {appUser && (
                           <span className="text-xs flex items-center gap-1 text-primary">
                             <BadgeCheck className="w-3.5 h-3.5" /> App User
