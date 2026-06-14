@@ -10,9 +10,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Search, Loader2, Save } from 'lucide-react';
 
 const STAFF_ROLES = ['csr', 'it', 'sales', 'accounting', 'sign_ups', 'on_boarding', 'corp_training', 'admin', 'tl_management'];
+const EDITABLE_ROLES = ['csr', 'it', 'sales', 'accounting', 'sign_ups', 'on_boarding', 'corp_training', 'admin', 'tl_management', 'customer'];
 
 const ROLE_LABEL = {
   customer: 'Customer',
+  super_admin: 'Super Admin',
   csr: 'CSR / L1 Support',
   it: 'IT (L2)',
   sales: 'Sales',
@@ -26,6 +28,7 @@ const ROLE_LABEL = {
 
 const ROLE_COLOR = {
   customer: 'bg-slate-500/10 text-slate-600 border-slate-500/20',
+  super_admin: 'bg-purple-600/20 text-purple-600 border-purple-600/30',
   csr: 'bg-blue-500/10 text-blue-600 border-blue-500/20',
   it: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/20',
   sales: 'bg-green-500/10 text-green-600 border-green-500/20',
@@ -165,11 +168,18 @@ export default function ManageRoles() {
                       <td className="px-5 py-3">
                         <Badge variant="outline" className={`text-xs ${ROLE_COLOR[u.role] || ''}`}>
                           {ROLE_LABEL[u.role]}
+                          {u.role === 'super_admin' && ' 🔒'}
                         </Badge>
                       </td>
                       <td className="px-5 py-3 text-right">
-                        <Button size="sm" variant="outline" onClick={() => handleEditOpen(u)}>
-                          Edit Role
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => handleEditOpen(u)}
+                          disabled={u.role === 'super_admin'}
+                          className={u.role === 'super_admin' ? 'opacity-50 cursor-not-allowed' : ''}
+                        >
+                          {u.role === 'super_admin' ? 'Not Editable' : 'Edit Role'}
                         </Button>
                       </td>
                     </tr>
@@ -199,7 +209,7 @@ export default function ManageRoles() {
                 <Select value={editUser.role} onValueChange={v => setEditUser(u => ({ ...u, role: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {STAFF_ROLES.map(r => (
+                    {EDITABLE_ROLES.map(r => (
                       <SelectItem key={r} value={r}>
                         {ROLE_LABEL[r]}
                       </SelectItem>
