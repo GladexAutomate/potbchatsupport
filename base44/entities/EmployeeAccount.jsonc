@@ -1,0 +1,38 @@
+{
+  "name": "EmployeeAccount",
+  "type": "object",
+  "properties": {
+    "email": {
+      "type": "string",
+      "description": "Employee email"
+    },
+    "full_name": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive"
+      ],
+      "default": "active"
+    },
+    "employee_code": {
+      "type": "string",
+      "description": "Unique employee code"
+    },
+    "job_title": {
+      "type": "string"
+    },
+    "generated_password": {
+      "type": "string",
+      "description": "HR-generated password"
+    },
+    "airtable_record_id": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "email"
+  ]
+}

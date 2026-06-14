@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Search, Users, Shield, UserCheck, Loader2, Edit2, UserPlus, Crown } from 'lucide-react';
+import { Search, Users, Shield, UserCheck, Loader2, Edit2, UserPlus, RefreshCw, Briefcase, BadgeCheck } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import VIPCustomerSection from '@/components/VIPCustomerSection';
 
@@ -83,9 +83,10 @@ function UserRow({ u, onEdit }) {
 
 export default function UserManagement() {
   const [users, setUsers] = useState([]);
+  const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [search, setSearch] = useState('');
-  const [roleFilter, setRoleFilter] = useState('All');
   const [editUser, setEditUser] = useState(null);
   const [saving, setSaving] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -93,31 +94,50 @@ export default function UserManagement() {
   const [inviteRole, setInviteRole] = useState('csr');
   const [inviting, setInviting] = useState(false);
 
-  useEffect(() => {
-    base44.entities.User.list('-created_date', 200).then(data => {
-      setUsers(data || []);
-      setLoading(false);
-    });
-  }, []);
+  const loadData = async () => {
+    setLoading(true);
+    const [userData, empData] = await Promise.all([
+      base44.entities.User.list('-created_date', 200),
+      base44.entities.EmployeeAccount.list('-created_date', 500),
+    ]);
+    setUsers(userData || []);
+    setEmployees(empData || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { loadData(); }, []);
+
+  const handleSyncEmployees = async () => {
+    setSyncing(true);
+    await base44.functions.invoke('syncEmployeeAccounts', {});
+    await loadData();
+    setSyncing(false);
+  };
+
+  // Build email → employee map for cross-reference
+  const empByEmail = {};
+  for (const e of employees) {
+    if (e.email) empByEmail[e.email.toLowerCase()] = e;
+  }
 
   const matchesSearch = (u) =>
     !search
     || u.email?.toLowerCase().includes(search.toLowerCase())
     || u.full_name?.toLowerCase().includes(search.toLowerCase());
 
-  const filteredStaff = users.filter(u =>
-    STAFF_ROLES.includes(u.role) &&
-    matchesSearch(u) &&
-    (roleFilter === 'All' || u.role === roleFilter)
+  const filteredEmployees = employees.filter(e =>
+    !search
+    || e.email?.toLowerCase().includes(search.toLowerCase())
+    || e.full_name?.toLowerCase().includes(search.toLowerCase())
+    || e.employee_code?.toLowerCase().includes(search.toLowerCase())
+    || e.job_title?.toLowerCase().includes(search.toLowerCase())
   );
 
   const filteredCustomers = users.filter(u =>
-    !STAFF_ROLES.includes(u.role) &&
-    matchesSearch(u) &&
-    (roleFilter === 'All' || roleFilter === 'customer' || roleFilter === 'All')
+    !STAFF_ROLES.includes(u.role) && matchesSearch(u)
   );
 
-  const staffCount = users.filter(u => u.role !== 'customer').length;
+  const activeEmpCount = employees.filter(e => e.status === 'active').length;
   const customerCount = users.filter(u => u.role === 'customer').length;
 
   const handleSaveRole = async () => {
@@ -149,21 +169,20 @@ export default function UserManagement() {
         <div>
           <h1 className="font-sora text-2xl font-bold">User Management</h1>
           <p className="text-muted-foreground text-sm mt-0.5">
-            {staffCount} staff · {customerCount} customers · {users.length} total
+            {activeEmpCount} active staff · {customerCount} customers · {employees.length} employees
           </p>
         </div>
-        <Button onClick={() => setInviteOpen(true)} className="gap-2">
-          <UserPlus className="w-4 h-4" /> Invite Staff
+        <Button onClick={() => setInviteOpen(true)} variant="outline" className="gap-2">
+          <UserPlus className="w-4 h-4" /> Invite User
         </Button>
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-6">
         {[
-          { label: 'Total Users', value: users.length, icon: Users, color: 'text-primary' },
-          { label: 'Staff', value: staffCount, icon: Shield, color: 'text-blue-400' },
-          { label: 'Customers', value: customerCount, icon: UserCheck, color: 'text-green-400' },
-          { label: 'Admins', value: users.filter(u => u.role === 'admin').length, icon: Shield, color: 'text-red-400' },
+          { label: 'Total Employees', value: employees.length, icon: Users, color: 'text-primary' },
+          { label: 'Active Staff', value: activeEmpCount, icon: Shield, color: 'text-blue-400' },
+          { label: 'Customer Accounts', value: customerCount, icon: UserCheck, color: 'text-green-400' },
         ].map(s => (
           <Card key={s.label} className="border-border/50">
             <CardContent className="p-4 flex items-center gap-3">
@@ -181,35 +200,57 @@ export default function UserManagement() {
       <div className="flex gap-3 mb-4 flex-wrap">
         <div className="relative flex-1 min-w-48">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input placeholder="Search users..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+          <Input placeholder="Search employees, email, code..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
-        <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="w-48"><SelectValue placeholder="Filter by role" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="All">All Roles</SelectItem>
-            {ALL_ROLES.map(r => <SelectItem key={r} value={r}>{ROLE_LABEL[r]}</SelectItem>)}
-          </SelectContent>
-        </Select>
       </div>
 
-      {/* Staff Accounts */}
+      {/* Employee Directory */}
       <div className="mb-6">
-        <div className="flex items-center gap-2 mb-3">
-          <Shield className="w-4 h-4 text-blue-400" />
-          <h2 className="font-sora font-semibold text-sm">Staff Accounts</h2>
-          <span className="text-xs text-muted-foreground ml-1">({filteredStaff.length})</span>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <Briefcase className="w-4 h-4 text-blue-400" />
+            <h2 className="font-sora font-semibold text-sm">Employee Directory</h2>
+            <span className="text-xs text-muted-foreground ml-1">({filteredEmployees.length})</span>
+          </div>
+          <Button variant="outline" size="sm" onClick={handleSyncEmployees} disabled={syncing} className="gap-2">
+            {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+            Sync from Supabase
+          </Button>
         </div>
         <Card className="border-border/50">
           <CardContent className="p-0">
             {loading ? (
               <div className="p-8 text-center text-muted-foreground text-sm">Loading...</div>
-            ) : filteredStaff.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground text-sm">No staff accounts found</div>
+            ) : filteredEmployees.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">No employee records. Click "Sync from Supabase" to load them.</div>
             ) : (
               <div className="divide-y divide-border/50">
-                {filteredStaff.map(u => (
-                  <UserRow key={u.id} u={u} onEdit={() => setEditUser({ ...u })} />
-                ))}
+                {filteredEmployees.map(emp => {
+                  const appUser = empByEmail[emp.email?.toLowerCase()];
+                  return (
+                    <div key={emp.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-muted/20 transition-colors">
+                      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                        <span className="text-sm font-semibold text-primary">{emp.full_name?.[0]?.toUpperCase() || '?'}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{emp.full_name || '—'}</p>
+                        <p className="text-xs text-muted-foreground truncate">{emp.email}</p>
+                      </div>
+                      <div className="hidden sm:flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-mono bg-muted px-2 py-0.5 rounded text-muted-foreground">{emp.employee_code || '—'}</span>
+                        {emp.job_title && <span className="text-xs text-muted-foreground">{emp.job_title}</span>}
+                        <span className={`text-xs px-2 py-0.5 rounded-full border font-medium ${emp.status === 'active' ? 'bg-green-500/10 text-green-600 border-green-500/20' : 'bg-red-500/10 text-red-400 border-red-500/20'}`}>
+                          {emp.status}
+                        </span>
+                        {appUser && (
+                          <span className="text-xs flex items-center gap-1 text-primary">
+                            <BadgeCheck className="w-3.5 h-3.5" /> App User
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </CardContent>
@@ -236,9 +277,28 @@ export default function UserManagement() {
               <div className="p-8 text-center text-muted-foreground text-sm">No customer accounts found</div>
             ) : (
               <div className="divide-y divide-border/50">
-                {filteredCustomers.map(u => (
-                  <UserRow key={u.id} u={u} onEdit={() => setEditUser({ ...u })} />
-                ))}
+                {filteredCustomers.map(u => {
+                  const emp = empByEmail[u.email?.toLowerCase()];
+                  return (
+                    <div key={u.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-muted/20 transition-colors">
+                      <div className="w-9 h-9 rounded-full bg-green-500/10 flex items-center justify-center flex-shrink-0">
+                        <span className="text-sm font-semibold text-green-600">{(u.full_name || u.email)?.[0]?.toUpperCase()}</span>
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">{u.full_name || '—'}</p>
+                        <p className="text-xs text-muted-foreground truncate">{u.email}</p>
+                      </div>
+                      <div className="hidden sm:flex items-center gap-2">
+                        {emp && <span className="text-xs font-mono bg-muted px-2 py-0.5 rounded text-muted-foreground">{emp.employee_code}</span>}
+                        {emp && <span className="text-xs text-muted-foreground">{emp.job_title}</span>}
+                        <Badge className="bg-muted text-muted-foreground border-border text-xs">Customer</Badge>
+                      </div>
+                      <Button variant="ghost" size="icon" className="flex-shrink-0" onClick={() => setEditUser({ ...u })}>
+                        <Edit2 className="w-4 h-4" />
+                      </Button>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </CardContent>
