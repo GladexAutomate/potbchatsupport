@@ -57,8 +57,7 @@ const suggestRole = (jobTitle) => {
 };
 
 export default function ManageRoles() {
-  const [users, setUsers] = useState([]);
-  const [employees, setEmployees] = useState([]);
+  const [staffList, setStaffList] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [editItem, setEditItem] = useState(null);
@@ -67,114 +66,61 @@ export default function ManageRoles() {
 
   const loadData = async () => {
     setLoading(true);
-    const [userData, empData] = await Promise.all([
-      base44.entities.User.list('-created_date', 500),
-      base44.entities.EmployeeAccount.list('-created_date', 500),
-    ]);
-    setUsers(userData || []);
-    setEmployees(empData || []);
+    try {
+      const staffData = await base44.entities.StaffDirectory.list('-created_date', 500);
+      setStaffList(staffData || []);
+    } catch (error) {
+      console.error('Error loading staff directory:', error);
+    }
     setLoading(false);
   };
 
   useEffect(() => { loadData(); }, []);
 
-  // Build email → user map and employee map
-  const userByEmail = {};
-  const empByEmail = {};
-  for (const u of users) {
-    if (u.email) userByEmail[u.email.toLowerCase()] = u;
-  }
-  for (const emp of employees) {
-    if (emp.email) empByEmail[emp.email.toLowerCase()] = emp;
-  }
-
-  // Combine: (POTB active or non-POTB with access granted) + users without employee records
-  const staffList = [];
-  const seenEmails = new Set();
-
-  // Add eligible employees (POTB active + not blocked, OR non-POTB with portal access)
-  for (const emp of employees) {
-    const isPOTB = emp.status === 'active' && !emp.is_blocked;
-    const hasAccess = emp.portal_access_granted === true;
-    
-    if (isPOTB || hasAccess) {
-      const user = userByEmail[emp.email?.toLowerCase()];
-      if (user?.role !== 'super_admin') {
-        staffList.push({
-          id: user?.id || emp.id,
-          full_name: user?.full_name || emp.full_name || emp.name || 'N/A',
-          email: emp.email,
-          job_title: emp.job_title,
-          role: user?.role || null,
-          employee: emp,
-          isUser: !!user,
-          userId: user?.id,
-        });
-        seenEmails.add(emp.email?.toLowerCase());
-      }
-    }
-  }
-
-  // Add users without employee records
-  for (const user of users) {
-    const emailLower = user.email?.toLowerCase();
-    if (!seenEmails.has(emailLower) && user.role !== 'super_admin') {
-      staffList.push({
-        id: user.id,
-        full_name: user.full_name || 'N/A',
-        email: user.email,
-        job_title: null,
-        role: user.role || null,
-        employee: null,
-        isUser: true,
-        userId: user.id,
-      });
-      seenEmails.add(emailLower);
-    }
-  }
-
   const matchesSearch = (item) =>
     !search
     || item.full_name?.toLowerCase().includes(search.toLowerCase())
     || item.email?.toLowerCase().includes(search.toLowerCase())
-    || item.job_title?.toLowerCase().includes(search.toLowerCase());
+    || item.job_title?.toLowerCase().includes(search.toLowerCase())
+    || item.employee_code?.toLowerCase().includes(search.toLowerCase());
 
   const filtered = staffList.filter(matchesSearch);
 
   const handleEditOpen = (item) => {
-   const suggested = suggestRole(item.job_title);
-   setEditItem({ ...item, role: item.role || suggested || 'csr' });
-   setSuggestedRole(suggested);
+    const suggested = suggestRole(item.job_title);
+    setEditItem({ ...item, current_role: item.current_role || suggested || 'csr' });
+    setSuggestedRole(suggested);
   };
 
   const handleSaveRole = async () => {
-   if (!editItem || !editItem.role) return;
-   setSaving(true);
+    if (!editItem || !editItem.current_role) return;
+    setSaving(true);
 
-   try {
-     if (editItem.isUser) {
-       // Update existing user
-       await base44.entities.User.update(editItem.userId, { role: editItem.role });
-       // Refresh data to show updated role
-       await loadData();
-       // Trigger logout for this user to force re-login with new permissions
-       try {
-         await base44.functions.invoke('logoutUserByEmail', { target_email: editItem.email });
-       } catch (err) {
-         console.warn('Failed to trigger logout:', err);
-       }
-     } else {
-       // Invite new user for employee
-       await base44.users.inviteUser(editItem.email, editItem.role);
-       // Refresh users list to show the new user
-       await loadData();
-     }
-   } catch (error) {
-     console.error('Error saving role:', error);
-   } finally {
-     setSaving(false);
-     setEditItem(null);
-   }
+    try {
+      // Update StaffDirectory with new role
+      await base44.entities.StaffDirectory.update(editItem.id, { current_role: editItem.current_role });
+
+      // If user exists, also update User entity and trigger logout
+      if (editItem.user_id) {
+        await base44.entities.User.update(editItem.user_id, { role: editItem.current_role });
+        try {
+          await base44.functions.invoke('logoutUserByEmail', { target_email: editItem.email });
+        } catch (err) {
+          console.warn('Failed to trigger logout:', err);
+        }
+      } else {
+        // Invite new user if they don't exist yet
+        await base44.users.inviteUser(editItem.email, editItem.current_role);
+      }
+
+      // Refresh data
+      await loadData();
+    } catch (error) {
+      console.error('Error saving role:', error);
+    } finally {
+      setSaving(false);
+      setEditItem(null);
+    }
   };
 
   return (
@@ -191,7 +137,7 @@ export default function ManageRoles() {
       {/* Search */}
       <div className="relative mb-4 max-w-sm">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-        <Input placeholder="Search name, email, job title..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
+        <Input placeholder="Search name, email, code, job title..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
       </div>
 
       {/* Users Table */}
@@ -208,6 +154,7 @@ export default function ManageRoles() {
                    <tr>
                      <th className="text-left px-5 py-3 font-medium text-muted-foreground">Name</th>
                      <th className="text-left px-5 py-3 font-medium text-muted-foreground">Email</th>
+                     <th className="text-left px-5 py-3 font-medium text-muted-foreground">Emp. Code</th>
                      <th className="text-left px-5 py-3 font-medium text-muted-foreground">Job Title</th>
                      <th className="text-left px-5 py-3 font-medium text-muted-foreground">Current Role</th>
                      <th className="text-left px-5 py-3 font-medium text-muted-foreground">Status</th>
@@ -224,13 +171,15 @@ export default function ManageRoles() {
                          <p className="text-xs text-muted-foreground">{item.email}</p>
                        </td>
                        <td className="px-5 py-3">
+                         <p className="text-xs text-muted-foreground font-mono">{item.employee_code || '—'}</p>
+                       </td>
+                       <td className="px-5 py-3">
                          <p className="text-sm text-muted-foreground">{item.job_title || '—'}</p>
                        </td>
                        <td className="px-5 py-3">
-                         {item.role ? (
-                           <Badge variant="outline" className={`text-xs ${ROLE_COLOR[item.role] || ''}`}>
-                             {ROLE_LABEL[item.role]}
-                             {item.role === 'super_admin' && ' 🔒'}
+                         {item.current_role ? (
+                           <Badge variant="outline" className={`text-xs ${ROLE_COLOR[item.current_role] || ''}`}>
+                             {ROLE_LABEL[item.current_role]}
                            </Badge>
                          ) : (
                            <span className="text-xs text-muted-foreground">—</span>
@@ -238,7 +187,7 @@ export default function ManageRoles() {
                        </td>
                        <td className="px-5 py-3">
                          <Badge variant="outline" className="text-xs">
-                           {item.isUser ? 'Active' : 'Pending'}
+                           {item.is_potb ? 'POTB' : (item.portal_access_granted ? 'Portal' : 'Inactive')}
                          </Badge>
                        </td>
                        <td className="px-5 py-3 text-right">
@@ -246,10 +195,8 @@ export default function ManageRoles() {
                            size="sm" 
                            variant="outline" 
                            onClick={() => handleEditOpen(item)}
-                           disabled={item.role === 'super_admin'}
-                           className={item.role === 'super_admin' ? 'opacity-50 cursor-not-allowed' : ''}
                          >
-                           {item.role === 'super_admin' ? 'Not Editable' : 'Edit Role'}
+                           Edit Role
                          </Button>
                        </td>
                      </tr>
@@ -266,20 +213,18 @@ export default function ManageRoles() {
          <Dialog open onOpenChange={() => setEditItem(null)}>
            <DialogContent className="max-w-md">
              <DialogHeader>
-               <DialogTitle>{editItem.isUser ? 'Edit' : 'Assign'} User Role</DialogTitle>
+               <DialogTitle>Assign User Role</DialogTitle>
                <div className="mt-2 space-y-1">
                  <p className="text-sm font-medium">{editItem.full_name}</p>
                  <p className="text-xs text-muted-foreground">{editItem.email}</p>
+                 <p className="text-xs text-muted-foreground">Code: {editItem.employee_code || 'N/A'}</p>
                  <p className="text-xs text-muted-foreground">{editItem.job_title || 'N/A'}</p>
-                 {!editItem.isUser && (
-                   <p className="text-xs text-amber-600 mt-2">This employee hasn't logged in yet. Assigning a role will create their account.</p>
-                 )}
                </div>
              </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-1.5">
                 <Label className="text-xs">Role</Label>
-                <Select value={editItem.role || ''} onValueChange={v => setEditItem(item => ({ ...item, role: v }))}>
+                <Select value={editItem.current_role || ''} onValueChange={v => setEditItem(item => ({ ...item, current_role: v }))}>
                   <SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger>
                   <SelectContent>
                     {EDITABLE_ROLES.map(r => (
@@ -292,13 +237,13 @@ export default function ManageRoles() {
               </div>
 
               {/* Auto-suggestion */}
-              {suggestedRole && suggestedRole !== editItem.role && (
+              {suggestedRole && suggestedRole !== editItem.current_role && (
                 <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                   <p className="text-xs font-medium text-blue-600 mb-2">Auto-suggested based on job title:</p>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setEditItem(item => ({ ...item, role: suggestedRole }))}
+                    onClick={() => setEditItem(item => ({ ...item, current_role: suggestedRole }))}
                     className="w-full text-xs border-blue-500/30 text-blue-600 hover:bg-blue-500/10"
                   >
                     Use: {ROLE_LABEL[suggestedRole]}
@@ -307,12 +252,12 @@ export default function ManageRoles() {
               )}
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setEditItem(null)}>Cancel</Button>
-              <Button onClick={handleSaveRole} disabled={saving} className="gap-2">
-                {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                {editItem.isUser ? 'Save' : 'Create'} Role
-              </Button>
-            </DialogFooter>
+               <Button variant="outline" onClick={() => setEditItem(null)}>Cancel</Button>
+               <Button onClick={handleSaveRole} disabled={saving} className="gap-2">
+                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                 Save Role
+               </Button>
+             </DialogFooter>
           </DialogContent>
         </Dialog>
       )}

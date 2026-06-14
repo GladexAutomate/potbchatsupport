@@ -1,0 +1,61 @@
+{
+  "name": "StaffDirectory",
+  "type": "object",
+  "properties": {
+    "email": {
+      "type": "string",
+      "description": "Employee email address"
+    },
+    "full_name": {
+      "type": "string",
+      "description": "Full name"
+    },
+    "employee_code": {
+      "type": "string",
+      "description": "Unique employee code"
+    },
+    "job_title": {
+      "type": "string",
+      "description": "Job title"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "active",
+        "inactive"
+      ],
+      "default": "active",
+      "description": "Employment status"
+    },
+    "is_potb": {
+      "type": "boolean",
+      "default": false,
+      "description": "Is POTB (Portal of The Business) user"
+    },
+    "portal_access_granted": {
+      "type": "boolean",
+      "default": false,
+      "description": "Portal access for non-POTB employees"
+    },
+    "is_blocked": {
+      "type": "boolean",
+      "default": false,
+      "description": "If blocked, no portal access"
+    },
+    "airtable_record_id": {
+      "type": "string"
+    },
+    "current_role": {
+      "type": "string",
+      "description": "Current assigned role (csr, it, sales, accounting, etc.)",
+      "default": null
+    },
+    "user_id": {
+      "type": "string",
+      "description": "Reference to Base44 User ID if exists"
+    }
+  },
+  "required": [
+    "email"
+  ]
+}
