@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
 
         const tableName = toSnakeCase(entityName);
         // Strip Base44 internal fields not present in Supabase schema
-        const INTERNAL_FIELDS = ['created_by_id', 'is_sample', '_metadata', '__v'];
+        const INTERNAL_FIELDS = ['created_by_id', 'created_by', 'is_sample', '_metadata', '__v'];
         const stripped = records.map(r => {
           const out = { ...r };
           INTERNAL_FIELDS.forEach(f => delete out[f]);
