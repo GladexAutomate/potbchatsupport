@@ -61,7 +61,7 @@ export default function ManageRoles() {
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
-  const [editUser, setEditUser] = useState(null);
+  const [editItem, setEditItem] = useState(null);
   const [saving, setSaving] = useState(false);
   const [suggestedRole, setSuggestedRole] = useState(null);
 
@@ -78,55 +78,73 @@ export default function ManageRoles() {
 
   useEffect(() => { loadData(); }, []);
 
-  // Build email → employee map for cross-reference
-  const empByEmail = {};
-  for (const e of employees) {
-    if (e.email) empByEmail[e.email.toLowerCase()] = e;
+  // Build email → user map
+  const userByEmail = {};
+  for (const u of users) {
+    if (u.email) userByEmail[u.email.toLowerCase()] = u;
   }
 
-  // Filter active staff users (has matching employee account)
-  const staffUsers = users
-    .map(u => ({
-      ...u,
-      employee: empByEmail[u.email?.toLowerCase()],
-    }))
-    .filter(u => u.employee && u.employee.status === 'active');
+  // Map all active employees with their user data (if exists)
+  const staffList = employees.map(emp => {
+    const user = userByEmail[emp.email?.toLowerCase()];
+    return {
+      id: user?.id || emp.id,
+      full_name: user?.full_name || emp.full_name || emp.name || 'N/A',
+      email: emp.email,
+      job_title: emp.job_title,
+      role: user?.role || 'customer',
+      employee: emp,
+      isUser: !!user,
+      userId: user?.id,
+    };
+  });
 
-  const matchesSearch = (u) =>
+  const matchesSearch = (item) =>
     !search
-    || u.full_name?.toLowerCase().includes(search.toLowerCase())
-    || u.email?.toLowerCase().includes(search.toLowerCase())
-    || u.employee?.job_title?.toLowerCase().includes(search.toLowerCase());
+    || item.full_name?.toLowerCase().includes(search.toLowerCase())
+    || item.email?.toLowerCase().includes(search.toLowerCase())
+    || item.job_title?.toLowerCase().includes(search.toLowerCase());
 
-  const filtered = staffUsers.filter(matchesSearch);
+  const filtered = staffList.filter(matchesSearch);
 
-  const handleEditOpen = (user) => {
-    setEditUser({ ...user });
-    const suggested = suggestRole(user.employee?.job_title);
+  const handleEditOpen = (item) => {
+    setEditItem({ ...item });
+    const suggested = suggestRole(item.job_title);
     setSuggestedRole(suggested);
   };
 
   const handleSaveRole = async () => {
-    if (!editUser) return;
+    if (!editItem) return;
     setSaving(true);
-    await base44.entities.User.update(editUser.id, {
-      role: editUser.role,
-    });
-    setUsers(prev => prev.map(u => u.id === editUser.id ? { ...u, role: editUser.role } : u));
+    
+    if (editItem.isUser) {
+      // Update existing user
+      await base44.entities.User.update(editItem.userId, { role: editItem.role });
+      setUsers(prev => prev.map(u => u.id === editItem.userId ? { ...u, role: editItem.role } : u));
+    } else {
+      // Create new user for employee
+      const newUser = await base44.entities.User.create({
+        email: editItem.email,
+        full_name: editItem.full_name,
+        role: editItem.role,
+      });
+      setUsers(prev => [...prev, newUser]);
+    }
+    
     setSaving(false);
-    setEditUser(null);
+    setEditItem(null);
   };
 
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <div className="flex items-center justify-between mb-6">
-        <div>
-          <h1 className="font-sora text-2xl font-bold">Manage User Roles</h1>
-          <p className="text-muted-foreground text-sm mt-0.5">
-            {staffUsers.length} active staff members
-          </p>
-        </div>
-      </div>
+         <div>
+           <h1 className="font-sora text-2xl font-bold">Manage User Roles</h1>
+           <p className="text-muted-foreground text-sm mt-0.5">
+             {staffList.length} active employees in directory
+           </p>
+         </div>
+       </div>
 
       {/* Search */}
       <div className="relative mb-4 max-w-sm">
@@ -142,71 +160,80 @@ export default function ManageRoles() {
           ) : filtered.length === 0 ? (
             <div className="p-8 text-center text-muted-foreground text-sm">No active staff members found</div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="border-b border-border/50 bg-muted/30">
-                  <tr>
-                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Name</th>
-                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Email</th>
-                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Job Title</th>
-                    <th className="text-left px-5 py-3 font-medium text-muted-foreground">Current Role</th>
-                    <th className="text-right px-5 py-3 font-medium text-muted-foreground">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/50">
-                  {filtered.map(u => (
-                    <tr key={u.id} className="hover:bg-muted/20 transition-colors">
-                      <td className="px-5 py-3">
-                        <p className="font-medium text-foreground">{u.full_name}</p>
-                      </td>
-                      <td className="px-5 py-3">
-                        <p className="text-xs text-muted-foreground">{u.email}</p>
-                      </td>
-                      <td className="px-5 py-3">
-                        <p className="text-sm text-muted-foreground">{u.employee?.job_title || '—'}</p>
-                      </td>
-                      <td className="px-5 py-3">
-                        <Badge variant="outline" className={`text-xs ${ROLE_COLOR[u.role] || ''}`}>
-                          {ROLE_LABEL[u.role]}
-                          {u.role === 'super_admin' && ' 🔒'}
-                        </Badge>
-                      </td>
-                      <td className="px-5 py-3 text-right">
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => handleEditOpen(u)}
-                          disabled={u.role === 'super_admin'}
-                          className={u.role === 'super_admin' ? 'opacity-50 cursor-not-allowed' : ''}
-                        >
-                          {u.role === 'super_admin' ? 'Not Editable' : 'Edit Role'}
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
+             <div className="overflow-x-auto">
+               <table className="w-full text-sm">
+                 <thead className="border-b border-border/50 bg-muted/30">
+                   <tr>
+                     <th className="text-left px-5 py-3 font-medium text-muted-foreground">Name</th>
+                     <th className="text-left px-5 py-3 font-medium text-muted-foreground">Email</th>
+                     <th className="text-left px-5 py-3 font-medium text-muted-foreground">Job Title</th>
+                     <th className="text-left px-5 py-3 font-medium text-muted-foreground">Current Role</th>
+                     <th className="text-left px-5 py-3 font-medium text-muted-foreground">Status</th>
+                     <th className="text-right px-5 py-3 font-medium text-muted-foreground">Action</th>
+                   </tr>
+                 </thead>
+                 <tbody className="divide-y divide-border/50">
+                   {filtered.map(item => (
+                     <tr key={item.id} className="hover:bg-muted/20 transition-colors">
+                       <td className="px-5 py-3">
+                         <p className="font-medium text-foreground">{item.full_name}</p>
+                       </td>
+                       <td className="px-5 py-3">
+                         <p className="text-xs text-muted-foreground">{item.email}</p>
+                       </td>
+                       <td className="px-5 py-3">
+                         <p className="text-sm text-muted-foreground">{item.job_title || '—'}</p>
+                       </td>
+                       <td className="px-5 py-3">
+                         <Badge variant="outline" className={`text-xs ${ROLE_COLOR[item.role] || ''}`}>
+                           {ROLE_LABEL[item.role]}
+                           {item.role === 'super_admin' && ' 🔒'}
+                         </Badge>
+                       </td>
+                       <td className="px-5 py-3">
+                         <Badge variant="outline" className="text-xs">
+                           {item.isUser ? 'Active' : 'Pending'}
+                         </Badge>
+                       </td>
+                       <td className="px-5 py-3 text-right">
+                         <Button 
+                           size="sm" 
+                           variant="outline" 
+                           onClick={() => handleEditOpen(item)}
+                           disabled={item.role === 'super_admin'}
+                           className={item.role === 'super_admin' ? 'opacity-50 cursor-not-allowed' : ''}
+                         >
+                           {item.role === 'super_admin' ? 'Not Editable' : 'Edit Role'}
+                         </Button>
+                       </td>
+                     </tr>
+                   ))}
+                 </tbody>
+               </table>
+             </div>
+           )}
         </CardContent>
       </Card>
 
       {/* Edit Role Modal */}
-      {editUser && (
-        <Dialog open onOpenChange={() => setEditUser(null)}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Edit User Role</DialogTitle>
-              <div className="mt-2 space-y-1">
-                <p className="text-sm font-medium">{editUser.full_name}</p>
-                <p className="text-xs text-muted-foreground">{editUser.email}</p>
-                <p className="text-xs text-muted-foreground">{editUser.employee?.job_title}</p>
-              </div>
-            </DialogHeader>
+       {editItem && (
+         <Dialog open onOpenChange={() => setEditItem(null)}>
+           <DialogContent className="max-w-md">
+             <DialogHeader>
+               <DialogTitle>{editItem.isUser ? 'Edit' : 'Assign'} User Role</DialogTitle>
+               <div className="mt-2 space-y-1">
+                 <p className="text-sm font-medium">{editItem.full_name}</p>
+                 <p className="text-xs text-muted-foreground">{editItem.email}</p>
+                 <p className="text-xs text-muted-foreground">{editItem.job_title || 'N/A'}</p>
+                 {!editItem.isUser && (
+                   <p className="text-xs text-amber-600 mt-2">This employee hasn't logged in yet. Assigning a role will create their account.</p>
+                 )}
+               </div>
+             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="space-y-1.5">
                 <Label className="text-xs">Role</Label>
-                <Select value={editUser.role} onValueChange={v => setEditUser(u => ({ ...u, role: v }))}>
+                <Select value={editItem.role} onValueChange={v => setEditItem(item => ({ ...item, role: v }))}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {EDITABLE_ROLES.map(r => (
@@ -219,13 +246,13 @@ export default function ManageRoles() {
               </div>
 
               {/* Auto-suggestion */}
-              {suggestedRole && suggestedRole !== editUser.role && (
+              {suggestedRole && suggestedRole !== editItem.role && (
                 <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
                   <p className="text-xs font-medium text-blue-600 mb-2">Auto-suggested based on job title:</p>
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setEditUser(u => ({ ...u, role: suggestedRole }))}
+                    onClick={() => setEditItem(item => ({ ...item, role: suggestedRole }))}
                     className="w-full text-xs border-blue-500/30 text-blue-600 hover:bg-blue-500/10"
                   >
                     Use: {ROLE_LABEL[suggestedRole]}
@@ -234,10 +261,10 @@ export default function ManageRoles() {
               )}
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setEditUser(null)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setEditItem(null)}>Cancel</Button>
               <Button onClick={handleSaveRole} disabled={saving} className="gap-2">
                 {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                Save Role
+                {editItem.isUser ? 'Save' : 'Create'} Role
               </Button>
             </DialogFooter>
           </DialogContent>
