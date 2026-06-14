@@ -69,7 +69,7 @@ export default function ManageRoles() {
     setLoading(true);
     const [userData, empData] = await Promise.all([
       base44.entities.User.list('-created_date', 200),
-      base44.entities.EmployeeAccount.filter({ status: 'active' }, '-created_date', 500),
+      base44.entities.EmployeeAccount.filter({ status: 'active', is_blocked: false }, '-created_date', 500),
     ]);
     setUsers(userData || []);
     setEmployees(empData || []);
