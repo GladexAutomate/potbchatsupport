@@ -30,6 +30,16 @@
     },
     "airtable_record_id": {
       "type": "string"
+    },
+    "is_blocked": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, employee is blocked from portal access"
+    },
+    "portal_access_granted": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, non-POTB employee has been granted portal access"
     }
   },
   "required": [

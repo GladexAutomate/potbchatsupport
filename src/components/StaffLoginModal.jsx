@@ -24,15 +24,22 @@ export default function StaffLoginModal({ open, onClose, employeeRecord }) {
     const passMatch = password.trim() === (employeeRecord?.generated_password || '');
 
     if (codeMatch && passMatch) {
+      // Block explicitly blocked employees
+      if (employeeRecord?.is_blocked) {
+        setError('Your account has been blocked. Please contact your administrator.');
+        setLoading(false);
+        return;
+      }
       // Block inactive employees
       if (employeeRecord?.status === 'inactive') {
         setError('Your account is inactive. Please contact HR or your administrator.');
         setLoading(false);
         return;
       }
-      // Block non-POTB employees
-      if (!employeeRecord?.employee_code?.toUpperCase().startsWith('POTB')) {
-        setError('Access restricted. Only POTB employees are authorized to use this portal.');
+      // Block non-POTB employees unless portal_access_granted
+      const isPotb = employeeRecord?.employee_code?.toUpperCase().startsWith('POTB');
+      if (!isPotb && !employeeRecord?.portal_access_granted) {
+        setError('Access restricted. Only authorized employees can access this portal.');
         setLoading(false);
         return;
       }
