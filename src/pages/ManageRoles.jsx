@@ -68,7 +68,7 @@ export default function ManageRoles() {
   const loadData = async () => {
     setLoading(true);
     const [userData, empData] = await Promise.all([
-      base44.entities.User.list('-created_date', 200),
+      base44.entities.User.list('-created_date', 500),
       base44.entities.EmployeeAccount.filter({ status: 'active', is_blocked: false }, '-created_date', 500),
     ]);
     setUsers(userData || []);
@@ -78,26 +78,55 @@ export default function ManageRoles() {
 
   useEffect(() => { loadData(); }, []);
 
-  // Build email → user map
+  // Build email → user map and employee map
   const userByEmail = {};
+  const empByEmail = {};
   for (const u of users) {
     if (u.email) userByEmail[u.email.toLowerCase()] = u;
   }
+  for (const emp of employees) {
+    if (emp.email) empByEmail[emp.email.toLowerCase()] = emp;
+  }
 
-  // Map all active employees with their user data (if exists), exclude super_admin
-  const staffList = employees.map(emp => {
+  // Combine: POTB employees + users without employee records
+  const staffList = [];
+  const seenEmails = new Set();
+
+  // Add POTB employees (active, not blocked)
+  for (const emp of employees) {
     const user = userByEmail[emp.email?.toLowerCase()];
-    return {
-      id: user?.id || emp.id,
-      full_name: user?.full_name || emp.full_name || emp.name || 'N/A',
-      email: emp.email,
-      job_title: emp.job_title,
-      role: user?.role || null,
-      employee: emp,
-      isUser: !!user,
-      userId: user?.id,
-    };
-  }).filter(item => item.role !== 'super_admin');
+    if (user?.role !== 'super_admin') {
+      staffList.push({
+        id: user?.id || emp.id,
+        full_name: user?.full_name || emp.full_name || emp.name || 'N/A',
+        email: emp.email,
+        job_title: emp.job_title,
+        role: user?.role || null,
+        employee: emp,
+        isUser: !!user,
+        userId: user?.id,
+      });
+      seenEmails.add(emp.email?.toLowerCase());
+    }
+  }
+
+  // Add users without employee records
+  for (const user of users) {
+    const emailLower = user.email?.toLowerCase();
+    if (!seenEmails.has(emailLower) && user.role !== 'super_admin') {
+      staffList.push({
+        id: user.id,
+        full_name: user.full_name || 'N/A',
+        email: user.email,
+        job_title: null,
+        role: user.role || null,
+        employee: null,
+        isUser: true,
+        userId: user.id,
+      });
+      seenEmails.add(emailLower);
+    }
+  }
 
   const matchesSearch = (item) =>
     !search
