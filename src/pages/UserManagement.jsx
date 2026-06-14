@@ -220,13 +220,23 @@ export default function UserManagement() {
         </div>
         <Card className="border-border/50">
           <CardContent className="p-0">
-            {loading ? (
-              <div className="p-8 text-center text-muted-foreground text-sm">Loading...</div>
-            ) : filteredEmployees.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground text-sm">No employee records. Click "Sync from Supabase" to load them.</div>
-            ) : (
-              <div className="divide-y divide-border/50">
-                {filteredEmployees.map(emp => {
+          {/* Column Headers */}
+          <div className="hidden sm:flex items-center gap-4 px-5 py-2 border-b border-border/50 bg-muted/30">
+            <div className="w-9 flex-shrink-0" />
+            <div className="flex-1 text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name / Email</div>
+            <div className="flex items-center gap-2 w-72">
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide w-28">Emp. Code</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide w-16">Status</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide flex-1">Job Title</span>
+            </div>
+          </div>
+          {loading ? (
+            <div className="p-8 text-center text-muted-foreground text-sm">Loading...</div>
+          ) : filteredEmployees.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground text-sm">No employee records. Click "Sync from Supabase" to load them.</div>
+          ) : (
+            <div className="divide-y divide-border/50">
+              {filteredEmployees.map(emp => {
                   const appUser = empByEmail[emp.email?.toLowerCase()];
                   return (
                     <div key={emp.id} className="flex items-center gap-4 px-5 py-3.5 hover:bg-muted/20 transition-colors">
