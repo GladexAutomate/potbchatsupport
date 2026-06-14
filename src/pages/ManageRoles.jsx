@@ -84,7 +84,7 @@ export default function ManageRoles() {
     if (u.email) userByEmail[u.email.toLowerCase()] = u;
   }
 
-  // Map all active employees with their user data (if exists)
+  // Map all active employees with their user data (if exists), exclude super_admin
   const staffList = employees.map(emp => {
     const user = userByEmail[emp.email?.toLowerCase()];
     return {
@@ -97,7 +97,7 @@ export default function ManageRoles() {
       isUser: !!user,
       userId: user?.id,
     };
-  });
+  }).filter(item => item.role !== 'super_admin');
 
   const matchesSearch = (item) =>
     !search
