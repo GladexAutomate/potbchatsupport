@@ -1,0 +1,28 @@
+{
+  "name": "TestAccount",
+  "type": "object",
+  "properties": {
+    "role": {
+      "type": "string",
+      "description": "Staff role (csr, sales, accounting, etc.)"
+    },
+    "employee_code": {
+      "type": "string",
+      "description": "Employee code for login"
+    },
+    "password": {
+      "type": "string",
+      "description": "Password for login"
+    },
+    "is_enabled": {
+      "type": "boolean",
+      "default": true,
+      "description": "Whether this test account can be used to login"
+    }
+  },
+  "required": [
+    "role",
+    "employee_code",
+    "password"
+  ]
+}
