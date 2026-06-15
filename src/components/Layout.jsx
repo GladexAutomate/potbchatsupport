@@ -18,24 +18,30 @@ const navItems = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, pageKey: 'dashboard' },
   
   // Customer Operations
-  { label: 'Customer Tickets', href: '#tickets', icon: FolderOpen, pageKey: 'customer-tickets', children: [
+  { label: 'Customer Operations', href: '#customer-ops', icon: FolderOpen, pageKey: 'customer-operations', children: [
     { label: 'All Tickets', href: '/tickets', icon: Ticket, pageKey: 'tickets' },
     { label: 'VIP Tickets', href: '/vip-tickets', icon: Crown, pageKey: 'vip-tickets' },
+    { label: 'Group Chat', href: '/group-chat', icon: MessagesSquare, pageKey: 'group-chat', badge: true },
   ]},
-  { label: 'Group Chat', href: '/group-chat', icon: MessagesSquare, pageKey: 'group-chat', badge: true },
-  { label: 'Internal Tickets', href: '#internal', icon: Send, pageKey: 'internal-tickets', children: [] }, // Children added dynamically
+
+  // Internal Operations
+  { label: 'Internal Operations', href: '#internal-ops', icon: Send, pageKey: 'internal-operations', children: [] }, // Children added dynamically
   
   // Analytics & Performance
-  { label: 'KPI & SLA', href: '/kpi', icon: BarChart2, pageKey: 'kpi' },
-  { label: 'Staff Ratings', href: '/staff-ratings', icon: Star, pageKey: 'staff-ratings' },
+  { label: 'Analytics & Performance', href: '#analytics', icon: BarChart2, pageKey: 'analytics', children: [
+    { label: 'KPI & SLA', href: '/kpi', icon: BarChart2, pageKey: 'kpi' },
+    { label: 'Staff Ratings', href: '/staff-ratings', icon: Star, pageKey: 'staff-ratings' },
+  ]},
   
   // Administration
-  { label: 'User Management', href: '/users', icon: Users, pageKey: 'users' },
-  { label: 'Customers', href: '/customers', icon: UserCheck, pageKey: 'customers' },
-  { label: 'Role Permissions', href: '/role-permissions', icon: Lock, pageKey: 'manage-roles' },
+  { label: 'Administration', href: '#admin', icon: Shield, pageKey: 'administration', children: [
+    { label: 'User Management', href: '/users', icon: Users, pageKey: 'users' },
+    { label: 'Customers', href: '/customers', icon: UserCheck, pageKey: 'customers' },
+    { label: 'Role Permissions', href: '/role-permissions', icon: Lock, pageKey: 'manage-roles' },
+  ]},
   
   // System Settings
-  { label: 'Settings', href: '/settings', icon: Settings, pageKey: 'settings', children: [
+  { label: 'Settings', href: '#settings', icon: Settings, pageKey: 'settings', children: [
     { label: 'SLA Settings', href: '/settings', icon: Settings, pageKey: 'settings' },
     { label: 'Test Accounts', href: '/test-accounts', icon: Shield, pageKey: 'test-accounts' },
     { label: 'Chatbot Config', href: '/chatbot-config', icon: MessageSquare, pageKey: 'chatbot-config' },
@@ -116,7 +122,7 @@ export default function Layout() {
   };
 
   // Build internal tickets nav before filtering
-  const internalTicketsChildren = (() => {
+  const internalOperationsChildren = (() => {
     const children = [];
     if (departmentRoutes[role]) {
       children.push({
@@ -150,8 +156,8 @@ export default function Layout() {
 
   // Update navItems with built children
   const navItemsWithChildren = navItems.map(item => 
-    item.pageKey === 'internal-tickets' 
-      ? { ...item, children: internalTicketsChildren }
+    item.pageKey === 'internal-operations' 
+      ? { ...item, children: internalOperationsChildren }
       : item
   );
 
@@ -168,10 +174,16 @@ export default function Layout() {
   const isCollapsed = collapsed && !hoverCollapsed;
 
   const settingsOpen = ['/settings', '/test-accounts', '/chatbot-config', '/replying-center', '/conversation-tags'].includes(location.pathname);
-  const customerTicketsOpen = ['/tickets', '/vip-tickets'].includes(location.pathname);
+  const customerOpsOpen = ['/tickets', '/vip-tickets', '/group-chat'].includes(location.pathname);
+  const internalOpsOpen = ['/internal-tickets-sales', '/internal-tickets-it', '/internal-tickets-accounting', '/internal-tickets-signups', '/internal-tickets-onboarding', '/internal-tickets-corptraining', '/internal-escalations'].includes(location.pathname);
+  const analyticsOpen = ['/kpi', '/staff-ratings'].includes(location.pathname);
+  const adminOpen = ['/users', '/customers', '/role-permissions'].includes(location.pathname);
+
   const [settingsExpanded, setSettingsExpanded] = useState(settingsOpen);
-  const [customerTicketsExpanded, setCustomerTicketsExpanded] = useState(customerTicketsOpen);
-  const [internalTicketsExpanded, setInternalTicketsExpanded] = useState(false);
+  const [customerOpsExpanded, setCustomerOpsExpanded] = useState(customerOpsOpen);
+  const [internalOpsExpanded, setInternalOpsExpanded] = useState(internalOpsOpen);
+  const [analyticsExpanded, setAnalyticsExpanded] = useState(analyticsOpen);
+  const [adminExpanded, setAdminExpanded] = useState(adminOpen);
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -192,17 +204,21 @@ export default function Layout() {
           const active = location.pathname === item.href;
           if (item.children) {
             const isSettingsMenu = item.pageKey === 'settings';
-            const isCustomerTicketsMenu = item.pageKey === 'customer-tickets';
-            const isInternalMenu = item.pageKey === 'internal-tickets';
+            const isCustomerOpsMenu = item.pageKey === 'customer-operations';
+            const isInternalOpsMenu = item.pageKey === 'internal-operations';
+            const isAnalyticsMenu = item.pageKey === 'analytics';
+            const isAdminMenu = item.pageKey === 'administration';
             const anyChildActive = item.children.some(c => location.pathname === c.href);
-            const expanded = (isSettingsMenu && settingsExpanded) || (isCustomerTicketsMenu && customerTicketsExpanded) || (isInternalMenu && internalTicketsExpanded) || anyChildActive;
+            const expanded = (isSettingsMenu && settingsExpanded) || (isCustomerOpsMenu && customerOpsExpanded) || (isInternalOpsMenu && internalOpsExpanded) || (isAnalyticsMenu && analyticsExpanded) || (isAdminMenu && adminExpanded) || anyChildActive;
             return (
               <div key={item.href}>
                 <button
                   onClick={() => {
                     if (item.pageKey === 'settings') setSettingsExpanded(v => !v);
-                    if (item.pageKey === 'customer-tickets') setCustomerTicketsExpanded(v => !v);
-                    if (item.pageKey === 'internal-tickets') setInternalTicketsExpanded(v => !v);
+                    if (item.pageKey === 'customer-operations') setCustomerOpsExpanded(v => !v);
+                    if (item.pageKey === 'internal-operations') setInternalOpsExpanded(v => !v);
+                    if (item.pageKey === 'analytics') setAnalyticsExpanded(v => !v);
+                    if (item.pageKey === 'administration') setAdminExpanded(v => !v);
                   }}
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium",
@@ -224,20 +240,33 @@ export default function Layout() {
                   <div className="ml-3 mt-1 space-y-1 border-l border-sidebar-border pl-2">
                     {item.children.map(child => {
                       const childActive = location.pathname === child.href;
+                      const unreadBadge = child.badge && groupChatUnread > 0 ? groupChatUnread : 0;
                       return (
                         <Link
                           key={child.href}
                           to={child.href}
                           onClick={() => setMobileOpen(false)}
                           className={cn(
-                            "flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-sm font-medium",
+                            "flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-sm font-medium relative",
                             childActive
                               ? "bg-primary text-white shadow-lg shadow-primary/30"
                               : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-white"
                           )}
                         >
-                          <child.icon className="w-4 h-4 flex-shrink-0" />
-                          <span>{child.label}</span>
+                          <div className="relative flex-shrink-0">
+                            <child.icon className="w-4 h-4" />
+                            {unreadBadge > 0 && (
+                              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                                {unreadBadge > 9 ? '9+' : unreadBadge}
+                              </span>
+                            )}
+                          </div>
+                          <span className="flex-1">{child.label}</span>
+                          {unreadBadge > 0 && (
+                            <span className="bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 animate-pulse">
+                              {unreadBadge > 9 ? '9+' : unreadBadge}
+                            </span>
+                          )}
                         </Link>
                       );
                     })}
