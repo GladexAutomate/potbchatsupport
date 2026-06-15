@@ -5,7 +5,7 @@ import StaffMessenger from '@/components/StaffMessenger';
 import { Crown } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
-const CSR_ROLES = ['admin', 'csr'];
+const CSR_ROLES = ['super_admin', 'admin', 'csr', 'tl_management'];
 const ROLE_TO_DEPT = {
   it: 'IT',
   sales: 'Sales',
