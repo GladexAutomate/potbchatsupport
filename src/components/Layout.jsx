@@ -6,25 +6,35 @@ import { useAuth } from '@/lib/AuthContext';
 import {
   LayoutDashboard, Ticket, BarChart2, Settings, MessageSquare,
   ChevronLeft, ChevronRight, LogOut, Menu, X, ShieldCheck, Users,
-  MessageSquareText, Tag, Star, MessagesSquare, Crown, UserCheck, Shield, Lock, Send
+  MessageSquareText, Tag, Star, MessagesSquare, Crown, UserCheck, Shield, Lock, Send, FolderOpen
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 const STAFF_ROLES = ['super_admin', 'admin', 'csr', 'sales', 'accounting', 'sign_ups', 'on_boarding', 'corp_training', 'tl_management'];
 
-// All nav items — visibility driven by Permission entity, not hardcoded roles
+// All nav items — organized by function and visibility driven by Permission entity
 const navItems = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, pageKey: 'dashboard' },
-  { label: 'Tickets', href: '/tickets', icon: Ticket, pageKey: 'tickets' },
-  { label: 'VIP Tickets', href: '/vip-tickets', icon: Crown, pageKey: 'vip-tickets' },
+  
+  // Customer Operations
+  { label: 'Customer Tickets', href: '#tickets', icon: FolderOpen, pageKey: 'customer-tickets', children: [
+    { label: 'All Tickets', href: '/tickets', icon: Ticket, pageKey: 'tickets' },
+    { label: 'VIP Tickets', href: '/vip-tickets', icon: Crown, pageKey: 'vip-tickets' },
+  ]},
   { label: 'Group Chat', href: '/group-chat', icon: MessagesSquare, pageKey: 'group-chat', badge: true },
   { label: 'Internal Tickets', href: '#internal', icon: Send, pageKey: 'internal-tickets', children: [] }, // Children added dynamically
+  
+  // Analytics & Performance
   { label: 'KPI & SLA', href: '/kpi', icon: BarChart2, pageKey: 'kpi' },
   { label: 'Staff Ratings', href: '/staff-ratings', icon: Star, pageKey: 'staff-ratings' },
+  
+  // Administration
   { label: 'User Management', href: '/users', icon: Users, pageKey: 'users' },
-  { label: 'Role Permissions', href: '/role-permissions', icon: Lock, pageKey: 'manage-roles' },
   { label: 'Customers', href: '/customers', icon: UserCheck, pageKey: 'customers' },
+  { label: 'Role Permissions', href: '/role-permissions', icon: Lock, pageKey: 'manage-roles' },
+  
+  // System Settings
   { label: 'Settings', href: '/settings', icon: Settings, pageKey: 'settings', children: [
     { label: 'SLA Settings', href: '/settings', icon: Settings, pageKey: 'settings' },
     { label: 'Test Accounts', href: '/test-accounts', icon: Shield, pageKey: 'test-accounts' },
@@ -140,7 +150,9 @@ export default function Layout() {
   };
 
   const settingsOpen = ['/settings', '/test-accounts', '/chatbot-config', '/replying-center', '/conversation-tags'].includes(location.pathname);
+  const customerTicketsOpen = ['/tickets', '/vip-tickets'].includes(location.pathname);
   const [settingsExpanded, setSettingsExpanded] = useState(settingsOpen);
+  const [customerTicketsExpanded, setCustomerTicketsExpanded] = useState(customerTicketsOpen);
   const [internalTicketsExpanded, setInternalTicketsExpanded] = useState(false);
 
   const SidebarContent = () => (
@@ -167,14 +179,16 @@ export default function Layout() {
           const active = location.pathname === item.href;
           if (item.children) {
             const isSettingsMenu = item.pageKey === 'settings';
+            const isCustomerTicketsMenu = item.pageKey === 'customer-tickets';
             const isInternalMenu = item.pageKey === 'internal-tickets';
             const anyChildActive = item.children.some(c => location.pathname === c.href);
-            const expanded = (isSettingsMenu && settingsExpanded) || (isInternalMenu && internalTicketsExpanded) || anyChildActive;
+            const expanded = (isSettingsMenu && settingsExpanded) || (isCustomerTicketsMenu && customerTicketsExpanded) || (isInternalMenu && internalTicketsExpanded) || anyChildActive;
             return (
               <div key={item.href}>
                 <button
                   onClick={() => {
                     if (item.pageKey === 'settings') setSettingsExpanded(v => !v);
+                    if (item.pageKey === 'customer-tickets') setCustomerTicketsExpanded(v => !v);
                     if (item.pageKey === 'internal-tickets') setInternalTicketsExpanded(v => !v);
                   }}
                   className={cn(
