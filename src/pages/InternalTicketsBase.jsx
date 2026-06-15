@@ -42,6 +42,9 @@ export default function InternalTicketsBase({ userDepartment }) {
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
 
+  // Check role-based access
+  const hasAccess = user && ['super_admin', 'tl_management'].includes(user.role);
+
   useEffect(() => {
     loadData();
   }, []);
@@ -114,6 +117,19 @@ export default function InternalTicketsBase({ userDepartment }) {
   const assignedTickets = filteredTickets.filter(t => t.to_department === userDepartment);
 
   const isImageUrl = (url) => /\.(png|jpg|jpeg|gif|webp)(\?|$)/i.test(url);
+
+  if (!hasAccess) {
+    return (
+      <div className="flex items-center justify-center h-screen">
+        <Card className="max-w-sm text-center">
+          <CardContent className="p-8">
+            <p className="text-destructive font-semibold mb-2">Access Denied</p>
+            <p className="text-sm text-muted-foreground">Only TL/Management and Super Admins can view internal tickets.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-1 bg-background rounded-xl border border-border/50 overflow-hidden h-screen">
