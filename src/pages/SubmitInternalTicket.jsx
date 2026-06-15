@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { CheckCircle, Loader2, ShieldCheck, Upload, X, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -122,14 +123,16 @@ export default function SubmitInternalTicket() {
                   <div className="space-y-1.5">
                     <Label className="text-white/70 text-xs">From Department *</Label>
                     {isTLOrAdmin ? (
-                      <select value={form.from_department}
-                        onChange={e => setForm({...form, from_department: e.target.value})}
-                        className="w-full bg-white/10 border border-white/20 text-white rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-                        <option value="">Select department...</option>
-                        {departmentList.map(dept => (
-                          <option key={dept} value={dept}>{dept}</option>
-                        ))}
-                      </select>
+                      <Select value={form.from_department} onValueChange={val => setForm({...form, from_department: val})}>
+                        <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                          <SelectValue placeholder="Select department..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {departmentList.map(dept => (
+                            <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     ) : (
                       <Input value={form.from_department} disabled
                         className="bg-white/10 border-white/20 text-white/70" />
@@ -138,14 +141,16 @@ export default function SubmitInternalTicket() {
 
                   <div className="space-y-1.5">
                     <Label className="text-white/70 text-xs">To Department *</Label>
-                    <select value={form.to_department}
-                      onChange={e => setForm({...form, to_department: e.target.value})}
-                      className="w-full bg-white/10 border border-white/20 text-white rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-                      <option value="">Select department...</option>
-                      {departmentList.filter(d => d !== form.from_department).map(dept => (
-                        <option key={dept} value={dept}>{dept}</option>
-                      ))}
-                    </select>
+                    <Select value={form.to_department} onValueChange={val => setForm({...form, to_department: val})}>
+                      <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                        <SelectValue placeholder="Select department..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {departmentList.filter(d => d !== form.from_department).map(dept => (
+                          <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
 
                   <div className="space-y-1.5">
