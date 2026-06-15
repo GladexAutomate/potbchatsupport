@@ -99,7 +99,7 @@ const AuthenticatedApp = () => {
         <Route path="/internal-tickets-signups" element={<SignUpsInternalTickets />} />
         <Route path="/internal-tickets-onboarding" element={<OnBoardingInternalTickets />} />
         <Route path="/internal-tickets-corptraining" element={<CorpTrainingInternalTickets />} />
-        <Route path="/internal-escalations" element={<InternalEscalations />} />
+        <Route path="/escalations" element={<InternalEscalations />} />
       </Route>
 
       <Route path="*" element={<PageNotFound />} />

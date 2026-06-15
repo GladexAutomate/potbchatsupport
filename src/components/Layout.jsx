@@ -37,6 +37,7 @@ const navItems = [
   { label: 'Administration', href: '#admin', icon: Shield, pageKey: 'administration', children: [
     { label: 'User Management', href: '/users', icon: Users, pageKey: 'users' },
     { label: 'Customers', href: '/customers', icon: UserCheck, pageKey: 'customers' },
+    { label: 'Escalations', href: '/escalations', icon: Crown, pageKey: 'escalations' },
     { label: 'Role Permissions', href: '/role-permissions', icon: Lock, pageKey: 'manage-roles' },
   ]},
   
@@ -143,14 +144,6 @@ export default function Layout() {
         });
       });
     }
-    if (role === 'tl_management' || role === 'super_admin') {
-      children.push({
-        label: 'Escalations',
-        href: '/internal-escalations',
-        icon: Crown,
-        pageKey: 'internal-escalations'
-      });
-    }
     return children;
   })();
 
@@ -175,9 +168,9 @@ export default function Layout() {
 
   const settingsOpen = ['/settings', '/test-accounts', '/chatbot-config', '/replying-center', '/conversation-tags'].includes(location.pathname);
   const customerOpsOpen = ['/tickets', '/vip-tickets', '/group-chat'].includes(location.pathname);
-  const internalOpsOpen = ['/internal-tickets-sales', '/internal-tickets-it', '/internal-tickets-accounting', '/internal-tickets-signups', '/internal-tickets-onboarding', '/internal-tickets-corptraining', '/internal-escalations'].includes(location.pathname);
+  const internalOpsOpen = ['/internal-tickets-sales', '/internal-tickets-it', '/internal-tickets-accounting', '/internal-tickets-signups', '/internal-tickets-onboarding', '/internal-tickets-corptraining'].includes(location.pathname);
   const analyticsOpen = ['/kpi', '/staff-ratings'].includes(location.pathname);
-  const adminOpen = ['/users', '/customers', '/role-permissions'].includes(location.pathname);
+  const adminOpen = ['/users', '/customers', '/escalations', '/role-permissions'].includes(location.pathname);
 
   const [settingsExpanded, setSettingsExpanded] = useState(settingsOpen);
   const [customerOpsExpanded, setCustomerOpsExpanded] = useState(customerOpsOpen);
