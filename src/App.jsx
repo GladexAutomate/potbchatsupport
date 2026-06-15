@@ -37,11 +37,6 @@ const AuthenticatedApp = () => {
     );
   }
 
-  // Show login page if not authenticated and loading is complete
-  if (authChecked && !isAuthenticated && window.location.pathname !== '/login') {
-    return <EmailLogin />;
-  }
-
   if (authError) {
     if (authError.type === 'user_not_registered') {
       return <UserNotRegisteredError />;
@@ -51,11 +46,13 @@ const AuthenticatedApp = () => {
     }
   }
 
+  // Show login page if not authenticated and loading is complete
+  if (authChecked && !isAuthenticated) {
+    return <EmailLogin />;
+  }
+
   return (
     <Routes>
-      {/* Email login - shown first if not authenticated */}
-      <Route path="/login" element={<EmailLogin />} />
-
       {/* Public customer portal - customers & unauthenticated */}
       <Route path="/" element={<CustomerPortal />} />
       <Route path="/my-tickets" element={<MyTickets />} />
