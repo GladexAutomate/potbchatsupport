@@ -75,12 +75,6 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener('popstate', handleUrlChange);
   }, []);
 
-  // Always ensure auth is checked on initial load
-  useEffect(() => {
-    // Log for debugging
-    console.log('Auth state:', { isAuthenticated, authChecked, isLoadingAuth, isLoadingPublicSettings, authError: authError?.type });
-  }, [isAuthenticated, authChecked, isLoadingAuth, isLoadingPublicSettings, authError]);
-
   const checkAppState = async () => {
     try {
       setIsLoadingPublicSettings(true);
