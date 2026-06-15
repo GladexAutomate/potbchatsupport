@@ -82,26 +82,33 @@ export default function RolePermissions() {
 
   const togglePermission = async (role, resourceType, resourceName, label) => {
     const perm = getPermission(role, resourceType, resourceName);
-    const newAccess = !perm?.has_access ?? true;
+    const newAccess = perm ? !perm.has_access : true;
 
-    try {
-      setSaving(true);
-      if (perm) {
-        await base44.entities.Permission.update(perm.id, { has_access: newAccess });
-      } else {
-        await base44.entities.Permission.create({
-          role,
-          resource_type: resourceType,
-          resource_name: resourceName,
-          resource_label: label,
-          has_access: newAccess,
-        });
-      }
-      await loadPermissions();
-    } catch (error) {
-      console.error('Failed to update permission:', error);
-    } finally {
-      setSaving(false);
+    // Optimistic update — apply immediately so UI stays responsive
+    if (perm) {
+      setPermissions(prev => prev.map(p => p.id === perm.id ? { ...p, has_access: newAccess } : p));
+    } else {
+      const tempId = `temp_${role}_${resourceType}_${resourceName}`;
+      setPermissions(prev => [...prev, { id: tempId, role, resource_type: resourceType, resource_name: resourceName, resource_label: label, has_access: newAccess }]);
+    }
+
+    // Persist in background
+    if (perm) {
+      base44.entities.Permission.update(perm.id, { has_access: newAccess }).catch(() => {
+        // Revert on failure
+        setPermissions(prev => prev.map(p => p.id === perm.id ? { ...p, has_access: !newAccess } : p));
+      });
+    } else {
+      base44.entities.Permission.create({
+        role, resource_type: resourceType, resource_name: resourceName, resource_label: label, has_access: newAccess,
+      }).then(created => {
+        // Replace temp record with real one
+        const tempId = `temp_${role}_${resourceType}_${resourceName}`;
+        setPermissions(prev => prev.map(p => p.id === tempId ? created : p));
+      }).catch(() => {
+        const tempId = `temp_${role}_${resourceType}_${resourceName}`;
+        setPermissions(prev => prev.filter(p => p.id !== tempId));
+      });
     }
   };
 
