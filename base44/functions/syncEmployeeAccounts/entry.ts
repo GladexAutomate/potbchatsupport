@@ -92,9 +92,15 @@ Deno.serve(async (req) => {
         existing.job_title !== data.job_title ||
         existing.generated_password !== data.generated_password;
       if (hasChange) {
-        // Only update Supabase-sourced fields; never overwrite app-managed ones
-        const { current_role, is_blocked, portal_access_granted, ...supabaseFields } = data;
-        await base44.asServiceRole.entities.EmployeeAccount.update(id, supabaseFields);
+        // Re-read preserved fields fresh from existing record to guarantee they are not lost
+        const existingRec = existingByEmail[data.email?.toLowerCase()];
+        const { current_role: _cr, is_blocked: _ib, portal_access_granted: _pa, ...supabaseFields } = data;
+        await base44.asServiceRole.entities.EmployeeAccount.update(id, {
+          ...supabaseFields,
+          current_role: existingRec.current_role ?? null,
+          is_blocked: existingRec.is_blocked ?? false,
+          portal_access_granted: existingRec.portal_access_granted ?? false,
+        });
         updated++;
       }
     }
