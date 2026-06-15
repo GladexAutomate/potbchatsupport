@@ -36,12 +36,21 @@ export default function VIPTickets() {
   };
 
   useEffect(() => {
+    base44.entities.VIPCustomer.list().then(vips => {
+      setVipEmails(new Set((vips || []).map(v => v.email?.toLowerCase())));
+    }).catch(() => {});
+  }, []);
+
+  useEffect(() => {
     if (!user) return;
 
     const loadVIPTickets = () => {
       base44.entities.Ticket.list('-created_date', 200).then(data => {
         const filtered = filterTicketsForUser(data || []);
-        const vipOnly = filtered.filter(t => t.is_vip === true);
+        // Match tickets that are flagged is_vip OR whose customer email is in the VIPCustomer list
+        const vipOnly = filtered.filter(t =>
+          t.is_vip === true || vipEmails.has(t.customer_email?.toLowerCase())
+        );
         setTickets(vipOnly);
         setLoading(false);
       });
@@ -50,7 +59,7 @@ export default function VIPTickets() {
     loadVIPTickets();
     const unsub = base44.entities.Ticket.subscribe(() => loadVIPTickets());
     return () => unsub();
-  }, [user]);
+  }, [user, vipEmails]);
 
   return (
     <div className="p-4 md:p-6 h-full">
