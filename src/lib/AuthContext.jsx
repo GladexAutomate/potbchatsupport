@@ -42,13 +42,9 @@ export const AuthProvider = ({ children }) => {
         if (appParams.token) {
           await checkUserAuth();
         } else {
-          // No token - redirect to email login unless already on login page
           setIsLoadingAuth(false);
           setIsAuthenticated(false);
           setAuthChecked(true);
-          if (window.location.pathname !== '/login') {
-            window.location.href = '/login';
-          }
         }
         setIsLoadingPublicSettings(false);
       } catch (appError) {
