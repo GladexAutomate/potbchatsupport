@@ -96,18 +96,6 @@ export default function Layout() {
     return perm?.has_access === true;
   };
 
-  const filtered = navItemsWithChildren
-    .filter(n => hasPageAccess(n.pageKey))
-    .map(n => n.children
-      ? { ...n, children: n.children.filter(c => hasPageAccess(c.pageKey)) }
-      : n
-    )
-    .filter(n => !n.children || n.children.length > 0);
-
-  const handleLogout = () => base44.auth.logout('/');
-
-  const isCollapsed = collapsed && !hoverCollapsed;
-
   // Map user roles to their internal ticket pages
   const departmentRoutes = {
     'sales': '/internal-tickets-sales',
@@ -155,6 +143,18 @@ export default function Layout() {
       ? { ...item, children: internalTicketsChildren }
       : item
   );
+
+  const filtered = navItemsWithChildren
+    .filter(n => hasPageAccess(n.pageKey))
+    .map(n => n.children
+      ? { ...n, children: n.children.filter(c => hasPageAccess(c.pageKey)) }
+      : n
+    )
+    .filter(n => !n.children || n.children.length > 0);
+
+  const handleLogout = () => base44.auth.logout('/');
+
+  const isCollapsed = collapsed && !hoverCollapsed;
 
   const settingsOpen = ['/settings', '/test-accounts', '/chatbot-config', '/replying-center', '/conversation-tags'].includes(location.pathname);
   const customerTicketsOpen = ['/tickets', '/vip-tickets'].includes(location.pathname);
