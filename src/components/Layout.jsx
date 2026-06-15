@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/AuthContext';
 import {
   LayoutDashboard, Ticket, BarChart2, Settings, MessageSquare,
   ChevronLeft, ChevronRight, LogOut, Menu, X, ShieldCheck, Users,
-  MessageSquareText, Tag, Star, MessagesSquare, Crown, UserCheck, Shield, Lock
+  MessageSquareText, Tag, Star, MessagesSquare, Crown, UserCheck, Shield, Lock, Send
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -19,6 +19,7 @@ const navItems = [
   { label: 'Tickets', href: '/tickets', icon: Ticket, pageKey: 'tickets' },
   { label: 'VIP Tickets', href: '/vip-tickets', icon: Crown, pageKey: 'vip-tickets' },
   { label: 'Group Chat', href: '/group-chat', icon: MessagesSquare, pageKey: 'group-chat', badge: true },
+  { label: 'Internal Tickets', href: '#internal', icon: Send, pageKey: 'internal-tickets', children: [] }, // Children added dynamically
   { label: 'KPI & SLA', href: '/kpi', icon: BarChart2, pageKey: 'kpi' },
   { label: 'Staff Ratings', href: '/staff-ratings', icon: Star, pageKey: 'staff-ratings' },
   { label: 'User Management', href: '/users', icon: Users, pageKey: 'users' },
@@ -97,8 +98,50 @@ export default function Layout() {
 
   const isCollapsed = collapsed && !hoverCollapsed;
 
+  // Map user roles to their internal ticket pages
+  const departmentRoutes = {
+    'sales': '/internal-tickets-sales',
+    'it': '/internal-tickets-it',
+    'accounting': '/internal-tickets-accounting',
+    'sign_ups': '/internal-tickets-signups',
+    'on_boarding': '/internal-tickets-onboarding',
+    'corp_training': '/internal-tickets-corptraining',
+  };
+
+  const departmentLabels = {
+    'sales': 'Sales',
+    'it': 'IT',
+    'accounting': 'Accounting',
+    'sign_ups': 'Sign-Ups',
+    'on_boarding': 'On-Boarding',
+    'corp_training': 'Corp/Training',
+  };
+
+  // Build internal tickets nav
+  const buildInternalTicketsNav = () => {
+    const children = [];
+    if (departmentRoutes[role]) {
+      children.push({
+        label: `My ${departmentLabels[role]} Tickets`,
+        href: departmentRoutes[role],
+        icon: Send,
+        pageKey: `internal-${role}`
+      });
+    }
+    if (role === 'tl_management') {
+      children.push({
+        label: 'Escalations',
+        href: '/internal-escalations',
+        icon: Crown,
+        pageKey: 'internal-escalations'
+      });
+    }
+    return children;
+  };
+
   const settingsOpen = ['/settings', '/test-accounts', '/chatbot-config', '/replying-center', '/conversation-tags'].includes(location.pathname);
   const [settingsExpanded, setSettingsExpanded] = useState(settingsOpen);
+  const [internalTicketsExpanded, setInternalTicketsExpanded] = useState(false);
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -116,14 +159,24 @@ export default function Layout() {
 
       <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto overflow-x-hidden">
         {filtered.map((item) => {
+          // Build children for internal tickets dynamically
+          if (item.pageKey === 'internal-tickets' && item.children.length === 0) {
+            item.children = buildInternalTicketsNav();
+          }
+
           const active = location.pathname === item.href;
           if (item.children) {
+            const isSettingsMenu = item.pageKey === 'settings';
+            const isInternalMenu = item.pageKey === 'internal-tickets';
             const anyChildActive = item.children.some(c => location.pathname === c.href);
-            const expanded = settingsExpanded || anyChildActive;
+            const expanded = (isSettingsMenu && settingsExpanded) || (isInternalMenu && internalTicketsExpanded) || anyChildActive;
             return (
               <div key={item.href}>
                 <button
-                  onClick={() => setSettingsExpanded(v => !v)}
+                  onClick={() => {
+                    if (item.pageKey === 'settings') setSettingsExpanded(v => !v);
+                    if (item.pageKey === 'internal-tickets') setInternalTicketsExpanded(v => !v);
+                  }}
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium",
                     isCollapsed && "justify-center px-2",

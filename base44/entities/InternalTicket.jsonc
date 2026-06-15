@@ -1,0 +1,112 @@
+{
+  "name": "InternalTicket",
+  "type": "object",
+  "properties": {
+    "ticket_number": {
+      "type": "string",
+      "description": "Auto-generated internal ticket ID"
+    },
+    "from_department": {
+      "type": "string",
+      "enum": [
+        "Sales",
+        "IT",
+        "Accounting",
+        "Sign-Ups",
+        "On-Boarding",
+        "Corp/Training",
+        "Admin",
+        "TL/Management"
+      ],
+      "description": "Department creating the ticket"
+    },
+    "to_department": {
+      "type": "string",
+      "enum": [
+        "Sales",
+        "IT",
+        "Accounting",
+        "Sign-Ups",
+        "On-Boarding",
+        "Corp/Training",
+        "Admin",
+        "TL/Management"
+      ],
+      "description": "Department the ticket is sent to"
+    },
+    "subject": {
+      "type": "string",
+      "description": "Ticket subject"
+    },
+    "description": {
+      "type": "string",
+      "description": "Detailed description of the request"
+    },
+    "created_by_email": {
+      "type": "string",
+      "description": "Email of staff who created the ticket"
+    },
+    "created_by_name": {
+      "type": "string",
+      "description": "Name of staff who created the ticket"
+    },
+    "assigned_to_email": {
+      "type": "string",
+      "description": "Email of staff assigned to handle the ticket"
+    },
+    "assigned_to_name": {
+      "type": "string",
+      "description": "Name of staff assigned to the ticket"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Open",
+        "In Progress",
+        "Pending",
+        "Resolved",
+        "Closed"
+      ],
+      "default": "Open",
+      "description": "Ticket status"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "Low",
+        "Medium",
+        "High",
+        "Critical"
+      ],
+      "default": "Medium"
+    },
+    "escalated": {
+      "type": "boolean",
+      "default": false,
+      "description": "If true, escalated to TL/Management"
+    },
+    "escalation_reason": {
+      "type": "string",
+      "description": "Reason for escalation"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "description": "URLs of attached files"
+    },
+    "notes": {
+      "type": "string",
+      "description": "Internal notes on the ticket"
+    }
+  },
+  "required": [
+    "ticket_number",
+    "from_department",
+    "to_department",
+    "subject",
+    "description",
+    "created_by_email"
+  ]
+}

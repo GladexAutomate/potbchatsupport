@@ -25,6 +25,13 @@ import StaffRatings from './pages/StaffRatings';
 import GroupChat from './pages/GroupChat';
 import VIPTickets from './pages/VIPTickets';
 import EmailLogin from './pages/EmailLogin';
+import CSRInternalTickets from './pages/InternalTickets/CSR';
+import ITInternalTickets from './pages/InternalTickets/IT';
+import AccountingInternalTickets from './pages/InternalTickets/Accounting';
+import SignUpsInternalTickets from './pages/InternalTickets/SignUps';
+import OnBoardingInternalTickets from './pages/InternalTickets/OnBoarding';
+import CorpTrainingInternalTickets from './pages/InternalTickets/CorpTraining';
+import InternalEscalations from './pages/InternalEscalations';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, isAuthenticated, authChecked } = useAuth();
@@ -84,6 +91,13 @@ const AuthenticatedApp = () => {
         <Route path="/staff-ratings" element={<StaffRatings />} />
         <Route path="/group-chat" element={<GroupChat />} />
         <Route path="/vip-tickets" element={<VIPTickets />} />
+        <Route path="/internal-tickets-sales" element={<CSRInternalTickets />} />
+        <Route path="/internal-tickets-it" element={<ITInternalTickets />} />
+        <Route path="/internal-tickets-accounting" element={<AccountingInternalTickets />} />
+        <Route path="/internal-tickets-signups" element={<SignUpsInternalTickets />} />
+        <Route path="/internal-tickets-onboarding" element={<OnBoardingInternalTickets />} />
+        <Route path="/internal-tickets-corptraining" element={<CorpTrainingInternalTickets />} />
+        <Route path="/internal-escalations" element={<InternalEscalations />} />
       </Route>
 
       <Route path="*" element={<PageNotFound />} />
