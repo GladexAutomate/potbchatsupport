@@ -61,7 +61,15 @@ Deno.serve(async (req) => {
       };
 
       if (existingByEmail[email]) {
-        toUpdate.push({ id: existingByEmail[email].id, ...payload });
+        // Preserve app-managed fields that should never be overwritten by Supabase sync
+        const existing = existingByEmail[email];
+        toUpdate.push({
+          id: existing.id,
+          ...payload,
+          current_role: existing.current_role ?? null,
+          is_blocked: existing.is_blocked ?? false,
+          portal_access_granted: existing.portal_access_granted ?? false,
+        });
       } else {
         toCreate.push(payload);
       }
@@ -84,7 +92,9 @@ Deno.serve(async (req) => {
         existing.job_title !== data.job_title ||
         existing.generated_password !== data.generated_password;
       if (hasChange) {
-        await base44.asServiceRole.entities.EmployeeAccount.update(id, data);
+        // Only update Supabase-sourced fields; never overwrite app-managed ones
+        const { current_role, is_blocked, portal_access_granted, ...supabaseFields } = data;
+        await base44.asServiceRole.entities.EmployeeAccount.update(id, supabaseFields);
         updated++;
       }
     }
