@@ -8,6 +8,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { MessageSquare, Ticket, CheckCircle, ChevronRight, Bot, Loader2, ShieldCheck, Upload, X, FileText, ClipboardList } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import StaffLoginModal from '@/components/StaffLoginModal';
 
 export default function CustomerPortal() {
   const [view, setView] = useState('home'); // home | chat | ticket | success
@@ -20,18 +21,36 @@ export default function CustomerPortal() {
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef(null);
+  const [employeeRecord, setEmployeeRecord] = useState(null);
+  const [showStaffModal, setShowStaffModal] = useState(false);
 
   useEffect(() => {
     base44.entities.ChatbotConfig.list().then(configs => {
       if (configs?.[0]) setChatConfig(configs[0]);
     }).catch(() => {});
-    base44.auth.me().then(u => {
+    base44.auth.me().then(async u => {
       if (u) {
         setUser(u);
         setForm(f => ({ ...f, customer_name: u.full_name || '' }));
+        // Check if this email is a staff employee
+        const employees = await base44.entities.EmployeeAccount.filter({ email: u.email }).catch(() => []);
+        if (employees?.length > 0) {
+          setEmployeeRecord(employees[0]);
+        }
       }
     }).catch(() => {});
   }, []);
+
+  const handleStaffLoginClick = () => {
+    // Allow direct access for admin and staff users; only require verification for non-POTB employees
+    if (user?.role === 'admin' || (user?.role && ['csr', 'it', 'sales', 'accounting', 'sign_ups', 'on_boarding', 'corp_training', 'tl_management'].includes(user.role))) {
+      window.location.href = '/dashboard';
+    } else if (employeeRecord) {
+      setShowStaffModal(true);
+    } else {
+      window.location.href = '/dashboard';
+    }
+  };
 
   const generateTicketNumber = () => {
     const now = new Date();
@@ -61,6 +80,14 @@ export default function CustomerPortal() {
     setSubmitting(true);
     const num = generateTicketNumber();
     const deadline = new Date(Date.now() + 24 * 3600000); // default 24h SLA, CSR will update priority
+    
+    // Check if customer is VIP
+    let isVIP = false;
+    if (user?.email) {
+      const vipList = await base44.entities.VIPCustomer.filter({ email: user.email });
+      isVIP = vipList && vipList.length > 0;
+    }
+    
     await base44.entities.Ticket.create({
       customer_name: form.customer_name,
       customer_email: user?.email || '',
@@ -73,6 +100,7 @@ export default function CustomerPortal() {
       source: 'Customer Portal',
       sla_deadline: deadline.toISOString(),
       escalated: false,
+      is_vip: isVIP,
     });
     setTicketNum(num);
     setSubmitting(false);
@@ -96,14 +124,9 @@ export default function CustomerPortal() {
               <ClipboardList className="w-4 h-4" /> My Tickets
             </Button>
           </Link>
-          {user && ['admin','csr','it','sales','accounting','sign_ups','on_boarding','corp_training','tl_management'].includes(user.role) && (
-            <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10" onClick={() => window.location.href = '/dashboard'}>
-              Staff Login
-            </Button>
-          )}
-          {!user && (
-            <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10" onClick={() => window.location.href = '/dashboard'}>
-              Staff Login
+          {(employeeRecord || !user) && (
+            <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10 gap-2" onClick={handleStaffLoginClick}>
+              <ShieldCheck className="w-4 h-4" /> Staff Login
             </Button>
           )}
         </div>
@@ -280,6 +303,12 @@ export default function CustomerPortal() {
 
         </AnimatePresence>
       </div>
+
+      <StaffLoginModal
+        open={showStaffModal}
+        onClose={() => setShowStaffModal(false)}
+        employeeRecord={employeeRecord}
+      />
     </div>
   );
 }

@@ -23,10 +23,17 @@ export default function StaffRatings() {
   const [period, setPeriod] = useState('Weekly');
 
   useEffect(() => {
-    base44.entities.StaffRating.list('-rated_at', 500).then(d => {
-      setRatings(d || []);
+    Promise.all([
+      base44.entities.StaffRating.list('-rated_at', 500),
+      base44.entities.EmployeeAccount.list('', 500)
+    ]).then(([ratingData, empData]) => {
+      const potbEmails = new Set((empData || [])
+        .filter(e => e.employee_code?.toUpperCase().startsWith('POTB'))
+        .map(e => e.email?.toLowerCase())
+      );
+      setRatings((ratingData || []).filter(r => potbEmails.has(r.staff_email?.toLowerCase())));
       setLoading(false);
-    });
+    }).catch(() => setLoading(false));
   }, []);
 
   const getPeriodStart = () => {
@@ -50,6 +57,7 @@ export default function StaffRatings() {
   });
   const staffList = Object.values(staffMap)
     .map(s => ({ ...s, avg: s.count ? (s.total / s.count).toFixed(1) : 0 }))
+    .filter(s => s.count > 0)
     .sort((a, b) => b.avg - a.avg);
 
   // Chart data: ratings over time grouped by day/week

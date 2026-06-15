@@ -5,7 +5,7 @@ import StaffMessenger from '@/components/StaffMessenger';
 import { Crown } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
-const CSR_ROLES = ['admin', 'csr'];
+const CSR_ROLES = ['super_admin', 'admin', 'csr', 'tl_management'];
 const ROLE_TO_DEPT = {
   it: 'IT',
   sales: 'Sales',
@@ -27,12 +27,18 @@ export default function VIPTickets() {
   const filterTicketsForUser = (allTickets) => {
     if (!user) return [];
     const role = user.role;
-    if (CSR_ROLES.includes(role)) return allTickets;
-    const dept = ROLE_TO_DEPT[role];
-    return allTickets.filter(t =>
-      t.assigned_to === user.email ||
-      (dept && t.department === dept)
-    );
+    // L1 (CSR) and TL/Management see all tickets
+    if (['super_admin', 'admin', 'csr', 'tl_management'].includes(role)) return allTickets;
+
+    // L2 roles: only assigned to them, created by them, or in their assignment history
+    return allTickets.filter(t => {
+      const isAssignedToUser = t.assigned_to?.toLowerCase() === user.email?.toLowerCase();
+      const isCreatedByUser = t.created_by_id === user.id;
+      const hasAssignmentHistory = (t.dept_sla_log || []).some(log => 
+        log.department === ROLE_TO_DEPT[role]
+      );
+      return isAssignedToUser || isCreatedByUser || hasAssignmentHistory;
+    });
   };
 
   useEffect(() => {
@@ -42,12 +48,15 @@ export default function VIPTickets() {
   }, []);
 
   useEffect(() => {
-    if (!user || vipEmails.size === 0) return;
+    if (!user) return;
 
     const loadVIPTickets = () => {
       base44.entities.Ticket.list('-created_date', 200).then(data => {
         const filtered = filterTicketsForUser(data || []);
-        const vipOnly = filtered.filter(t => vipEmails.has(t.customer_email?.toLowerCase()));
+        // Match tickets that are flagged is_vip OR whose customer email is in the VIPCustomer list
+        const vipOnly = filtered.filter(t =>
+          t.is_vip === true || vipEmails.has(t.customer_email?.toLowerCase())
+        );
         setTickets(vipOnly);
         setLoading(false);
       });
@@ -57,11 +66,6 @@ export default function VIPTickets() {
     const unsub = base44.entities.Ticket.subscribe(() => loadVIPTickets());
     return () => unsub();
   }, [user, vipEmails]);
-
-  // While VIP list is loading, don't show stale data
-  useEffect(() => {
-    if (vipEmails.size === 0) setLoading(true);
-  }, [vipEmails]);
 
   return (
     <div className="p-4 md:p-6 h-full">

@@ -123,7 +123,7 @@ export default function Dashboard() {
               {recent.map(t => {
                 const slaOk = !t.sla_deadline || new Date(t.sla_deadline) > now || t.status === 'Resolved' || t.status === 'Closed';
                 return (
-                  <Link to={`/tickets/${t.id}`} key={t.id}
+                  <Link to={`/tickets?openTicket=${t.id}`} key={t.id}
                     className="flex items-center gap-4 px-5 py-3.5 hover:bg-muted/30 transition-colors">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">

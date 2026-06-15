@@ -12,6 +12,7 @@ import ImageLightbox from '@/components/ImageLightbox';
 import RerouteTicketModal from '@/components/RerouteTicketModal';
 import TicketHistoryModal from '@/components/TicketHistoryModal';
 import TicketInfoSidebar from '@/components/TicketInfoSidebar';
+import CreateTicketModal from '@/components/CreateTicketModal';
 import { formatDistanceToNow } from 'date-fns';
 
 const toPHTime = (dateStr) => {
@@ -311,13 +312,18 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
   return (
     <>
     {lightboxUrl && <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
-    <div className="flex h-[calc(100vh-120px)] bg-background rounded-xl border border-border/50 overflow-hidden">
+    <div className="flex flex-1 bg-background rounded-xl border border-border/50 overflow-hidden">
       {/* LEFT PANEL - Ticket List */}
       <div className={`flex flex-col border-r border-border/50 bg-card ${selectedTicket ? 'hidden md:flex' : 'flex'} w-full md:w-80 lg:w-96 flex-shrink-0`}>
         {/* Header */}
         <div className="p-4 border-b border-border/50">
           <div className="flex items-center justify-between mb-3">
-            <h2 className="font-sora font-bold text-lg">Tickets</h2>
+            <div className="flex items-center gap-2">
+              <h2 className="font-sora font-bold text-lg">Tickets</h2>
+              <CreateTicketModal onTicketCreated={(newTicket) => {
+                setSelectedTicket(newTicket);
+              }} />
+            </div>
             <div className="flex items-center gap-2">
               {(() => {
                 const nonClosedUnread = Object.entries(unread).filter(([tid]) => {
