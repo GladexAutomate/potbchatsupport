@@ -38,16 +38,17 @@ const FEATURES = [
   { name: 'group_chat', label: 'Use Group Chat' },
 ];
 
-const ROLES = ['admin', 'CSR', 'IT', 'Sales', 'Finance', 'Manager', 'Supervisor'];
+const ROLES = ['admin', 'csr', 'sales', 'accounting', 'sign_ups', 'on_boarding', 'corp_training', 'tl_management'];
 
 const ROLE_COLORS = {
   admin: 'bg-purple-50 border-purple-200 text-purple-700 hover:bg-purple-100',
-  CSR: 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100',
-  IT: 'bg-cyan-50 border-cyan-200 text-cyan-700 hover:bg-cyan-100',
-  Sales: 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100',
-  Finance: 'bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100',
-  Manager: 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100',
-  Supervisor: 'bg-pink-50 border-pink-200 text-pink-700 hover:bg-pink-100',
+  csr: 'bg-blue-50 border-blue-200 text-blue-700 hover:bg-blue-100',
+  sales: 'bg-green-50 border-green-200 text-green-700 hover:bg-green-100',
+  accounting: 'bg-yellow-50 border-yellow-200 text-yellow-700 hover:bg-yellow-100',
+  sign_ups: 'bg-pink-50 border-pink-200 text-pink-700 hover:bg-pink-100',
+  on_boarding: 'bg-purple-50 border-purple-200 text-purple-600 hover:bg-purple-100',
+  corp_training: 'bg-orange-50 border-orange-200 text-orange-700 hover:bg-orange-100',
+  tl_management: 'bg-red-50 border-red-200 text-red-700 hover:bg-red-100',
 };
 
 export default function RolePermissions() {

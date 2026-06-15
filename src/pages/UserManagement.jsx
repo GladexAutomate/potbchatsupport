@@ -10,13 +10,12 @@ import { Label } from '@/components/ui/label';
 import { Search, Users, Shield, Loader2, UserPlus, RefreshCw, Briefcase, BadgeCheck, Ban, Unlock, ToggleLeft, ToggleRight, ShieldCheck, Save } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
-const STAFF_ROLES = ['csr', 'it', 'sales', 'accounting', 'sign_ups', 'on_boarding', 'corp_training', 'admin', 'tl_management'];
+const STAFF_ROLES = ['csr', 'sales', 'accounting', 'sign_ups', 'on_boarding', 'corp_training', 'admin', 'tl_management'];
 const EDITABLE_ROLES = ['customer', ...STAFF_ROLES];
 
 const ROLE_LABEL = {
   customer: 'Customer',
   csr: 'CSR / L1 Support',
-  it: 'IT (L2)',
   sales: 'Sales',
   accounting: 'Accounting',
   sign_ups: 'Sign-Ups',
@@ -29,7 +28,6 @@ const ROLE_LABEL = {
 const ROLE_COLOR = {
   customer: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
   csr: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-  it: 'bg-cyan-500/10 text-cyan-400 border-cyan-500/20',
   sales: 'bg-green-500/10 text-green-400 border-green-500/20',
   accounting: 'bg-yellow-500/10 text-yellow-600 border-yellow-500/20',
   sign_ups: 'bg-pink-500/10 text-pink-400 border-pink-500/20',
@@ -43,7 +41,7 @@ const suggestRole = (jobTitle) => {
   if (!jobTitle) return null;
   const title = jobTitle.toLowerCase();
   if (title.includes('csr') || title.includes('support')) return 'csr';
-  if (title.includes('it') || title.includes('tech') || title.includes('developer')) return 'it';
+  if (title.includes('it') || title.includes('tech') || title.includes('developer')) return 'csr';
   if (title.includes('sales')) return 'sales';
   if (title.includes('accounting') || title.includes('finance')) return 'accounting';
   if (title.includes('sign') || title.includes('signup')) return 'sign_ups';
