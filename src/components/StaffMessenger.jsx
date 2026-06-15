@@ -312,7 +312,7 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
   return (
     <>
     {lightboxUrl && <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
-    <div className="flex h-[calc(100vh-120px)] bg-background rounded-xl border border-border/50 overflow-hidden">
+    <div className="flex flex-1 bg-background rounded-xl border border-border/50 overflow-hidden">
       {/* LEFT PANEL - Ticket List */}
       <div className={`flex flex-col border-r border-border/50 bg-card ${selectedTicket ? 'hidden md:flex' : 'flex'} w-full md:w-80 lg:w-96 flex-shrink-0`}>
         {/* Header */}
