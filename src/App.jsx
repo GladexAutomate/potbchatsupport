@@ -24,6 +24,7 @@ import SubmitTicket from './pages/SubmitTicket';
 import StaffRatings from './pages/StaffRatings';
 import GroupChat from './pages/GroupChat';
 import VIPTickets from './pages/VIPTickets';
+import EmailLogin from './pages/EmailLogin';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
@@ -47,6 +48,9 @@ const AuthenticatedApp = () => {
 
   return (
     <Routes>
+      {/* Email login - shown first if not authenticated */}
+      <Route path="/login" element={<EmailLogin />} />
+
       {/* Public customer portal - customers & unauthenticated */}
       <Route path="/" element={<CustomerPortal />} />
       <Route path="/my-tickets" element={<MyTickets />} />
