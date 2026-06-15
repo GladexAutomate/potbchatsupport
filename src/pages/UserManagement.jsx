@@ -167,10 +167,10 @@ export default function UserManagement() {
       'Full Name': e.full_name || '',
       'Email': e.email || '',
       'Employee Code': e.employee_code || '',
+      'Password': e.generated_password || '',
       'Job Title': e.job_title || '',
       'Status': e.is_blocked ? 'Blocked' : (e.status || ''),
       'App Role': ROLE_LABEL[e.current_role] || e.current_role || '',
-      'Portal Access': e.portal_access_granted ? 'Yes' : 'No',
     }));
 
     const headers = Object.keys(rows[0] || {});
