@@ -126,7 +126,7 @@ export default function Layout() {
         pageKey: `internal-${role}`
       });
     }
-    if (role === 'tl_management') {
+    if (role === 'tl_management' || role === 'super_admin' || role === 'admin') {
       children.push({
         label: 'Escalations',
         href: '/internal-escalations',
