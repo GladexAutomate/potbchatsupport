@@ -28,7 +28,8 @@ Deno.serve(async (req) => {
       !e.current_role &&
       e.status === 'active' &&
       !e.is_blocked &&
-      e.email?.toLowerCase() !== 'automate@gladextours.com'
+      e.email?.toLowerCase() !== 'automate@gladextours.com' &&
+      e.employee_code?.toUpperCase().startsWith('POTB')
     );
 
     let updated = 0;
