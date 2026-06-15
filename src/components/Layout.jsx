@@ -114,7 +114,7 @@ export default function Layout() {
         )}
       </div>
 
-      <nav className="flex-1 py-4 px-2 space-y-1">
+      <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto overflow-x-hidden">
         {filtered.map((item) => {
           const active = location.pathname === item.href;
           if (item.children) {
