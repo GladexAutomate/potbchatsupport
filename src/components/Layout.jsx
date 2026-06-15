@@ -126,6 +126,17 @@ export default function Layout() {
         pageKey: `internal-${role}`
       });
     }
+    // Admins see all department tickets
+    if (role === 'super_admin' || role === 'admin') {
+      Object.entries(departmentRoutes).forEach(([dept, route]) => {
+        children.push({
+          label: `${departmentLabels[dept]} Tickets`,
+          href: route,
+          icon: Send,
+          pageKey: `internal-${dept}`
+        });
+      });
+    }
     if (role === 'tl_management' || role === 'super_admin' || role === 'admin') {
       children.push({
         label: 'Escalations',
