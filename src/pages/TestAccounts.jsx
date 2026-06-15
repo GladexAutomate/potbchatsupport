@@ -54,6 +54,13 @@ export default function TestAccounts() {
     setTimeout(() => setCopied(null), 2000);
   };
 
+  const handleCopyBoth = (account) => {
+    const formatted = `Emp Code : ${account.employee_code}\nPass : ${account.password}`;
+    navigator.clipboard.writeText(formatted);
+    setCopied(account.id + '_both');
+    setTimeout(() => setCopied(null), 2000);
+  };
+
   const handleToggleEnabled = async (account) => {
     setToggling(account.id);
     await base44.entities.TestAccount.update(account.id, { is_enabled: !account.is_enabled });
@@ -124,7 +131,7 @@ export default function TestAccounts() {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={() => handleCopy(`${account.employee_code}:${account.password}`, account.id + '_both')}
+                      onClick={() => handleCopyBoth(account)}
                       className="gap-1.5 w-full sm:w-auto"
                     >
                       {copied === account.id + '_both' ? (
