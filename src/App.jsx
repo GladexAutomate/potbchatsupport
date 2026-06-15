@@ -13,6 +13,7 @@ import TicketDetail from './pages/TicketDetail';
 import KPI from './pages/KPI';
 import ChatbotConfig from './pages/ChatbotConfig';
 import Settings from './pages/Settings';
+import TestAccounts from './pages/TestAccounts';
 import MyTickets from './pages/MyTickets';
 import UserManagement from './pages/UserManagement';
 import Customers from './pages/Customers';
@@ -59,6 +60,7 @@ const AuthenticatedApp = () => {
         <Route path="/kpi" element={<KPI />} />
         <Route path="/chatbot-config" element={<ChatbotConfig />} />
         <Route path="/settings" element={<Settings />} />
+        <Route path="/test-accounts" element={<TestAccounts />} />
         <Route path="/users" element={<UserManagement />} />
         <Route path="/role-permissions" element={<RolePermissions />} />
         <Route path="/customers" element={<Customers />} />

@@ -26,6 +26,7 @@ const navItems = [
   { label: 'Customers', href: '/customers', icon: UserCheck, pageKey: 'customers' },
   { label: 'Settings', href: '/settings', icon: Settings, pageKey: 'settings', children: [
     { label: 'SLA Settings', href: '/settings', icon: Settings, pageKey: 'settings' },
+    { label: 'Test Accounts', href: '/test-accounts', icon: Shield, pageKey: 'test-accounts' },
     { label: 'Chatbot Config', href: '/chatbot-config', icon: MessageSquare, pageKey: 'chatbot-config' },
     { label: 'Replying Center', href: '/replying-center', icon: MessageSquareText, pageKey: 'replying-center' },
     { label: 'Conversation Tags', href: '/conversation-tags', icon: Tag, pageKey: 'conversation-tags' },
@@ -96,7 +97,7 @@ export default function Layout() {
 
   const isCollapsed = collapsed && !hoverCollapsed;
 
-  const settingsOpen = ['/settings', '/chatbot-config', '/replying-center', '/conversation-tags'].includes(location.pathname);
+  const settingsOpen = ['/settings', '/test-accounts', '/chatbot-config', '/replying-center', '/conversation-tags'].includes(location.pathname);
   const [settingsExpanded, setSettingsExpanded] = useState(settingsOpen);
 
   const SidebarContent = () => (
