@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { useAuth } from '@/lib/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
@@ -9,12 +10,41 @@ import { TrendingDown, TrendingUp, Clock, AlertTriangle, CheckCircle } from 'luc
 const DEPARTMENTS = ['Sales', 'IT', 'Accounting', 'Sign-Ups', 'On-Boarding', 'Corp/Training', 'Admin', 'TL/Management'];
 const COLORS = ['#7C3AED','#2563EB','#D97706','#DC2626','#059669','#7C3AED','#DB2777','#0891B2'];
 
+const ROLE_TO_DEPT = {
+  it: 'IT',
+  sales: 'Sales',
+  accounting: 'Accounting',
+  sign_ups: 'Sign-Ups',
+  on_boarding: 'On-Boarding',
+  corp_training: 'Corp/Training',
+  tl_management: 'TL/Management',
+};
+
 export default function KPI() {
+  const { user } = useAuth();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('30');
 
+  const filterTicketsForUser = (allTickets) => {
+    if (!user) return [];
+    const role = user.role;
+    // L1 (CSR) and TL/Management see all tickets
+    if (['super_admin', 'admin', 'csr', 'tl_management'].includes(role)) return allTickets;
+
+    // L2 roles: only assigned to them, created by them, or in their assignment history
+    return allTickets.filter(t => {
+      const isAssignedToUser = t.assigned_to?.toLowerCase() === user.email?.toLowerCase();
+      const isCreatedByUser = t.created_by_id === user.id;
+      const hasAssignmentHistory = (t.dept_sla_log || []).some(log => 
+        log.department === ROLE_TO_DEPT[role]
+      );
+      return isAssignedToUser || isCreatedByUser || hasAssignmentHistory;
+    });
+  };
+
   useEffect(() => {
+    if (!user) return;
     Promise.all([
       base44.entities.Ticket.list('-created_date', 500),
       base44.entities.EmployeeAccount.list('', 500)
@@ -23,10 +53,12 @@ export default function KPI() {
         .filter(e => e.employee_code?.toUpperCase().startsWith('POTB'))
         .map(e => e.email?.toLowerCase())
       );
-      setTickets((ticketData || []).filter(t => potbEmails.has(t.assigned_to?.toLowerCase())));
+      const potbFiltered = (ticketData || []).filter(t => potbEmails.has(t.assigned_to?.toLowerCase()));
+      const userFiltered = filterTicketsForUser(potbFiltered);
+      setTickets(userFiltered);
       setLoading(false);
     }).catch(() => setLoading(false));
-  }, []);
+  }, [user]);
 
   const cutoff = new Date(Date.now() - parseInt(period) * 24 * 3600000);
   const filtered = tickets.filter(t => new Date(t.created_date) >= cutoff);

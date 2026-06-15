@@ -27,12 +27,18 @@ export default function VIPTickets() {
   const filterTicketsForUser = (allTickets) => {
     if (!user) return [];
     const role = user.role;
-    if (CSR_ROLES.includes(role)) return allTickets;
-    const dept = ROLE_TO_DEPT[role];
-    return allTickets.filter(t =>
-      t.assigned_to === user.email ||
-      (dept && t.department === dept)
-    );
+    // L1 (CSR) and TL/Management see all tickets
+    if (['super_admin', 'admin', 'csr', 'tl_management'].includes(role)) return allTickets;
+
+    // L2 roles: only assigned to them, created by them, or in their assignment history
+    return allTickets.filter(t => {
+      const isAssignedToUser = t.assigned_to?.toLowerCase() === user.email?.toLowerCase();
+      const isCreatedByUser = t.created_by_id === user.id;
+      const hasAssignmentHistory = (t.dept_sla_log || []).some(log => 
+        log.department === ROLE_TO_DEPT[role]
+      );
+      return isAssignedToUser || isCreatedByUser || hasAssignmentHistory;
+    });
   };
 
   useEffect(() => {
