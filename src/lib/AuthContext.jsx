@@ -83,6 +83,19 @@ export const AuthProvider = ({ children }) => {
       // Get fresh app params on each check
       const appParams = getAppParams();
       
+      // If appId is missing, we can't proceed
+      if (!appParams.appId) {
+        console.error('App ID not configured');
+        setAuthError({
+          type: 'config_error',
+          message: 'Application is not properly configured'
+        });
+        setIsLoadingPublicSettings(false);
+        setIsLoadingAuth(false);
+        setAuthChecked(true);
+        return;
+      }
+      
       // First, check app public settings (with token if available)
       // This will tell us if auth is required, user not registered, etc.
       const appClient = createAxiosClient({
