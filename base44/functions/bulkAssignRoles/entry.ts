@@ -22,7 +22,24 @@ Deno.serve(async (req) => {
     const user = await base44.auth.me();
     if (!user || user.role !== 'admin') return Response.json({ error: 'Unauthorized' }, { status: 403 });
 
+    const payload = await req.json().catch(() => ({}));
     const emps = await base44.asServiceRole.entities.EmployeeAccount.list('-created_date', 500);
+
+    // Clear roles from Non-POTB employees without portal access
+    if (payload.clear_non_potb) {
+      const toClear = emps.filter(e =>
+        e.current_role &&
+        !e.employee_code?.toUpperCase().startsWith('POTB') &&
+        !e.portal_access_granted
+      );
+      let cleared = 0;
+      for (const emp of toClear) {
+        await base44.asServiceRole.entities.EmployeeAccount.update(emp.id, { current_role: null });
+        cleared++;
+        await sleep(300);
+      }
+      return Response.json({ success: true, cleared, total: toClear.length });
+    }
 
     const toUpdate = emps.filter(e =>
       !e.current_role &&
