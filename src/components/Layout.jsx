@@ -21,7 +21,6 @@ const navItems = [
   { label: 'KPI & SLA', href: '/kpi', icon: BarChart2, roles: ['admin', 'csr', 'tl_management'] },
   { label: 'Staff Ratings', href: '/staff-ratings', icon: Star, roles: ['admin', 'tl_management'] },
   { label: 'User Management', href: '/users', icon: Users, roles: ['admin'] },
-  { label: 'Manage Roles', href: '/manage-roles', icon: Shield, roles: ['admin'] },
   { label: 'Role Permissions', href: '/role-permissions', icon: Lock, roles: ['admin'] },
   { label: 'Customers', href: '/customers', icon: UserCheck, roles: ['admin'] },
   { label: 'Settings', href: '/settings', icon: Settings, roles: ['admin'], children: [

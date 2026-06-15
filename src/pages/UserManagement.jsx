@@ -1,17 +1,17 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Search, Users, Shield, Loader2, UserPlus, RefreshCw, Briefcase, BadgeCheck, Ban, Unlock, ToggleLeft, ToggleRight, Edit2 } from 'lucide-react';
+import { Search, Users, Shield, Loader2, UserPlus, RefreshCw, Briefcase, BadgeCheck, Ban, Unlock, ToggleLeft, ToggleRight, ShieldCheck, Save } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 const STAFF_ROLES = ['csr', 'it', 'sales', 'accounting', 'sign_ups', 'on_boarding', 'corp_training', 'admin', 'tl_management'];
-const ALL_ROLES = ['customer', ...STAFF_ROLES];
+const EDITABLE_ROLES = ['customer', ...STAFF_ROLES];
 
 const ROLE_LABEL = {
   customer: 'Customer',
@@ -39,46 +39,20 @@ const ROLE_COLOR = {
   tl_management: 'bg-red-500/10 text-red-400 border-red-500/20',
 };
 
-const DEPT_MAP = {
-  csr: 'CSR/L1',
-  it: 'IT',
-  sales: 'Sales',
-  accounting: 'Accounting',
-  sign_ups: 'Sign-Ups',
-  on_boarding: 'On-Boarding',
-  corp_training: 'Corp/Training',
-  admin: 'Admin',
-  tl_management: 'TL/Management',
+const suggestRole = (jobTitle) => {
+  if (!jobTitle) return null;
+  const title = jobTitle.toLowerCase();
+  if (title.includes('csr') || title.includes('support')) return 'csr';
+  if (title.includes('it') || title.includes('tech') || title.includes('developer')) return 'it';
+  if (title.includes('sales')) return 'sales';
+  if (title.includes('accounting') || title.includes('finance')) return 'accounting';
+  if (title.includes('sign') || title.includes('signup')) return 'sign_ups';
+  if (title.includes('onboard') || title.includes('on-board')) return 'on_boarding';
+  if (title.includes('training') || title.includes('coach')) return 'corp_training';
+  if (title.includes('manager') || title.includes('lead') || title.includes('tl')) return 'tl_management';
+  if (title.includes('admin')) return 'admin';
+  return null;
 };
-
-function UserRow({ u, onEdit }) {
-  return (
-    <div className="flex items-center gap-4 px-5 py-3.5 hover:bg-muted/20 transition-colors">
-      <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-        <span className="text-sm font-semibold text-primary">{(u.full_name || u.email)?.[0]?.toUpperCase()}</span>
-      </div>
-      <div className="flex-1 min-w-0">
-        <p className="text-sm font-medium text-foreground truncate">{u.full_name || '—'}</p>
-        <p className="text-xs text-muted-foreground truncate">{u.email}</p>
-      </div>
-      <div className="hidden sm:flex items-center gap-2">
-        {u.department && <span className="text-xs text-muted-foreground">{u.department}</span>}
-        <Badge className={`text-xs border ${ROLE_COLOR[u.role] || 'bg-muted text-muted-foreground'}`}>
-          {ROLE_LABEL[u.role] || u.role}
-        </Badge>
-        {u.is_active === false && (
-          <Badge variant="outline" className="text-xs text-red-400 border-red-400/30">Inactive</Badge>
-        )}
-      </div>
-      <span className="text-xs text-muted-foreground hidden md:block">
-        {u.created_date ? formatDistanceToNow(new Date(u.created_date), { addSuffix: true }) : ''}
-      </span>
-      <Button variant="ghost" size="icon" className="flex-shrink-0" onClick={onEdit}>
-        <Edit2 className="w-4 h-4" />
-      </Button>
-    </div>
-  );
-}
 
 const EMP_TABS = [
   { key: 'all', label: 'All' },
@@ -89,7 +63,6 @@ const EMP_TABS = [
 ];
 
 export default function UserManagement() {
-  const [users, setUsers] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
@@ -100,14 +73,12 @@ export default function UserManagement() {
   const [inviteRole, setInviteRole] = useState('csr');
   const [inviting, setInviting] = useState(false);
   const [actionLoading, setActionLoading] = useState(null);
+  const [roleEditItem, setRoleEditItem] = useState(null);
+  const [roleSaving, setRoleSaving] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
-    const [userData, empData] = await Promise.all([
-      base44.entities.User.list('-created_date', 200),
-      base44.entities.EmployeeAccount.list('-created_date', 500),
-    ]);
-    setUsers(userData || []);
+    const empData = await base44.entities.EmployeeAccount.list('-created_date', 500);
     setEmployees(empData || []);
     setLoading(false);
   };
@@ -121,17 +92,6 @@ export default function UserManagement() {
     setSyncing(false);
   };
 
-  // Build email → employee map for cross-reference
-  const empByEmail = {};
-  for (const e of employees) {
-    if (e.email) empByEmail[e.email.toLowerCase()] = e;
-  }
-
-  const matchesSearch = (u) =>
-    !search
-    || u.email?.toLowerCase().includes(search.toLowerCase())
-    || u.full_name?.toLowerCase().includes(search.toLowerCase());
-
   const filteredEmployees = employees.filter(e => {
     if (e.email?.toLowerCase() === 'automate@gladextours.com') return false;
     const isPotb = e.employee_code?.toUpperCase().startsWith('POTB');
@@ -140,8 +100,6 @@ export default function UserManagement() {
     else if (empTab === 'inactive') { if (isBlocked || !isPotb || e.status !== 'inactive') return false; }
     else if (empTab === 'non_potb') { if (isPotb) return false; }
     else if (empTab === 'blocked') { if (!isBlocked) return false; }
-    // 'all' tab: show everything (no code filter)
-    else { /* all */ }
     return !search
       || e.email?.toLowerCase().includes(search.toLowerCase())
       || e.full_name?.toLowerCase().includes(search.toLowerCase())
@@ -163,6 +121,32 @@ export default function UserManagement() {
     await base44.entities.EmployeeAccount.update(emp.id, { portal_access_granted: newAccess });
     setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, portal_access_granted: newAccess } : e));
     setActionLoading(null);
+  };
+
+  const handleOpenRoleEdit = (emp) => {
+    const suggested = suggestRole(emp.job_title);
+    setRoleEditItem({ ...emp, _selectedRole: emp.current_role || suggested || 'csr', _suggested: suggested });
+  };
+
+  const handleSaveRole = async () => {
+    if (!roleEditItem || !roleEditItem._selectedRole) return;
+    setRoleSaving(true);
+    await base44.entities.EmployeeAccount.update(roleEditItem.id, { current_role: roleEditItem._selectedRole });
+    setEmployees(prev => prev.map(e => e.id === roleEditItem.id ? { ...e, current_role: roleEditItem._selectedRole } : e));
+    // If user exists, update their role and trigger re-login
+    try {
+      const users = await base44.entities.User.filter({ email: roleEditItem.email });
+      if (users && users.length > 0) {
+        await base44.entities.User.update(users[0].id, { role: roleEditItem._selectedRole });
+        await base44.functions.invoke('logoutUserByEmail', { target_email: roleEditItem.email });
+      } else {
+        await base44.users.inviteUser(roleEditItem.email, roleEditItem._selectedRole);
+      }
+    } catch (err) {
+      console.warn('Role user update error:', err);
+    }
+    setRoleSaving(false);
+    setRoleEditItem(null);
   };
 
   const empTabCounts = {
@@ -200,7 +184,7 @@ export default function UserManagement() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-2 gap-4 mb-6">
+      <div className="grid grid-cols-2 gap-4 mb-6">
         {[
           { label: 'Total Employees', value: employees.length, icon: Users, color: 'text-primary' },
           { label: 'Active Staff', value: activeEmpCount, icon: Shield, color: 'text-blue-400' },
@@ -261,39 +245,46 @@ export default function UserManagement() {
 
         <Card className="border-border/50">
           <CardContent className="p-0">
-          {/* Column Headers */}
-          <div className="hidden sm:grid grid-cols-[2.25rem_1fr_8rem_5rem_1fr_5rem_5rem] gap-x-3 px-5 py-2 border-b border-border/50 bg-muted/30">
-            <div />
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name / Email</span>
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Emp. Code</span>
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</span>
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Job Title</span>
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Access</span>
-            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Actions</span>
-          </div>
-          {loading ? (
-            <div className="p-8 text-center text-muted-foreground text-sm">Loading...</div>
-          ) : filteredEmployees.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground text-sm">No records in this category.</div>
-          ) : (
-            <div className="divide-y divide-border/50">
-              {filteredEmployees.map(emp => {
-                  const appUser = empByEmail[emp.email?.toLowerCase()];
+            {/* Column Headers */}
+            <div className="hidden sm:grid grid-cols-[2.25rem_1fr_8rem_5rem_1fr_5rem_6rem] gap-x-3 px-5 py-2 border-b border-border/50 bg-muted/30">
+              <div />
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name / Email</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Emp. Code</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Job Title</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Access</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Actions</span>
+            </div>
+            {loading ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">Loading...</div>
+            ) : filteredEmployees.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground text-sm">No records in this category.</div>
+            ) : (
+              <div className="divide-y divide-border/50">
+                {filteredEmployees.map(emp => {
                   const isPotb = emp.employee_code?.toUpperCase().startsWith('POTB');
                   const isBlocked = !!emp.is_blocked;
                   const blockLoading = actionLoading === emp.id + '_block';
                   const accessLoading = actionLoading === emp.id + '_access';
+
+                  // Show manage role button:
+                  // - POTB: only when active tab (active status, not blocked)
+                  // - Non-POTB: only when portal_access_granted is ON
+                  const showRoleBtn = isPotb
+                    ? (!isBlocked && emp.status === 'active')
+                    : (!isBlocked && !!emp.portal_access_granted);
+
                   return (
-                    <div key={emp.id} className={`hidden sm:grid grid-cols-[2.25rem_1fr_8rem_5rem_1fr_5rem_5rem] gap-x-3 items-center px-5 py-3.5 transition-colors ${isBlocked ? 'bg-red-500/5 hover:bg-red-500/10' : 'hover:bg-muted/20'}`}>
+                    <div key={emp.id} className={`hidden sm:grid grid-cols-[2.25rem_1fr_8rem_5rem_1fr_5rem_6rem] gap-x-3 items-center px-5 py-3.5 transition-colors ${isBlocked ? 'bg-red-500/5 hover:bg-red-500/10' : 'hover:bg-muted/20'}`}>
                       <div className={`w-9 h-9 rounded-full flex items-center justify-center ${isBlocked ? 'bg-red-500/10' : 'bg-primary/10'}`}>
                         <span className={`text-sm font-semibold ${isBlocked ? 'text-red-400' : 'text-primary'}`}>{emp.full_name?.[0]?.toUpperCase() || '?'}</span>
                       </div>
                       <div className="min-w-0">
                         <p className="text-sm font-medium text-foreground truncate">{emp.full_name || '—'}</p>
                         <p className="text-xs text-muted-foreground truncate">{emp.email}</p>
-                        {appUser && (
-                          <span className="text-xs flex items-center gap-1 text-primary mt-0.5">
-                            <BadgeCheck className="w-3 h-3" /> App User
+                        {emp.current_role && (
+                          <span className={`text-xs border rounded px-1.5 py-0.5 mt-0.5 inline-block ${ROLE_COLOR[emp.current_role] || 'bg-muted text-muted-foreground'}`}>
+                            {ROLE_LABEL[emp.current_role] || emp.current_role}
                           </span>
                         )}
                       </div>
@@ -325,8 +316,8 @@ export default function UserManagement() {
                           </button>
                         )}
                       </span>
-                      {/* Block / Unblock action */}
-                      <span>
+                      {/* Actions: Block/Unblock + Manage Role */}
+                      <span className="flex items-center gap-1.5 flex-wrap">
                         <button
                           onClick={() => handleBlockToggle(emp)}
                           disabled={!!blockLoading}
@@ -342,6 +333,16 @@ export default function UserManagement() {
                           }
                           {isBlocked ? 'Unblock' : 'Block'}
                         </button>
+                        {showRoleBtn && (
+                          <button
+                            onClick={() => handleOpenRoleEdit(emp)}
+                            title="Manage role"
+                            className="flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
+                          >
+                            <ShieldCheck className="w-3 h-3" />
+                            Role
+                          </button>
+                        )}
                       </span>
                     </div>
                   );
@@ -351,6 +352,56 @@ export default function UserManagement() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Manage Role Modal */}
+      {roleEditItem && (
+        <Dialog open onOpenChange={() => setRoleEditItem(null)}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle>Assign User Role</DialogTitle>
+              <div className="mt-2 space-y-1">
+                <p className="text-sm font-medium">{roleEditItem.full_name}</p>
+                <p className="text-xs text-muted-foreground">{roleEditItem.email}</p>
+                <p className="text-xs text-muted-foreground">Code: {roleEditItem.employee_code || 'N/A'}</p>
+                <p className="text-xs text-muted-foreground">{roleEditItem.job_title || 'N/A'}</p>
+              </div>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Role</Label>
+                <Select value={roleEditItem._selectedRole || ''} onValueChange={v => setRoleEditItem(item => ({ ...item, _selectedRole: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Select a role" /></SelectTrigger>
+                  <SelectContent>
+                    {EDITABLE_ROLES.map(r => (
+                      <SelectItem key={r} value={r}>{ROLE_LABEL[r]}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              {roleEditItem._suggested && roleEditItem._suggested !== roleEditItem._selectedRole && (
+                <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg">
+                  <p className="text-xs font-medium text-blue-600 mb-2">Auto-suggested based on job title:</p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setRoleEditItem(item => ({ ...item, _selectedRole: item._suggested }))}
+                    className="w-full text-xs border-blue-500/30 text-blue-600 hover:bg-blue-500/10"
+                  >
+                    Use: {ROLE_LABEL[roleEditItem._suggested]}
+                  </Button>
+                </div>
+              )}
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setRoleEditItem(null)}>Cancel</Button>
+              <Button onClick={handleSaveRole} disabled={roleSaving} className="gap-2">
+                {roleSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+                Save Role
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
 
       {/* Invite Staff Modal */}
       {inviteOpen && (
