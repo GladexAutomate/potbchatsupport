@@ -24,7 +24,7 @@ export default function Tickets() {
   const [tickets, setTickets] = useState([]);
   const [vipEmails, setVipEmails] = useState(new Set());
   const [loading, setLoading] = useState(true);
-  const autoOpenId = new URLSearchParams(location.search).get('open');
+  const autoOpenId = new URLSearchParams(location.search).get('openTicket');
 
   const filterTicketsForUser = (allTickets) => {
     if (!user) return [];
