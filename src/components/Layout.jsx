@@ -13,21 +13,22 @@ import { cn } from '@/lib/utils';
 
 const STAFF_ROLES = ['super_admin', 'admin', 'csr', 'sales', 'accounting', 'sign_ups', 'on_boarding', 'corp_training', 'tl_management'];
 
+// All nav items — visibility driven by Permission entity, not hardcoded roles
 const navItems = [
-  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, roles: STAFF_ROLES },
-  { label: 'Tickets', href: '/tickets', icon: Ticket, roles: STAFF_ROLES },
-  { label: 'VIP Tickets', href: '/vip-tickets', icon: Crown, roles: STAFF_ROLES },
-  { label: 'Group Chat', href: '/group-chat', icon: MessagesSquare, roles: STAFF_ROLES, badge: true },
-  { label: 'KPI & SLA', href: '/kpi', icon: BarChart2, roles: ['admin', 'csr', 'tl_management'] },
-  { label: 'Staff Ratings', href: '/staff-ratings', icon: Star, roles: ['admin', 'tl_management'] },
-  { label: 'User Management', href: '/users', icon: Users, roles: ['admin'] },
-  { label: 'Role Permissions', href: '/role-permissions', icon: Lock, roles: ['admin'] },
-  { label: 'Customers', href: '/customers', icon: UserCheck, roles: ['admin'] },
-  { label: 'Settings', href: '/settings', icon: Settings, roles: ['admin'], children: [
-    { label: 'SLA Settings', href: '/settings', icon: Settings },
-    { label: 'Chatbot Config', href: '/chatbot-config', icon: MessageSquare },
-    { label: 'Replying Center', href: '/replying-center', icon: MessageSquareText },
-    { label: 'Conversation Tags', href: '/conversation-tags', icon: Tag },
+  { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard, pageKey: 'dashboard' },
+  { label: 'Tickets', href: '/tickets', icon: Ticket, pageKey: 'tickets' },
+  { label: 'VIP Tickets', href: '/vip-tickets', icon: Crown, pageKey: 'vip-tickets' },
+  { label: 'Group Chat', href: '/group-chat', icon: MessagesSquare, pageKey: 'group-chat', badge: true },
+  { label: 'KPI & SLA', href: '/kpi', icon: BarChart2, pageKey: 'kpi' },
+  { label: 'Staff Ratings', href: '/staff-ratings', icon: Star, pageKey: 'staff-ratings' },
+  { label: 'User Management', href: '/users', icon: Users, pageKey: 'users' },
+  { label: 'Role Permissions', href: '/role-permissions', icon: Lock, pageKey: 'manage-roles' },
+  { label: 'Customers', href: '/customers', icon: UserCheck, pageKey: 'customers' },
+  { label: 'Settings', href: '/settings', icon: Settings, pageKey: 'settings', children: [
+    { label: 'SLA Settings', href: '/settings', icon: Settings, pageKey: 'settings' },
+    { label: 'Chatbot Config', href: '/chatbot-config', icon: MessageSquare, pageKey: 'chatbot-config' },
+    { label: 'Replying Center', href: '/replying-center', icon: MessageSquareText, pageKey: 'replying-center' },
+    { label: 'Conversation Tags', href: '/conversation-tags', icon: Tag, pageKey: 'conversation-tags' },
   ]},
 ];
 
@@ -36,9 +37,13 @@ export default function Layout() {
   const [hoverCollapsed, setHoverCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [groupChatUnread, setGroupChatUnread] = useState(0);
+  const [permissions, setPermissions] = useState([]);
   const location = useLocation();
   const { user } = useAuth();
   const navigate = useNavigate();
+
+  const role = user?.role || 'customer';
+  const isSuperAdmin = role === 'super_admin';
 
   useEffect(() => {
     if (!user) return;
@@ -53,14 +58,18 @@ export default function Layout() {
     return () => unsub();
   }, [user]);
 
+  // Load permissions for this role
+  useEffect(() => {
+    if (!user || isSuperAdmin) return;
+    base44.entities.Permission.filter({ role, resource_type: 'page' }).then(setPermissions).catch(() => {});
+  }, [user, role]);
+
   // Clear badge when on group chat page
   useEffect(() => {
     if (location.pathname === '/group-chat') {
       setGroupChatUnread(0);
     }
   }, [location.pathname]);
-
-  const role = user?.role || 'customer';
 
   // Only staff roles can access the staff portal — redirect everyone else
   useEffect(() => {
@@ -69,7 +78,19 @@ export default function Layout() {
     }
   }, [user, role]);
 
-  const filtered = navItems.filter(n => n.roles.includes(role));
+  const hasPageAccess = (pageKey) => {
+    if (isSuperAdmin) return true;
+    const perm = permissions.find(p => p.resource_name === pageKey);
+    return perm?.has_access === true;
+  };
+
+  const filtered = navItems
+    .filter(n => hasPageAccess(n.pageKey))
+    .map(n => n.children
+      ? { ...n, children: n.children.filter(c => hasPageAccess(c.pageKey)) }
+      : n
+    )
+    .filter(n => !n.children || n.children.length > 0);
 
   const handleLogout = () => base44.auth.logout('/');
 
