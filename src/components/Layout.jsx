@@ -126,8 +126,8 @@ export default function Layout() {
         pageKey: `internal-${role}`
       });
     }
-    // Admins see all department tickets
-    if (role === 'super_admin' || role === 'admin') {
+    // Super admins see all department tickets
+    if (role === 'super_admin') {
       Object.entries(departmentRoutes).forEach(([dept, route]) => {
         children.push({
           label: `${departmentLabels[dept]} Tickets`,
@@ -137,7 +137,7 @@ export default function Layout() {
         });
       });
     }
-    if (role === 'tl_management' || role === 'super_admin' || role === 'admin') {
+    if (role === 'tl_management' || role === 'super_admin') {
       children.push({
         label: 'Escalations',
         href: '/internal-escalations',
