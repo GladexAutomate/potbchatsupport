@@ -21,6 +21,7 @@ import RolePermissions from './pages/RolePermissions';
 import ReplyingCenter from './pages/ReplyingCenter';
 import ConversationTags from './pages/ConversationTags';
 import SubmitTicket from './pages/SubmitTicket';
+import SubmitInternalTicket from './pages/SubmitInternalTicket';
 import StaffRatings from './pages/StaffRatings';
 import GroupChat from './pages/GroupChat';
 import VIPTickets from './pages/VIPTickets';
@@ -73,6 +74,7 @@ const AuthenticatedApp = () => {
       <Route path="/" element={<CustomerPortal />} />
       <Route path="/my-tickets" element={<MyTickets />} />
       <Route path="/submit-ticket" element={<SubmitTicket />} />
+      <Route path="/submit-internal-ticket" element={<SubmitInternalTicket />} />
 
       {/* Staff portal with layout - role-gated in Layout */}
       <Route element={<Layout />}>
