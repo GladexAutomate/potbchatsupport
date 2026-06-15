@@ -1,42 +1,46 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Loader2, AlertCircle } from 'lucide-react';
+import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, ChevronLeft } from 'lucide-react';
+import { formatDistanceToNow } from 'date-fns';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useAuth } from '@/lib/AuthContext';
 
-const statusColors = {
-  'Open': 'bg-blue-500/20 text-blue-300',
-  'In Progress': 'bg-purple-500/20 text-purple-300',
-  'Pending': 'bg-yellow-500/20 text-yellow-300',
-  'Resolved': 'bg-green-500/20 text-green-300',
-  'Closed': 'bg-gray-500/20 text-gray-300'
+const STATUS_COLOR = {
+  'Open': 'bg-blue-500/10 text-blue-400 border-blue-500/20',
+  'In Progress': 'bg-amber-500/10 text-amber-400 border-amber-500/20',
+  'Pending': 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+  'Resolved': 'bg-green-500/10 text-green-400 border-green-500/20',
+  'Closed': 'bg-slate-500/10 text-slate-400 border-slate-500/20'
 };
 
-const priorityColors = {
-  'Low': 'bg-blue-500/20 text-blue-300',
-  'Medium': 'bg-yellow-500/20 text-yellow-300',
-  'High': 'bg-orange-500/20 text-orange-300',
-  'Critical': 'bg-red-500/20 text-red-300'
+const PRIORITY_COLOR = {
+  'Low': 'bg-slate-500/10 text-slate-400',
+  'Medium': 'bg-blue-500/10 text-blue-400',
+  'High': 'bg-amber-500/10 text-amber-400',
+  'Critical': 'bg-red-500/10 text-red-500'
 };
 
-const departmentOptions = [
-  'Sales', 'IT', 'Accounting', 'Sign-Ups', 'On-Boarding', 'Corp/Training', 'Admin', 'TL/Management'
-];
+const departmentList = ['Sales', 'IT', 'Accounting', 'Sign-Ups', 'On-Boarding', 'Corp/Training', 'Admin', 'TL/Management'];
 
 export default function InternalTicketsBase({ userDepartment }) {
+  const { user } = useAuth();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [user, setUser] = useState(null);
-  const [openDialog, setOpenDialog] = useState(false);
-  const [creating, setCreating] = useState(false);
-  const [form, setForm] = useState({ to_department: '', subject: '', description: '', priority: 'Medium' });
-  const [error, setError] = useState('');
+  const [selectedTicket, setSelectedTicket] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState('');
+  const [sending, setSending] = useState(false);
+  const [attachments, setAttachments] = useState([]);
+  const [uploading, setUploading] = useState(false);
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState('All');
+  const fileInputRef = useRef(null);
+  const messagesEndRef = useRef(null);
 
   useEffect(() => {
     loadData();
@@ -44,10 +48,6 @@ export default function InternalTicketsBase({ userDepartment }) {
 
   const loadData = async () => {
     try {
-      const currentUser = await base44.auth.me();
-      setUser(currentUser);
-
-      // Load tickets created by OR assigned to this user's department
       const created = await base44.entities.InternalTicket.filter({ from_department: userDepartment });
       const assigned = await base44.entities.InternalTicket.filter({ to_department: userDepartment });
       
@@ -56,199 +56,250 @@ export default function InternalTicketsBase({ userDepartment }) {
       setTickets(uniqueTickets.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)));
     } catch (err) {
       console.error('Error loading tickets:', err);
-      setError('Failed to load tickets');
     } finally {
       setLoading(false);
     }
   };
 
-  const generateTicketNumber = () => {
-    const now = new Date();
-    return `INT-${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}${String(now.getDate()).padStart(2, '0')}-${Math.floor(Math.random() * 9000 + 1000)}`;
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
+  const handleSelectTicket = (ticket) => {
+    setSelectedTicket(ticket);
+    setMessages([]);
+    setNewMessage('');
+    setAttachments([]);
   };
 
-  const handleCreate = async () => {
-    if (!form.to_department || !form.subject || !form.description) {
-      setError('Please fill in all required fields');
-      return;
+  const handleFileUpload = async (files) => {
+    const remaining = 5 - attachments.length;
+    const toUpload = Array.from(files).slice(0, remaining);
+    if (!toUpload.length) return;
+    setUploading(true);
+    for (const file of toUpload) {
+      const { file_url } = await base44.integrations.Core.UploadFile({ file });
+      setAttachments(prev => [...prev, { name: file.name, url: file_url }]);
     }
-
-    setCreating(true);
-    try {
-      await base44.entities.InternalTicket.create({
-        ticket_number: generateTicketNumber(),
-        from_department: userDepartment,
-        to_department: form.to_department,
-        subject: form.subject,
-        description: form.description,
-        priority: form.priority,
-        status: 'Open',
-        created_by_email: user?.email || '',
-        created_by_name: user?.full_name || '',
-        escalated: false
-      });
-
-      setForm({ to_department: '', subject: '', description: '', priority: 'Medium' });
-      setOpenDialog(false);
-      setError('');
-      await loadData();
-    } catch (err) {
-      console.error('Error creating ticket:', err);
-      setError('Failed to create ticket');
-    } finally {
-      setCreating(false);
-    }
+    setUploading(false);
   };
 
-  if (loading) {
-    return (
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
+  const handleSend = async () => {
+    if (!newMessage.trim() && attachments.length === 0) return;
+    setSending(true);
+    await base44.entities.InternalTicket.update(selectedTicket.id, {
+      notes: (selectedTicket.notes ? selectedTicket.notes + '\n\n' : '') + 
+             `[${new Date().toLocaleString()}] ${user?.full_name}: ${newMessage.trim()}`
+    });
+    setSelectedTicket(prev => ({
+      ...prev,
+      notes: (prev.notes ? prev.notes + '\n\n' : '') + 
+             `[${new Date().toLocaleString()}] ${user?.full_name}: ${newMessage.trim()}`
+    }));
+    setNewMessage('');
+    setAttachments([]);
+    await loadData();
+    setSending(false);
+  };
 
-  const createdTickets = tickets.filter(t => t.from_department === userDepartment);
-  const assignedTickets = tickets.filter(t => t.to_department === userDepartment);
+  const filteredTickets = tickets.filter(t => {
+    const matchSearch = !search
+      || t.subject?.toLowerCase().includes(search.toLowerCase())
+      || t.ticket_number?.toLowerCase().includes(search.toLowerCase());
+    const matchStatus = statusFilter === 'All' || t.status === statusFilter;
+    return matchSearch && matchStatus;
+  });
+
+  const createdTickets = filteredTickets.filter(t => t.from_department === userDepartment);
+  const assignedTickets = filteredTickets.filter(t => t.to_department === userDepartment);
+
+  const isImageUrl = (url) => /\.(png|jpg|jpeg|gif|webp)(\?|$)/i.test(url);
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Internal Tickets - {userDepartment}</h1>
-          <p className="text-muted-foreground text-sm">Manage internal requests with other departments</p>
+    <div className="flex flex-1 bg-background rounded-xl border border-border/50 overflow-hidden h-screen">
+      {/* LEFT PANEL - Ticket List */}
+      <div className={`flex flex-col border-r border-border/50 bg-card ${selectedTicket ? 'hidden md:flex' : 'flex'} w-full md:w-80 lg:w-96 flex-shrink-0`}>
+        {/* Header */}
+        <div className="p-4 border-b border-border/50">
+          <h2 className="font-sora font-bold text-lg mb-3">Internal Tickets</h2>
+          <div className="relative mb-2">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-8 text-sm" />
+          </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Status" /></SelectTrigger>
+            <SelectContent>
+              {['All', 'Open', 'In Progress', 'Pending', 'Resolved', 'Closed'].map(s => (
+                <SelectItem key={s} value={s}>{s}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        <Dialog open={openDialog} onOpenChange={setOpenDialog}>
-          <DialogTrigger asChild>
-            <Button className="gap-2">
-              <Plus className="w-4 h-4" /> New Ticket
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Create Internal Ticket</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4">
-              {error && (
-                <div className="flex items-center gap-2 bg-destructive/10 border border-destructive/30 rounded p-3 text-sm text-destructive">
-                  <AlertCircle className="w-4 h-4" />
-                  {error}
+
+        {/* Ticket List */}
+        <div className="flex-1 overflow-y-auto">
+          {loading ? (
+            <div className="p-8 text-center text-muted-foreground text-sm">Loading...</div>
+          ) : createdTickets.length === 0 && assignedTickets.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground text-sm">No tickets found</div>
+          ) : (
+            <>
+              {createdTickets.length > 0 && (
+                <>
+                  <div className="px-4 py-2 bg-muted/50 border-b border-border/30">
+                    <span className="text-xs font-semibold text-muted-foreground">Created by {userDepartment}</span>
+                  </div>
+                  {createdTickets.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => handleSelectTicket(t)}
+                      className={`w-full text-left px-4 py-3 border-b border-border/30 hover:bg-muted/50 transition-colors ${
+                        selectedTicket?.id === t.id ? 'bg-primary/10' : ''
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <div className="font-mono text-xs text-muted-foreground">{t.ticket_number}</div>
+                        <Badge className={`text-xs border ${STATUS_COLOR[t.status]}`}>{t.status}</Badge>
+                      </div>
+                      <p className="text-sm font-medium text-foreground truncate">{t.subject}</p>
+                      <p className="text-xs text-muted-foreground mt-1">→ {t.to_department}</p>
+                    </button>
+                  ))}
+                </>
+              )}
+              {assignedTickets.length > 0 && (
+                <>
+                  <div className="px-4 py-2 bg-muted/50 border-b border-border/30">
+                    <span className="text-xs font-semibold text-muted-foreground">Assigned to {userDepartment}</span>
+                  </div>
+                  {assignedTickets.map(t => (
+                    <button
+                      key={t.id}
+                      onClick={() => handleSelectTicket(t)}
+                      className={`w-full text-left px-4 py-3 border-b border-border/30 hover:bg-muted/50 transition-colors ${
+                        selectedTicket?.id === t.id ? 'bg-primary/10' : ''
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2 mb-1">
+                        <div className="font-mono text-xs text-muted-foreground">{t.ticket_number}</div>
+                        <Badge className={`text-xs border ${STATUS_COLOR[t.status]}`}>{t.status}</Badge>
+                      </div>
+                      <p className="text-sm font-medium text-foreground truncate">{t.subject}</p>
+                      <p className="text-xs text-muted-foreground mt-1">← from {t.from_department}</p>
+                    </button>
+                  ))}
+                </>
+              )}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* RIGHT PANEL - Chat */}
+      <div className={`flex-1 flex flex-col min-w-0 ${selectedTicket ? 'flex' : 'hidden md:flex'}`}>
+        {!selectedTicket ? (
+          <div className="flex-1 flex flex-col items-center justify-center text-center p-8 text-muted-foreground">
+            <MessageSquare className="w-12 h-12 mb-3 opacity-30" />
+            <p className="font-medium">Select a ticket to view details</p>
+          </div>
+        ) : (
+          <>
+            {/* Header */}
+            <div className="px-5 py-3.5 border-b border-border/50 bg-card flex items-center gap-3">
+              <button className="md:hidden mr-1 text-muted-foreground" onClick={() => setSelectedTicket(null)}>
+                <ChevronLeft className="w-5 h-5" />
+              </button>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 bg-primary/10 text-primary">
+                <MessageSquare className="w-5 h-5" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2">
+                  <h3 className="font-semibold text-sm truncate">{selectedTicket.ticket_number}</h3>
+                  <Badge className={`text-xs border ${STATUS_COLOR[selectedTicket.status]}`}>{selectedTicket.status}</Badge>
+                  <Badge className={`text-xs border ${PRIORITY_COLOR[selectedTicket.priority]}`}>{selectedTicket.priority}</Badge>
+                </div>
+                <p className="text-xs text-muted-foreground truncate">{selectedTicket.subject}</p>
+              </div>
+            </div>
+
+            {/* Details Card */}
+            <div className="px-5 py-3 bg-muted/10 border-b border-border/30">
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <p className="text-muted-foreground mb-0.5">From</p>
+                  <p className="font-semibold">{selectedTicket.from_department}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground mb-0.5">To</p>
+                  <p className="font-semibold">{selectedTicket.to_department}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground mb-0.5">Created by</p>
+                  <p className="font-semibold">{selectedTicket.created_by_name}</p>
+                </div>
+                <div>
+                  <p className="text-muted-foreground mb-0.5">Date</p>
+                  <p className="font-semibold">{formatDistanceToNow(new Date(selectedTicket.created_date), { addSuffix: true })}</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Description */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+              <div>
+                <p className="text-xs text-muted-foreground mb-2">Description</p>
+                <p className="text-sm text-foreground whitespace-pre-wrap">{selectedTicket.description}</p>
+              </div>
+
+              {selectedTicket.notes && (
+                <div>
+                  <p className="text-xs text-muted-foreground mb-2">Internal Notes</p>
+                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+                    <p className="text-xs text-amber-900 dark:text-amber-200 whitespace-pre-wrap font-mono">{selectedTicket.notes}</p>
+                  </div>
                 </div>
               )}
-              <div className="space-y-2">
-                <Label>To Department *</Label>
-                <Select value={form.to_department} onValueChange={(val) => setForm({ ...form, to_department: val })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select department" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departmentOptions.filter(d => d !== userDepartment).map(dept => (
-                      <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+
+              <div ref={messagesEndRef} />
+            </div>
+
+            {/* Attachment preview */}
+            {attachments.length > 0 && (
+              <div className="px-4 pb-2 pt-2 flex gap-2 flex-wrap border-t bg-card">
+                {attachments.map((att, i) => (
+                  <div key={i} className="flex items-center gap-1.5 bg-muted rounded-lg px-2.5 py-1.5">
+                    <FileText className="w-3 h-3 text-primary" />
+                    <span className="text-xs max-w-[100px] truncate">{att.name}</span>
+                    <button onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}>
+                      <X className="w-3 h-3 text-muted-foreground hover:text-foreground" />
+                    </button>
+                  </div>
+                ))}
               </div>
-              <div className="space-y-2">
-                <Label>Subject *</Label>
-                <Input placeholder="Ticket subject" value={form.subject}
-                  onChange={e => setForm({ ...form, subject: e.target.value })} />
-              </div>
-              <div className="space-y-2">
-                <Label>Description *</Label>
-                <Textarea placeholder="Describe your request..." value={form.description}
-                  onChange={e => setForm({ ...form, description: e.target.value })} className="min-h-24" />
-              </div>
-              <div className="space-y-2">
-                <Label>Priority</Label>
-                <Select value={form.priority} onValueChange={(val) => setForm({ ...form, priority: val })}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {['Low', 'Medium', 'High', 'Critical'].map(p => (
-                      <SelectItem key={p} value={p}>{p}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button onClick={handleCreate} disabled={creating} className="w-full">
-                {creating ? <>
-                  <Loader2 className="w-4 h-4 mr-2 animate-spin" /> Creating...
-                </> : 'Create Ticket'}
+            )}
+
+            {/* Input */}
+            <div className="p-4 pt-2 flex items-end gap-2 bg-card border-t border-border/50">
+              <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
+                className="text-muted-foreground hover:text-foreground p-1.5 shrink-0 rounded-lg hover:bg-muted transition-colors">
+                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
+              </button>
+              <input ref={fileInputRef} type="file" multiple className="hidden"
+                onChange={e => handleFileUpload(e.target.files)} />
+              <Input
+                value={newMessage}
+                onChange={e => setNewMessage(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                placeholder="Add internal note..."
+                className="flex-1 rounded-full border-0 focus-visible:ring-1 bg-muted"
+              />
+              <Button onClick={handleSend}
+                disabled={sending || (!newMessage.trim() && attachments.length === 0)}
+                size="icon" className="bg-primary hover:bg-primary/90 rounded-full shrink-0">
+                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               </Button>
             </div>
-          </DialogContent>
-        </Dialog>
-      </div>
-
-      {/* Created Tickets */}
-      <div>
-        <h2 className="font-semibold text-lg mb-4">Tickets I Created ({createdTickets.length})</h2>
-        {createdTickets.length === 0 ? (
-          <Card>
-            <CardContent className="p-6 text-center text-muted-foreground">
-              No tickets created yet
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4">
-            {createdTickets.map(ticket => (
-              <Card key={ticket.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="font-mono text-xs text-muted-foreground">{ticket.ticket_number}</span>
-                        <Badge className={statusColors[ticket.status]}>{ticket.status}</Badge>
-                        <Badge className={priorityColors[ticket.priority]}>{ticket.priority}</Badge>
-                      </div>
-                      <h3 className="font-semibold">{ticket.subject}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">→ {ticket.to_department}</p>
-                    </div>
-                  </div>
-                  <p className="text-sm text-muted-foreground text-right">
-                    {new Date(ticket.created_date).toLocaleDateString()}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        )}
-      </div>
-
-      {/* Assigned Tickets */}
-      <div>
-        <h2 className="font-semibold text-lg mb-4">Tickets Assigned to {userDepartment} ({assignedTickets.length})</h2>
-        {assignedTickets.length === 0 ? (
-          <Card>
-            <CardContent className="p-6 text-center text-muted-foreground">
-              No tickets assigned yet
-            </CardContent>
-          </Card>
-        ) : (
-          <div className="grid gap-4">
-            {assignedTickets.map(ticket => (
-              <Card key={ticket.id} className="hover:shadow-md transition-shadow">
-                <CardContent className="p-4">
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="font-mono text-xs text-muted-foreground">{ticket.ticket_number}</span>
-                        <Badge className={statusColors[ticket.status]}>{ticket.status}</Badge>
-                        <Badge className={priorityColors[ticket.priority]}>{ticket.priority}</Badge>
-                      </div>
-                      <h3 className="font-semibold">{ticket.subject}</h3>
-                      <p className="text-sm text-muted-foreground mt-1">← from {ticket.from_department}</p>
-                    </div>
-                  </div>
-                  <p className="text-sm text-muted-foreground text-right">
-                    {new Date(ticket.created_date).toLocaleDateString()}
-                  </p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+          </>
         )}
       </div>
     </div>
