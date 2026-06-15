@@ -4,6 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Loader2, AlertCircle } from 'lucide-react';
+import EscalationTimeline from '@/components/EscalationTimeline';
 
 const statusColors = {
   'Open': 'bg-blue-500/20 text-blue-300',
@@ -109,13 +110,8 @@ export default function InternalEscalations() {
                     <span className="font-medium">{ticket.to_department}</span>
                   </div>
 
-                  {/* Escalation Reason */}
-                  {ticket.escalation_reason && (
-                    <div className="bg-yellow-500/10 border border-yellow-500/20 rounded p-3 text-sm">
-                      <p className="font-medium text-yellow-700 dark:text-yellow-300 mb-1">Escalation Reason:</p>
-                      <p className="text-yellow-600 dark:text-yellow-400">{ticket.escalation_reason}</p>
-                    </div>
-                  )}
+                  {/* Escalation Timeline */}
+                  <EscalationTimeline ticket={ticket} />
 
                   {/* Footer: Date & Actions */}
                   <div className="flex items-center justify-between pt-3 border-t">
