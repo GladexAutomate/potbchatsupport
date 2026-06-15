@@ -8,34 +8,34 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChevronDown, ChevronUp, Lock, Zap, Shield } from 'lucide-react';
 
 const PAGES = [
-  { name: 'dashboard', label: 'Dashboard' },
-  { name: 'tickets', label: 'Tickets' },
-  { name: 'kpi', label: 'KPI' },
-  { name: 'chatbot-config', label: 'Chatbot Config' },
-  { name: 'settings', label: 'Settings' },
-  { name: 'users', label: 'User Management' },
-  { name: 'manage-roles', label: 'Manage Roles' },
-  { name: 'customers', label: 'Customers' },
-  { name: 'replying-center', label: 'Replying Center' },
-  { name: 'conversation-tags', label: 'Conversation Tags' },
-  { name: 'staff-ratings', label: 'Staff Ratings' },
-  { name: 'group-chat', label: 'Group Chat' },
-  { name: 'vip-tickets', label: 'VIP Tickets' },
+  { name: 'dashboard', label: 'Dashboard', description: 'Overview of ticket stats, team performance, and live activity feed.' },
+  { name: 'tickets', label: 'Tickets', description: 'Full ticket queue — view, filter, and manage all customer support tickets.' },
+  { name: 'kpi', label: 'KPI', description: 'Key performance indicators: response times, resolution rates, and SLA compliance.' },
+  { name: 'chatbot-config', label: 'Chatbot Config', description: 'Configure the AI chatbot embed URL, greeting message, and escalation settings.' },
+  { name: 'settings', label: 'Settings', description: 'App-wide settings including SLA policies, saved replies, and system configuration.' },
+  { name: 'users', label: 'User Management', description: 'View and manage employee accounts, block/unblock users, and assign app roles.' },
+  { name: 'manage-roles', label: 'Manage Roles', description: 'Configure page and feature access permissions for each staff role.' },
+  { name: 'customers', label: 'Customers', description: 'Browse registered customer accounts and manage their profile details.' },
+  { name: 'replying-center', label: 'Replying Center', description: 'Focused inbox for responding to open tickets with saved replies and attachments.' },
+  { name: 'conversation-tags', label: 'Conversation Tags', description: 'Create and manage tags used to categorize and label support tickets.' },
+  { name: 'staff-ratings', label: 'Staff Ratings', description: 'View customer satisfaction ratings and feedback submitted per staff member.' },
+  { name: 'group-chat', label: 'Group Chat', description: 'Internal team chat for staff collaboration, ticket endorsements, and announcements.' },
+  { name: 'vip-tickets', label: 'VIP Tickets', description: 'Filtered view of tickets from VIP customers, flagged for priority handling.' },
 ];
 
 const FEATURES = [
-  { name: 'create_ticket', label: 'Create Ticket' },
-  { name: 'edit_ticket', label: 'Edit Ticket' },
-  { name: 'delete_ticket', label: 'Delete Ticket' },
-  { name: 'assign_ticket', label: 'Assign Ticket' },
-  { name: 'escalate_ticket', label: 'Escalate Ticket' },
-  { name: 'manage_tags', label: 'Manage Tags' },
-  { name: 'view_analytics', label: 'View Analytics' },
-  { name: 'manage_users', label: 'Manage Users' },
-  { name: 'assign_roles', label: 'Assign Roles' },
-  { name: 'view_vip', label: 'View VIP Customers' },
-  { name: 'rate_staff', label: 'Rate Staff' },
-  { name: 'group_chat', label: 'Use Group Chat' },
+  { name: 'create_ticket', label: 'Create Ticket', description: 'Allows staff to open new support tickets on behalf of customers.' },
+  { name: 'edit_ticket', label: 'Edit Ticket', description: 'Allows editing ticket details such as subject, category, priority, and description.' },
+  { name: 'delete_ticket', label: 'Delete Ticket', description: 'Permanently removes a ticket and all its messages from the system.' },
+  { name: 'assign_ticket', label: 'Assign Ticket', description: 'Assign a ticket to a specific CSR agent or department for handling.' },
+  { name: 'escalate_ticket', label: 'Escalate Ticket', description: 'Mark a ticket as escalated to flag it for urgent or senior attention.' },
+  { name: 'manage_tags', label: 'Manage Tags', description: 'Create, edit, or delete conversation tags used across the ticketing system.' },
+  { name: 'view_analytics', label: 'View Analytics', description: 'Access charts and metrics for team performance, ticket volumes, and SLA data.' },
+  { name: 'manage_users', label: 'Manage Users', description: 'Block/unblock employees and grant or revoke portal access for non-POTB staff.' },
+  { name: 'assign_roles', label: 'Assign Roles', description: 'Set or change the app role of an employee, determining their access level.' },
+  { name: 'view_vip', label: 'View VIP Customers', description: 'Access the VIP customer list and see which tickets are flagged as VIP.' },
+  { name: 'rate_staff', label: 'Rate Staff', description: 'Submit satisfaction ratings and remarks for staff who handled a ticket.' },
+  { name: 'group_chat', label: 'Use Group Chat', description: 'Send messages, share files, and endorse tickets in the internal group chat.' },
 ];
 
 const ROLES = ['admin', 'csr', 'sales', 'accounting', 'sign_ups', 'on_boarding', 'corp_training', 'tl_management'];
@@ -177,15 +177,18 @@ export default function RolePermissions() {
                 const hasAccess = perm?.has_access ?? false;
                 return (
                   <div
-                    key={page.name}
-                    className={`flex items-center justify-between px-4 py-3 rounded-lg border transition-all ${
-                      hasAccess
-                        ? 'bg-green-50/50 border-green-200/50'
-                        : 'bg-muted/30 border-border/50'
-                    }`}
+                   key={page.name}
+                   className={`flex items-center justify-between px-4 py-3 rounded-lg border transition-all ${
+                     hasAccess
+                       ? 'bg-green-50/50 border-green-200/50'
+                       : 'bg-muted/30 border-border/50'
+                   }`}
                   >
-                    <span className="font-medium text-sm">{page.label}</span>
-                    <Switch
+                   <div className="flex-1 min-w-0 mr-3">
+                     <p className="font-medium text-sm">{page.label}</p>
+                     <p className="text-xs text-muted-foreground mt-0.5">{page.description}</p>
+                   </div>
+                   <Switch
                       checked={hasAccess}
                       onCheckedChange={() => togglePermission(selectedRole, 'page', page.name, page.label)}
                       disabled={saving}
@@ -218,15 +221,18 @@ export default function RolePermissions() {
                 const hasAccess = perm?.has_access ?? false;
                 return (
                   <div
-                    key={feature.name}
-                    className={`flex items-center justify-between px-4 py-3 rounded-lg border transition-all ${
-                      hasAccess
-                        ? 'bg-green-50/50 border-green-200/50'
-                        : 'bg-muted/30 border-border/50'
-                    }`}
+                   key={feature.name}
+                   className={`flex items-center justify-between px-4 py-3 rounded-lg border transition-all ${
+                     hasAccess
+                       ? 'bg-green-50/50 border-green-200/50'
+                       : 'bg-muted/30 border-border/50'
+                   }`}
                   >
-                    <span className="font-medium text-sm">{feature.label}</span>
-                    <Switch
+                   <div className="flex-1 min-w-0 mr-3">
+                     <p className="font-medium text-sm">{feature.label}</p>
+                     <p className="text-xs text-muted-foreground mt-0.5">{feature.description}</p>
+                   </div>
+                   <Switch
                       checked={hasAccess}
                       onCheckedChange={() => togglePermission(selectedRole, 'feature', feature.name, feature.label)}
                       disabled={saving}
