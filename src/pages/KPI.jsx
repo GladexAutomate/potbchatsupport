@@ -15,10 +15,17 @@ export default function KPI() {
   const [period, setPeriod] = useState('30');
 
   useEffect(() => {
-    base44.entities.Ticket.list('-created_date', 500).then(data => {
-      setTickets(data || []);
+    Promise.all([
+      base44.entities.Ticket.list('-created_date', 500),
+      base44.entities.EmployeeAccount.list('', 500)
+    ]).then(([ticketData, empData]) => {
+      const potbEmails = new Set((empData || [])
+        .filter(e => e.employee_code?.toUpperCase().startsWith('POTB'))
+        .map(e => e.email?.toLowerCase())
+      );
+      setTickets((ticketData || []).filter(t => potbEmails.has(t.assigned_to?.toLowerCase())));
       setLoading(false);
-    });
+    }).catch(() => setLoading(false));
   }, []);
 
   const cutoff = new Date(Date.now() - parseInt(period) * 24 * 3600000);
@@ -56,7 +63,7 @@ export default function KPI() {
     email, ...stats,
     avgResTime: stats.resolved > 0 ? Math.round(stats.totalResTime / stats.resolved) : 0,
     resolutionRate: stats.assigned > 0 ? Math.round((stats.resolved / stats.assigned) * 100) : 0,
-  })).sort((a, b) => b.assigned - a.assigned);
+  })).filter(a => a.assigned > 0).sort((a, b) => b.assigned - a.assigned);
 
   // Status breakdown
   const statusData = ['Open', 'In Progress', 'Pending Department', 'Resolved', 'Closed'].map(s => ({
