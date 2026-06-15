@@ -6,7 +6,7 @@ import { useAuth } from '@/lib/AuthContext';
 import {
   LayoutDashboard, Ticket, BarChart2, Settings, MessageSquare,
   ChevronLeft, ChevronRight, LogOut, Menu, X, ShieldCheck, Users,
-  MessageSquareText, Tag, Star, MessagesSquare, Crown, UserCheck, Shield, Lock, Send, FolderOpen
+  MessageSquareText, Tag, Star, MessagesSquare, Crown, UserCheck, Shield, Lock, Send, FolderOpen, Clock
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -43,7 +43,7 @@ const navItems = [
   
   // System Settings
   { label: 'Settings', href: '#settings', icon: Settings, pageKey: 'settings', children: [
-    { label: 'SLA Settings', href: '/settings', icon: Settings, pageKey: 'settings' },
+    { label: 'SLA Policies', href: '/sla-settings', icon: Clock, pageKey: 'sla-settings' },
     { label: 'Test Accounts', href: '/test-accounts', icon: Shield, pageKey: 'test-accounts' },
     { label: 'Chatbot Config', href: '/chatbot-config', icon: MessageSquare, pageKey: 'chatbot-config' },
     { label: 'Replying Center', href: '/replying-center', icon: MessageSquareText, pageKey: 'replying-center' },

@@ -39,6 +39,7 @@ export default function InternalTicketsBase({ userDepartment }) {
   const [uploading, setUploading] = useState(false);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('All');
+  const [slaPolicies, setSlaPolicies] = useState([]);
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
 
@@ -47,7 +48,17 @@ export default function InternalTicketsBase({ userDepartment }) {
 
   useEffect(() => {
     loadData();
+    loadSLAPolicies();
   }, []);
+
+  const loadSLAPolicies = async () => {
+    try {
+      const policies = await base44.entities.SLAPolicy.list();
+      setSlaPolicies(policies || []);
+    } catch (err) {
+      console.error('Error loading SLA policies:', err);
+    }
+  };
 
   const loadData = async () => {
     try {
@@ -118,6 +129,20 @@ export default function InternalTicketsBase({ userDepartment }) {
 
   const isImageUrl = (url) => /\.(png|jpg|jpeg|gif|webp)(\?|$)/i.test(url);
 
+  const getTicketSLAStatus = (ticket) => {
+    const policy = slaPolicies.find(p => p.priority === ticket.priority);
+    if (!policy) return { isBreached: false, timeRemaining: null };
+
+    const now = new Date();
+    const createdAt = new Date(ticket.created_date);
+    const elapsedHours = (now - createdAt) / (1000 * 60 * 60);
+
+    const threshold = ticket.status === 'Open' ? policy.response_time_hours : policy.resolution_time_hours;
+    const isBreached = elapsedHours > threshold;
+
+    return { isBreached, timeRemaining: Math.max(0, threshold - elapsedHours) };
+  };
+
   if (!hasAccess) {
     return (
       <div className="flex items-center justify-center h-screen">
@@ -165,22 +190,27 @@ export default function InternalTicketsBase({ userDepartment }) {
                   <div className="px-4 py-2 bg-muted/50 border-b border-border/30">
                     <span className="text-xs font-semibold text-muted-foreground">Created by {userDepartment}</span>
                   </div>
-                  {createdTickets.map(t => (
-                    <button
-                      key={t.id}
-                      onClick={() => handleSelectTicket(t)}
-                      className={`w-full text-left px-4 py-3 border-b border-border/30 hover:bg-muted/50 transition-colors ${
-                        selectedTicket?.id === t.id ? 'bg-primary/10' : ''
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <div className="font-mono text-xs text-muted-foreground">{t.ticket_number}</div>
-                        <Badge className={`text-xs border ${STATUS_COLOR[t.status]}`}>{t.status}</Badge>
-                      </div>
-                      <p className="text-sm font-medium text-foreground truncate">{t.subject}</p>
-                      <p className="text-xs text-muted-foreground mt-1">→ {t.to_department}</p>
-                    </button>
-                  ))}
+                  {createdTickets.map(t => {
+                    const slaStatus = getTicketSLAStatus(t);
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => handleSelectTicket(t)}
+                        className={`w-full text-left px-4 py-3 border-b border-border/30 hover:bg-muted/50 transition-colors ${
+                          selectedTicket?.id === t.id ? 'bg-primary/10' : ''
+                        } ${slaStatus.isBreached ? 'bg-red-500/5' : ''}`}
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <div className={`font-mono text-xs ${slaStatus.isBreached ? 'text-red-500 font-semibold' : 'text-muted-foreground'}`}>
+                            {slaStatus.isBreached && '🚨 '}{t.ticket_number}
+                          </div>
+                          <Badge className={`text-xs border ${STATUS_COLOR[t.status]}`}>{t.status}</Badge>
+                        </div>
+                        <p className="text-sm font-medium text-foreground truncate">{t.subject}</p>
+                        <p className="text-xs text-muted-foreground mt-1">→ {t.to_department}</p>
+                      </button>
+                    );
+                  })}
                 </>
               )}
               {assignedTickets.length > 0 && (
@@ -188,22 +218,27 @@ export default function InternalTicketsBase({ userDepartment }) {
                   <div className="px-4 py-2 bg-muted/50 border-b border-border/30">
                     <span className="text-xs font-semibold text-muted-foreground">Assigned to {userDepartment}</span>
                   </div>
-                  {assignedTickets.map(t => (
-                    <button
-                      key={t.id}
-                      onClick={() => handleSelectTicket(t)}
-                      className={`w-full text-left px-4 py-3 border-b border-border/30 hover:bg-muted/50 transition-colors ${
-                        selectedTicket?.id === t.id ? 'bg-primary/10' : ''
-                      }`}
-                    >
-                      <div className="flex items-start justify-between gap-2 mb-1">
-                        <div className="font-mono text-xs text-muted-foreground">{t.ticket_number}</div>
-                        <Badge className={`text-xs border ${STATUS_COLOR[t.status]}`}>{t.status}</Badge>
-                      </div>
-                      <p className="text-sm font-medium text-foreground truncate">{t.subject}</p>
-                      <p className="text-xs text-muted-foreground mt-1">← from {t.from_department}</p>
-                    </button>
-                  ))}
+                  {assignedTickets.map(t => {
+                    const slaStatus = getTicketSLAStatus(t);
+                    return (
+                      <button
+                        key={t.id}
+                        onClick={() => handleSelectTicket(t)}
+                        className={`w-full text-left px-4 py-3 border-b border-border/30 hover:bg-muted/50 transition-colors ${
+                          selectedTicket?.id === t.id ? 'bg-primary/10' : ''
+                        } ${slaStatus.isBreached ? 'bg-red-500/5' : ''}`}
+                      >
+                        <div className="flex items-start justify-between gap-2 mb-1">
+                          <div className={`font-mono text-xs ${slaStatus.isBreached ? 'text-red-500 font-semibold' : 'text-muted-foreground'}`}>
+                            {slaStatus.isBreached && '🚨 '}{t.ticket_number}
+                          </div>
+                          <Badge className={`text-xs border ${STATUS_COLOR[t.status]}`}>{t.status}</Badge>
+                        </div>
+                        <p className="text-sm font-medium text-foreground truncate">{t.subject}</p>
+                        <p className="text-xs text-muted-foreground mt-1">← from {t.from_department}</p>
+                      </button>
+                    );
+                  })}
                 </>
               )}
             </>

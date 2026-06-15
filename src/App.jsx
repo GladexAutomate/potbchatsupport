@@ -33,6 +33,7 @@ import SignUpsInternalTickets from './pages/InternalTickets/SignUps';
 import OnBoardingInternalTickets from './pages/InternalTickets/OnBoarding';
 import CorpTrainingInternalTickets from './pages/InternalTickets/CorpTraining';
 import InternalEscalations from './pages/InternalEscalations';
+import SLASettings from './pages/SLASettings';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, isAuthenticated, authChecked } = useAuth();
@@ -100,6 +101,7 @@ const AuthenticatedApp = () => {
         <Route path="/internal-tickets-onboarding" element={<OnBoardingInternalTickets />} />
         <Route path="/internal-tickets-corptraining" element={<CorpTrainingInternalTickets />} />
         <Route path="/escalations" element={<InternalEscalations />} />
+        <Route path="/sla-settings" element={<SLASettings />} />
       </Route>
 
       <Route path="*" element={<PageNotFound />} />
