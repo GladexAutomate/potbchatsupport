@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -23,6 +23,7 @@ const CATEGORY_SUBCATEGORIES = {
 export default function CreateTicketModal({ onTicketCreated }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [csrList, setCsrList] = useState([]);
   const [formData, setFormData] = useState({
     customer_name: '',
     customer_email: '',
@@ -32,8 +33,21 @@ export default function CreateTicketModal({ onTicketCreated }) {
     subcategory: '',
     priority: 'Medium',
     department: '',
+    assigned_to: '',
     source: 'Internal Staff'
   });
+
+  useEffect(() => {
+    const loadCsrs = async () => {
+      try {
+        const emps = await base44.entities.EmployeeAccount.filter({ current_role: 'csr', status: 'active', is_blocked: false });
+        setCsrList(emps || []);
+      } catch (err) {
+        console.error('Failed to load CSRs:', err);
+      }
+    };
+    if (open) loadCsrs();
+  }, [open]);
 
   const handleCreate = async () => {
     if (!formData.customer_name.trim() || !formData.customer_email.trim() || !formData.subject.trim() || !formData.description.trim()) {
@@ -53,6 +67,7 @@ export default function CreateTicketModal({ onTicketCreated }) {
       subcategory: '',
       priority: 'Medium',
       department: '',
+      assigned_to: '',
       source: 'Internal Staff'
     });
     if (onTicketCreated) onTicketCreated(newTicket);
@@ -161,6 +176,19 @@ export default function CreateTicketModal({ onTicketCreated }) {
                 <SelectContent>
                   {['Sales', 'IT', 'Accounting', 'Sign-Ups', 'On-Boarding', 'Corp/Training', 'Admin', 'TL/Management'].map(d => (
                     <SelectItem key={d} value={d}>{d}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-foreground mb-1.5 block">CSR / L1</label>
+              <Select value={formData.assigned_to} onValueChange={(v) => setFormData({ ...formData, assigned_to: v })}>
+                <SelectTrigger className="h-8 text-xs">
+                  <SelectValue placeholder="Assign to CSR" />
+                </SelectTrigger>
+                <SelectContent>
+                  {csrList.map(csr => (
+                    <SelectItem key={csr.id} value={csr.email}>{csr.full_name}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
