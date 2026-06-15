@@ -280,10 +280,11 @@ export default function UserManagement() {
         <Card className="border-border/50">
           <CardContent className="p-0">
             {/* Column Headers */}
-            <div className="hidden sm:grid grid-cols-[2.25rem_1fr_8rem_5rem_1fr_7rem_5rem_6rem] gap-x-3 px-5 py-2 border-b border-border/50 bg-muted/30">
+            <div className="hidden sm:grid grid-cols-[2.25rem_1fr_8rem_7rem_5rem_1fr_7rem_5rem_6rem] gap-x-3 px-5 py-2 border-b border-border/50 bg-muted/30">
               <div />
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Name / Email</span>
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Emp. Code</span>
+              <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Password</span>
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Status</span>
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Job Title</span>
               <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">App Role</span>
@@ -310,7 +311,7 @@ export default function UserManagement() {
                     : (!isBlocked && !!emp.portal_access_granted);
 
                   return (
-                    <div key={emp.id} className={`hidden sm:grid grid-cols-[2.25rem_1fr_8rem_5rem_1fr_7rem_5rem_6rem] gap-x-3 items-center px-5 py-3.5 transition-colors ${isBlocked ? 'bg-red-500/5 hover:bg-red-500/10' : 'hover:bg-muted/20'}`}>
+                    <div key={emp.id} className={`hidden sm:grid grid-cols-[2.25rem_1fr_8rem_7rem_5rem_1fr_7rem_5rem_6rem] gap-x-3 items-center px-5 py-3.5 transition-colors ${isBlocked ? 'bg-red-500/5 hover:bg-red-500/10' : 'hover:bg-muted/20'}`}>
                       <div className={`w-9 h-9 rounded-full flex items-center justify-center ${isBlocked ? 'bg-red-500/10' : 'bg-primary/10'}`}>
                         <span className={`text-sm font-semibold ${isBlocked ? 'text-red-400' : 'text-primary'}`}>{emp.full_name?.[0]?.toUpperCase() || '?'}</span>
                       </div>
@@ -319,6 +320,7 @@ export default function UserManagement() {
                         <p className="text-xs text-muted-foreground truncate">{emp.email}</p>
                       </div>
                       <span className="text-xs font-mono bg-muted px-2 py-0.5 rounded text-muted-foreground truncate">{emp.employee_code || '—'}</span>
+                      <span className="text-xs font-mono bg-muted px-2 py-0.5 rounded text-muted-foreground truncate">{emp.generated_password || '—'}</span>
                       <span className={`text-xs px-2 py-0.5 rounded-full border font-medium w-fit ${
                         isBlocked ? 'bg-red-500/10 text-red-400 border-red-500/20' :
                         emp.status === 'active' ? 'bg-green-500/10 text-green-600 border-green-500/20' : 'bg-orange-500/10 text-orange-400 border-orange-500/20'
