@@ -40,6 +40,10 @@
       "type": "boolean",
       "default": false,
       "description": "If true, non-POTB employee has been granted portal access"
+    },
+    "current_role": {
+      "type": "string",
+      "description": "Current assigned app role (csr, sales, accounting, etc.)"
     }
   },
   "required": [
