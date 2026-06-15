@@ -96,7 +96,7 @@ export default function Layout() {
     return perm?.has_access === true;
   };
 
-  const filtered = navItems
+  const filtered = navItemsWithChildren
     .filter(n => hasPageAccess(n.pageKey))
     .map(n => n.children
       ? { ...n, children: n.children.filter(c => hasPageAccess(c.pageKey)) }
@@ -127,8 +127,8 @@ export default function Layout() {
     'corp_training': 'Corp/Training',
   };
 
-  // Build internal tickets nav
-  const buildInternalTicketsNav = () => {
+  // Build internal tickets nav before filtering
+  const internalTicketsChildren = (() => {
     const children = [];
     if (departmentRoutes[role]) {
       children.push({
@@ -147,7 +147,14 @@ export default function Layout() {
       });
     }
     return children;
-  };
+  })();
+
+  // Update navItems with built children
+  const navItemsWithChildren = navItems.map(item => 
+    item.pageKey === 'internal-tickets' 
+      ? { ...item, children: internalTicketsChildren }
+      : item
+  );
 
   const settingsOpen = ['/settings', '/test-accounts', '/chatbot-config', '/replying-center', '/conversation-tags'].includes(location.pathname);
   const customerTicketsOpen = ['/tickets', '/vip-tickets'].includes(location.pathname);
@@ -171,11 +178,6 @@ export default function Layout() {
 
       <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto overflow-x-hidden">
         {filtered.map((item) => {
-          // Build children for internal tickets dynamically
-          if (item.pageKey === 'internal-tickets' && item.children.length === 0) {
-            item.children = buildInternalTicketsNav();
-          }
-
           const active = location.pathname === item.href;
           if (item.children) {
             const isSettingsMenu = item.pageKey === 'settings';
