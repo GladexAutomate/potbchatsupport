@@ -7,7 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
-import { Search, Users, Shield, Loader2, UserPlus, RefreshCw, Briefcase, BadgeCheck, Ban, Unlock, ToggleLeft, ToggleRight, ShieldCheck, Save } from 'lucide-react';
+import { Search, Users, Shield, Loader2, UserPlus, RefreshCw, Briefcase, BadgeCheck, Ban, Unlock, ToggleLeft, ToggleRight, ShieldCheck, Save, Download } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
 const STAFF_ROLES = ['csr', 'sales', 'accounting', 'sign_ups', 'on_boarding', 'corp_training', 'admin', 'tl_management'];
@@ -152,6 +152,39 @@ export default function UserManagement() {
 
   const activeEmpCount = employees.filter(e => e.status === 'active').length;
 
+  const handleExport = () => {
+    const exportable = ['active', 'inactive', 'non_potb'].includes(empTab)
+      ? filteredEmployees
+      : employees.filter(e => {
+          const isPotb = e.employee_code?.toUpperCase().startsWith('POTB');
+          const isBlocked = !!e.is_blocked;
+          if (e.email?.toLowerCase() === 'automate@gladextours.com') return false;
+          // default: export active POTB
+          return !isBlocked && isPotb && e.status === 'active';
+        });
+
+    const rows = exportable.map(e => ({
+      'Full Name': e.full_name || '',
+      'Email': e.email || '',
+      'Employee Code': e.employee_code || '',
+      'Job Title': e.job_title || '',
+      'Status': e.is_blocked ? 'Blocked' : (e.status || ''),
+      'App Role': ROLE_LABEL[e.current_role] || e.current_role || '',
+      'Portal Access': e.portal_access_granted ? 'Yes' : 'No',
+    }));
+
+    const headers = Object.keys(rows[0] || {});
+    const csv = [headers.join(','), ...rows.map(r => headers.map(h => `"${(r[h] || '').replace(/"/g, '""')}"`).join(','))].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const tabLabel = EMP_TABS.find(t => t.key === empTab)?.label || empTab;
+    a.download = `employees_${tabLabel.toLowerCase().replace(/\s+/g, '_')}_${new Date().toISOString().slice(0,10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleInvite = async () => {
     if (!inviteEmail.trim()) return;
     setInviting(true);
@@ -210,10 +243,18 @@ export default function UserManagement() {
             <h2 className="font-sora font-semibold text-sm">Employee Directory</h2>
             <span className="text-xs text-muted-foreground ml-1">({filteredEmployees.length})</span>
           </div>
-          <Button variant="outline" size="sm" onClick={handleSyncEmployees} disabled={syncing} className="gap-2">
-            {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-            Sync from Supabase
-          </Button>
+          <div className="flex items-center gap-2">
+            {['active', 'inactive', 'non_potb'].includes(empTab) && filteredEmployees.length > 0 && (
+              <Button variant="outline" size="sm" onClick={handleExport} className="gap-2">
+                <Download className="w-4 h-4" />
+                Export CSV
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={handleSyncEmployees} disabled={syncing} className="gap-2">
+              {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+              Sync from Supabase
+            </Button>
+          </div>
         </div>
 
         {/* Tab Nav */}
