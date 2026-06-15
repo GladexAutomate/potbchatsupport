@@ -27,7 +27,7 @@ import VIPTickets from './pages/VIPTickets';
 import EmailLogin from './pages/EmailLogin';
 
 const AuthenticatedApp = () => {
-  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin } = useAuth();
+  const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, isAuthenticated, authChecked } = useAuth();
 
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
@@ -35,6 +35,11 @@ const AuthenticatedApp = () => {
         <div className="w-8 h-8 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
       </div>
     );
+  }
+
+  // Show login page if not authenticated and loading is complete
+  if (authChecked && !isAuthenticated && window.location.pathname !== '/login') {
+    return <EmailLogin />;
   }
 
   if (authError) {
