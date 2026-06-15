@@ -8,9 +8,11 @@ import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, Loader2, ShieldCheck, Upload, X, FileText } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/lib/AuthContext';
 
 export default function SubmitInternalTicket() {
   const navigate = useNavigate();
+  const { user: authUser } = useAuth();
   const [view, setView] = useState('form');
   const [submitting, setSubmitting] = useState(false);
   const [ticketNum, setTicketNum] = useState('');
@@ -23,6 +25,7 @@ export default function SubmitInternalTicket() {
   const fileInputRef = useRef(null);
 
   const departmentList = ['Sales', 'IT', 'Accounting', 'Sign-Ups', 'On-Boarding', 'Corp/Training', 'Admin', 'TL/Management'];
+  const isTLOrAdmin = authUser && ['super_admin', 'tl_management'].includes(authUser.role);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -118,15 +121,26 @@ export default function SubmitInternalTicket() {
                 <CardContent className="p-6 space-y-4">
                   <div className="space-y-1.5">
                     <Label className="text-white/70 text-xs">From Department *</Label>
-                    <Input value={form.from_department} disabled
-                      className="bg-white/10 border-white/20 text-white/70" />
+                    {isTLOrAdmin ? (
+                      <select value={form.from_department}
+                        onChange={e => setForm({...form, from_department: e.target.value})}
+                        className="w-full bg-white/10 border border-white/20 text-white rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
+                        <option value="">Select department...</option>
+                        {departmentList.map(dept => (
+                          <option key={dept} value={dept}>{dept}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      <Input value={form.from_department} disabled
+                        className="bg-white/10 border-white/20 text-white/70" />
+                    )}
                   </div>
 
                   <div className="space-y-1.5">
                     <Label className="text-white/70 text-xs">To Department *</Label>
                     <select value={form.to_department}
                       onChange={e => setForm({...form, to_department: e.target.value})}
-                      className="w-full bg-white/10 border border-white/20 text-white rounded-md px-3 py-2 text-sm">
+                      className="w-full bg-white/10 border border-white/20 text-white rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
                       <option value="">Select department...</option>
                       {departmentList.filter(d => d !== form.from_department).map(dept => (
                         <option key={dept} value={dept}>{dept}</option>
