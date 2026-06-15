@@ -94,6 +94,17 @@ export const AuthProvider = ({ children }) => {
       // Now check if the user is authenticated
       setIsLoadingAuth(true);
       const currentUser = await base44.auth.me();
+
+      // Overlay the custom role from EmployeeAccount (source of truth for app roles)
+      try {
+        const empRecords = await base44.entities.EmployeeAccount.filter({ email: currentUser.email });
+        if (empRecords && empRecords.length > 0 && empRecords[0].current_role) {
+          currentUser.role = empRecords[0].current_role;
+        }
+      } catch (e) {
+        // Non-critical — fall back to platform role
+      }
+
       setUser(currentUser);
       setIsAuthenticated(true);
       setIsLoadingAuth(false);

@@ -129,19 +129,14 @@ export default function UserManagement() {
   const handleSaveRole = async () => {
     if (!roleEditItem || !roleEditItem._selectedRole) return;
     setRoleSaving(true);
+    // Always save the custom role to EmployeeAccount — this is the source of truth
     await base44.entities.EmployeeAccount.update(roleEditItem.id, { current_role: roleEditItem._selectedRole });
     setEmployees(prev => prev.map(e => e.id === roleEditItem.id ? { ...e, current_role: roleEditItem._selectedRole } : e));
-    // If user exists, update their role and trigger re-login
+    // Force re-login so the user's session picks up the new role
     try {
-      const users = await base44.entities.User.filter({ email: roleEditItem.email });
-      if (users && users.length > 0) {
-        await base44.entities.User.update(users[0].id, { role: roleEditItem._selectedRole });
-        await base44.functions.invoke('logoutUserByEmail', { target_email: roleEditItem.email });
-      } else {
-        await base44.users.inviteUser(roleEditItem.email, roleEditItem._selectedRole);
-      }
+      await base44.functions.invoke('logoutUserByEmail', { target_email: roleEditItem.email });
     } catch (err) {
-      console.warn('Role user update error:', err);
+      console.warn('Logout error (non-critical):', err);
     }
     setRoleSaving(false);
     setRoleEditItem(null);
