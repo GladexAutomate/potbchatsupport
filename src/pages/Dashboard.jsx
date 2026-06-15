@@ -31,8 +31,14 @@ export default function Dashboard() {
   const { user } = useAuth();
 
   const ticketUrl = `${window.location.origin}/submit-ticket`;
+  const internalTicketUrl = `${window.location.origin}/submit-internal-ticket`;
   const handleCopy = () => {
     navigator.clipboard.writeText(ticketUrl);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+  const handleCopyInternal = () => {
+    navigator.clipboard.writeText(internalTicketUrl);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
@@ -81,21 +87,32 @@ export default function Dashboard() {
         <p className="text-muted-foreground text-sm mt-0.5">Welcome back, {user?.full_name || 'Agent'}</p>
       </div>
 
-      {/* Ticket Submission URL */}
-      <Card className="border-border/50 mb-6">
-        <CardContent className="p-4 space-y-4">
-          {/* Raw URL row */}
-          <div>
-            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Customer Ticket Submission URL</p>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 text-sm font-mono bg-muted rounded-lg px-3 py-2 text-foreground truncate">{ticketUrl}</code>
-              <Button size="sm" variant="outline" onClick={handleCopy} className="gap-1.5 shrink-0">
-                {copied ? <><Check className="w-3.5 h-3.5 text-green-500" /> Copied!</> : <><Copy className="w-3.5 h-3.5" /> Copy URL</>}
-              </Button>
-            </div>
-          </div>
-          </CardContent>
-      </Card>
+      {/* Ticket Submission URLs */}
+       <div className="grid lg:grid-cols-2 gap-6 mb-6">
+         <Card className="border-border/50">
+           <CardContent className="p-4">
+             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Customer Ticket Submission URL</p>
+             <div className="flex items-center gap-2">
+               <code className="flex-1 text-sm font-mono bg-muted rounded-lg px-3 py-2 text-foreground truncate">{ticketUrl}</code>
+               <Button size="sm" variant="outline" onClick={handleCopy} className="gap-1.5 shrink-0">
+                 {copied ? <><Check className="w-3.5 h-3.5 text-green-500" /> Copied!</> : <><Copy className="w-3.5 h-3.5" /> Copy URL</>}
+               </Button>
+             </div>
+           </CardContent>
+         </Card>
+
+         <Card className="border-border/50">
+           <CardContent className="p-4">
+             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Internal Ticket Submission URL</p>
+             <div className="flex items-center gap-2">
+               <code className="flex-1 text-sm font-mono bg-muted rounded-lg px-3 py-2 text-foreground truncate">{internalTicketUrl}</code>
+               <Button size="sm" variant="outline" onClick={handleCopyInternal} className="gap-1.5 shrink-0">
+                 {copied ? <><Check className="w-3.5 h-3.5 text-green-500" /> Copied!</> : <><Copy className="w-3.5 h-3.5" /> Copy URL</>}
+               </Button>
+             </div>
+           </CardContent>
+         </Card>
+       </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
         <StatCard label="Open Tickets" value={open} icon={Ticket} color="text-primary" sub="Awaiting action" />
