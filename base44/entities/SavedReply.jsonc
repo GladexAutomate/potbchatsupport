@@ -2,17 +2,23 @@
   "name": "SavedReply",
   "type": "object",
   "properties": {
-    "shortcut": {
+    "env": {
       "type": "string",
-      "description": "Short keyword trigger for this reply"
+      "enum": [
+        "test",
+        "prod"
+      ],
+      "default": "test",
+      "description": "Environment: test or prod"
+    },
+    "shortcut": {
+      "type": "string"
     },
     "topic": {
-      "type": "string",
-      "description": "Optional topic/category label"
+      "type": "string"
     },
     "message": {
-      "type": "string",
-      "description": "Full reply message content"
+      "type": "string"
     }
   },
   "required": [

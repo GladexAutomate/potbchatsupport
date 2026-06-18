@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { CheckCircle, Loader2 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
@@ -15,7 +15,7 @@ export default function ResolutionRequestButton({ ticket, onTicketUpdate }) {
     setSending(true);
 
     // Update ticket to "Pending Resolution" and store who triggered it + when
-    const updated = await base44.entities.Ticket.update(ticket.id, {
+    const updated = await db.Ticket.update(ticket.id, {
       status: 'Pending Resolution',
       resolution_requested_at: new Date().toISOString(),
       resolution_requested_by: user?.email || '',
@@ -23,7 +23,7 @@ export default function ResolutionRequestButton({ ticket, onTicketUpdate }) {
     });
 
     // Send resolution request message to customer
-    await base44.entities.TicketMessage.create({
+    await db.TicketMessage.create({
       ticket_id: ticket.id,
       sender_email: 'system',
       sender_name: 'Support Team',
@@ -34,7 +34,7 @@ export default function ResolutionRequestButton({ ticket, onTicketUpdate }) {
       attachments: [],
     });
 
-    await base44.entities.TicketHistory.create({
+    await db.TicketHistory.create({
       ticket_id: ticket.id,
       event_type: 'status_changed',
       description: `Resolution check sent by ${user?.full_name || user?.email}`,

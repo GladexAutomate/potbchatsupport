@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -70,12 +70,12 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
     if (isCSR) {
       const currentDept = ticket.department || 'CSR';
       const updatedLog = stopAndStartSLA(ticket.dept_sla_log, currentDept, department);
-      await base44.entities.Ticket.update(ticket.id, { department, priority, status, escalated, dept_sla_log: updatedLog });
+      await db.Ticket.update(ticket.id, { department, priority, status, escalated, dept_sla_log: updatedLog });
     } else {
       // Non-CSR: route back to L1/CSR
       const currentDept = ticket.department || 'CSR';
       const updatedLog = stopAndStartSLA(ticket.dept_sla_log, currentDept, 'CSR');
-      await base44.entities.Ticket.update(ticket.id, { department: null, status: 'Open', escalated: false, dept_sla_log: updatedLog });
+      await db.Ticket.update(ticket.id, { department: null, status: 'Open', escalated: false, dept_sla_log: updatedLog });
     }
 
     const routeMsg = isCSR
@@ -87,7 +87,7 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
       : `Returned to L1/CSR queue${note.trim() ? ` — ${note.trim()}` : ''}`;
 
     await Promise.all([
-      base44.entities.TicketMessage.create({
+      db.TicketMessage.create({
         ticket_id: ticket.id,
         sender_email: 'system',
         sender_name: 'System',
@@ -96,7 +96,7 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
         is_internal: true,
         attachments: [],
       }),
-      base44.entities.TicketHistory.create({
+      db.TicketHistory.create({
         ticket_id: ticket.id,
         event_type: 'rerouted',
         description: historyDesc,

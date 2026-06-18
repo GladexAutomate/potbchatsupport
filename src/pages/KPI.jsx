@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { useAuth } from '@/lib/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -46,8 +46,8 @@ export default function KPI() {
   useEffect(() => {
     if (!user) return;
     Promise.all([
-      base44.entities.Ticket.list('-created_date', 500),
-      base44.entities.EmployeeAccount.list('', 500)
+      db.Ticket.list('-created_date', 500),
+      db.EmployeeAccount.list('', 500)
     ]).then(([ticketData, empData]) => {
       const potbEmails = new Set((empData || [])
         .filter(e => e.employee_code?.toUpperCase().startsWith('POTB'))

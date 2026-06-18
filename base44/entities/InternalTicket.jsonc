@@ -2,9 +2,17 @@
   "name": "InternalTicket",
   "type": "object",
   "properties": {
-    "ticket_number": {
+    "env": {
       "type": "string",
-      "description": "Auto-generated internal ticket ID"
+      "enum": [
+        "test",
+        "prod"
+      ],
+      "default": "test",
+      "description": "Environment: test or prod"
+    },
+    "ticket_number": {
+      "type": "string"
     },
     "from_department": {
       "type": "string",
@@ -17,8 +25,7 @@
         "Corp/Training",
         "Admin",
         "TL/Management"
-      ],
-      "description": "Department creating the ticket"
+      ]
     },
     "to_department": {
       "type": "string",
@@ -31,32 +38,25 @@
         "Corp/Training",
         "Admin",
         "TL/Management"
-      ],
-      "description": "Department the ticket is sent to"
+      ]
     },
     "subject": {
-      "type": "string",
-      "description": "Ticket subject"
+      "type": "string"
     },
     "description": {
-      "type": "string",
-      "description": "Detailed description of the request"
+      "type": "string"
     },
     "created_by_email": {
-      "type": "string",
-      "description": "Email of staff who created the ticket"
+      "type": "string"
     },
     "created_by_name": {
-      "type": "string",
-      "description": "Name of staff who created the ticket"
+      "type": "string"
     },
     "assigned_to_email": {
-      "type": "string",
-      "description": "Email of staff assigned to handle the ticket"
+      "type": "string"
     },
     "assigned_to_name": {
-      "type": "string",
-      "description": "Name of staff assigned to the ticket"
+      "type": "string"
     },
     "status": {
       "type": "string",
@@ -67,8 +67,7 @@
         "Resolved",
         "Closed"
       ],
-      "default": "Open",
-      "description": "Ticket status"
+      "default": "Open"
     },
     "priority": {
       "type": "string",
@@ -82,23 +81,19 @@
     },
     "escalated": {
       "type": "boolean",
-      "default": false,
-      "description": "If true, escalated to TL/Management"
+      "default": false
     },
     "escalation_reason": {
-      "type": "string",
-      "description": "Reason for escalation"
+      "type": "string"
     },
     "attachments": {
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "URLs of attached files"
+      }
     },
     "notes": {
-      "type": "string",
-      "description": "Internal notes on the ticket"
+      "type": "string"
     }
   },
   "required": [

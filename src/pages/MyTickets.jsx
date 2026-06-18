@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -48,11 +49,11 @@ export default function MyTickets() {
     base44.auth.me().then(u => {
       setUser(u);
       if (u?.email) {
-        base44.entities.Ticket.filter({ customer_email: u.email }, '-created_date').then(t => {
+        db.Ticket.filter({ customer_email: u.email }, '-created_date').then(t => {
           setTickets(t || []);
           setLoading(false);
         });
-        base44.entities.StaffRating.list().then(ratings => {
+        db.StaffRating.list().then(ratings => {
           setRatedTicketIds(new Set((ratings || []).map(r => r.ticket_id)));
         });
       } else {
@@ -65,7 +66,7 @@ export default function MyTickets() {
     if (!selectedTicket) return;
     loadMessages(selectedTicket.id);
     // Subscribe to ticket changes (e.g. auto-close triggers rating modal)
-    const unsubTicket = base44.entities.Ticket.subscribe(event => {
+    const unsubTicket = db.Ticket.subscribe(event => {
       if (event.data?.id === selectedTicket.id && event.data?.status === 'Closed') {
         setSelectedTicket(event.data);
         setTickets(prev => prev.map(t => t.id === event.data.id ? event.data : t));
@@ -76,7 +77,7 @@ export default function MyTickets() {
         }
       }
     });
-    const unsubMsg = base44.entities.TicketMessage.subscribe(event => {
+    const unsubMsg = db.TicketMessage.subscribe(event => {
       if (event.data?.ticket_id === selectedTicket.id) {
         loadMessages(selectedTicket.id);
       }
@@ -89,7 +90,7 @@ export default function MyTickets() {
   }, [messages]);
 
   const loadMessages = async (ticketId) => {
-    const msgs = await base44.entities.TicketMessage.filter({ ticket_id: ticketId }, 'created_date');
+    const msgs = await db.TicketMessage.filter({ ticket_id: ticketId }, 'created_date');
     setMessages((msgs || []).filter(m => !m.is_internal));
   };
 
@@ -108,7 +109,7 @@ export default function MyTickets() {
   const handleSend = async () => {
     if (!newMessage.trim() && msgAttachments.length === 0) return;
     setSending(true);
-    await base44.entities.TicketMessage.create({
+    await db.TicketMessage.create({
       ticket_id: selectedTicket.id,
       sender_email: user.email,
       sender_name: user.full_name || user.email,
@@ -158,8 +159,8 @@ export default function MyTickets() {
         log[activeIdx] = { ...active, stopped_at: new Date().toISOString(), elapsed_minutes: elapsed, grade: 'Met' };
       }
       const updatedTicket = { ...selectedTicket, status: 'Closed', resolved_at: new Date().toISOString(), dept_sla_log: log };
-      await base44.entities.Ticket.update(selectedTicket.id, { status: 'Closed', resolved_at: new Date().toISOString(), dept_sla_log: log });
-      await base44.entities.TicketMessage.create({
+      await db.Ticket.update(selectedTicket.id, { status: 'Closed', resolved_at: new Date().toISOString(), dept_sla_log: log });
+      await db.TicketMessage.create({
         ticket_id: selectedTicket.id,
         sender_email: user.email,
         sender_name: user.full_name || user.email,
@@ -175,8 +176,8 @@ export default function MyTickets() {
       }
     } else {
       // Reopen ticket
-      await base44.entities.Ticket.update(selectedTicket.id, { status: 'In Progress', resolution_requested_at: null });
-      await base44.entities.TicketMessage.create({
+      await db.Ticket.update(selectedTicket.id, { status: 'In Progress', resolution_requested_at: null });
+      await db.TicketMessage.create({
         ticket_id: selectedTicket.id,
         sender_email: user.email,
         sender_name: user.full_name || user.email,

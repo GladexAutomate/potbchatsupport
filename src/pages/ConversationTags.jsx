@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,7 +24,7 @@ export default function ConversationTags() {
   const [deleting, setDeleting] = useState(null);
 
   const load = () =>
-    base44.entities.ConversationTag.list('-created_date', 300).then(d => {
+    db.ConversationTag.list('-created_date', 300).then(d => {
       setTags(d || []);
       setLoading(false);
     });
@@ -47,9 +47,9 @@ export default function ConversationTags() {
     if (!form.name.trim()) return;
     setSaving(true);
     if (editing) {
-      await base44.entities.ConversationTag.update(editing.id, form);
+      await db.ConversationTag.update(editing.id, form);
     } else {
-      await base44.entities.ConversationTag.create(form);
+      await db.ConversationTag.create(form);
     }
     setSaving(false);
     setModalOpen(false);
@@ -58,13 +58,13 @@ export default function ConversationTags() {
 
   const handleDelete = async (id) => {
     setDeleting(id);
-    await base44.entities.ConversationTag.delete(id);
+    await db.ConversationTag.delete(id);
     setDeleting(null);
     load();
   };
 
   const toggleActive = async (tag) => {
-    await base44.entities.ConversationTag.update(tag.id, { is_active: !tag.is_active });
+    await db.ConversationTag.update(tag.id, { is_active: !tag.is_active });
     load();
   };
 

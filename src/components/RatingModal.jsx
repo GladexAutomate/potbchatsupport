@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Star, Send, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,7 +16,7 @@ export default function RatingModal({ ticket, onClose, onRated }) {
   const handleSubmit = async () => {
     if (!rating) return;
     setSubmitting(true);
-    await base44.entities.StaffRating.create({
+    await db.StaffRating.create({
       ticket_id: ticket.id,
       staff_email: ticket.resolution_requested_by || ticket.assigned_to || '',
       staff_name: staffName,

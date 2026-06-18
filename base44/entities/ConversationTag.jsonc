@@ -2,19 +2,25 @@
   "name": "ConversationTag",
   "type": "object",
   "properties": {
-    "name": {
+    "env": {
       "type": "string",
-      "description": "Tag name"
+      "enum": [
+        "test",
+        "prod"
+      ],
+      "default": "test",
+      "description": "Environment: test or prod"
+    },
+    "name": {
+      "type": "string"
     },
     "color": {
       "type": "string",
-      "description": "Hex color for the tag",
       "default": "#6366f1"
     },
     "is_active": {
       "type": "boolean",
-      "default": true,
-      "description": "Whether the tag is active"
+      "default": true
     }
   },
   "required": [

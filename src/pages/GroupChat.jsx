@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -30,8 +31,8 @@ export default function GroupChat() {
 
   useEffect(() => {
     loadMessages();
-    base44.entities.User.list().then(d => setAllStaff(d || []));
-    const unsub = base44.entities.GroupChatMessage.subscribe(() => loadMessages());
+    db.User.list().then(d => setAllStaff(d || []));
+    const unsub = db.GroupChatMessage.subscribe(() => loadMessages());
     return () => unsub();
   }, []);
 
@@ -45,13 +46,13 @@ export default function GroupChat() {
     messages.forEach(async (msg) => {
       if (!msg.read_by?.includes(user.email)) {
         const updated = [...(msg.read_by || []), user.email];
-        await base44.entities.GroupChatMessage.update(msg.id, { read_by: updated });
+        await db.GroupChatMessage.update(msg.id, { read_by: updated });
       }
     });
   }, [messages, user]);
 
   const loadMessages = async () => {
-    const msgs = await base44.entities.GroupChatMessage.list('created_date', 200);
+    const msgs = await db.GroupChatMessage.list('created_date', 200);
     setMessages(msgs || []);
   };
 
@@ -61,7 +62,7 @@ export default function GroupChat() {
 
     const mentions = [...newMessage.matchAll(/@(\w+)/g)].map(m => m[0]);
 
-    await base44.entities.GroupChatMessage.create({
+    await db.GroupChatMessage.create({
       sender_email: user?.email || '',
       sender_name: user?.full_name || user?.email || 'Staff',
       message: newMessage.trim(),
@@ -109,7 +110,7 @@ export default function GroupChat() {
   };
 
   const handlePinToggle = async (msg) => {
-    await base44.entities.GroupChatMessage.update(msg.id, { is_pinned: !msg.is_pinned });
+    await db.GroupChatMessage.update(msg.id, { is_pinned: !msg.is_pinned });
   };
 
   const handleInputChange = (e) => {

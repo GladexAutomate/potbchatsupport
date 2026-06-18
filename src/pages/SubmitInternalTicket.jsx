@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -35,7 +36,7 @@ export default function SubmitInternalTicket() {
         if (u) {
           setUser(u);
           // Get user's department from EmployeeAccount
-          const empRecords = await base44.entities.EmployeeAccount.filter({ email: u.email });
+          const empRecords = await db.EmployeeAccount.filter({ email: u.email });
           if (empRecords && empRecords.length > 0) {
             const dept = empRecords[0].current_role?.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1)).join('');
             if (dept && departmentList.includes(dept)) {
@@ -80,7 +81,7 @@ export default function SubmitInternalTicket() {
     const num = generateTicketNumber();
     const now = new Date().toISOString();
     
-    await base44.entities.InternalTicket.create({
+    await db.InternalTicket.create({
       ticket_number: num,
       from_department: form.from_department,
       to_department: form.to_department,

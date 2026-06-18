@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -58,7 +59,7 @@ export default function SubmitTicket() {
     const num = generateTicketNumber();
     const deadline = new Date(Date.now() + 24 * 3600000);
     const now = new Date().toISOString();
-    await base44.entities.Ticket.create({
+    await db.Ticket.create({
       customer_name: form.customer_name,
       customer_email: user?.email || '',
       subject: form.subject,

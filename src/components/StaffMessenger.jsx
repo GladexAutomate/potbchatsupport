@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -94,9 +95,9 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
 
   // Load saved replies, tags, and VIP emails once
   useEffect(() => {
-    base44.entities.SavedReply.list('-created_date', 200).then(d => setSavedReplies(d || []));
-    base44.entities.ConversationTag.filter({ is_active: true }, 'name', 100).then(d => setAllTags(d || []));
-    base44.entities.VIPCustomer.list('created_date', 500).then(d => {
+    db.SavedReply.list('-created_date', 200).then(d => setSavedReplies(d || []));
+    db.ConversationTag.filter({ is_active: true }, 'name', 100).then(d => setAllTags(d || []));
+    db.VIPCustomer.list('created_date', 500).then(d => {
       setVipEmails(new Set((d || []).map(v => v.email?.toLowerCase())));
     });
   }, []);
@@ -114,11 +115,11 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
 
   // Load all messages once for unread badge computation
   useEffect(() => {
-    base44.entities.TicketMessage.list('-created_date', 500).then(msgs => {
+    db.TicketMessage.list('-created_date', 500).then(msgs => {
       setAllMessages(msgs || []);
     });
-    const unsub = base44.entities.TicketMessage.subscribe(() => {
-      base44.entities.TicketMessage.list('-created_date', 500).then(msgs => {
+    const unsub = db.TicketMessage.subscribe(() => {
+      db.TicketMessage.list('-created_date', 500).then(msgs => {
         setAllMessages(msgs || []);
       });
     });
@@ -154,7 +155,7 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
     if (!selectedTicket) return;
     loadMessages(selectedTicket.id);
     setLastSeenMap(prev => ({ ...prev, [selectedTicket.id]: new Date().toISOString() }));
-    const unsub = base44.entities.TicketMessage.subscribe(event => {
+    const unsub = db.TicketMessage.subscribe(event => {
       if (event.data?.ticket_id === selectedTicket.id) {
         loadMessages(selectedTicket.id);
         setLastSeenMap(prev => ({ ...prev, [selectedTicket.id]: new Date().toISOString() }));
@@ -168,7 +169,7 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
   }, [messages]);
 
   const loadMessages = async (ticketId) => {
-    const msgs = await base44.entities.TicketMessage.filter({ ticket_id: ticketId }, 'created_date');
+    const msgs = await db.TicketMessage.filter({ ticket_id: ticketId }, 'created_date');
     setMessages((msgs || []).filter(m => !m.is_internal));
   };
 
@@ -180,9 +181,9 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
     setShowReplyPicker(false);
     loadTicketTags(ticket);
     // Ensure "created" history entry exists
-    const existing = await base44.entities.TicketHistory.filter({ ticket_id: ticket.id }, 'created_date', 1);
+    const existing = await db.TicketHistory.filter({ ticket_id: ticket.id }, 'created_date', 1);
     if (!existing?.length) {
-      await base44.entities.TicketHistory.create({
+      await db.TicketHistory.create({
         ticket_id: ticket.id,
         event_type: 'created',
         description: `Ticket created by ${ticket.customer_name}`,
@@ -219,7 +220,7 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
   const handleSend = async () => {
     if (!newMessage.trim() && attachments.length === 0) return;
     setSending(true);
-    await base44.entities.TicketMessage.create({
+    await db.TicketMessage.create({
       ticket_id: selectedTicket.id,
       sender_email: user?.email || '',
       sender_name: user?.full_name || user?.email || 'Support',
@@ -240,8 +241,8 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
     const isRemoving = current.includes(tagName);
     const updated = isRemoving ? current.filter(t => t !== tagName) : [...current, tagName];
     setTicketTags(prev => ({ ...prev, [ticketId]: updated }));
-    await base44.entities.Ticket.update(ticketId, { tags: updated });
-    await base44.entities.TicketHistory.create({
+    await db.Ticket.update(ticketId, { tags: updated });
+    await db.TicketHistory.create({
       ticket_id: ticketId,
       event_type: isRemoving ? 'tag_removed' : 'tag_applied',
       description: isRemoving ? `Tag "${tagName}" removed` : `Tag "${tagName}" applied`,
@@ -291,7 +292,7 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
   const handleRenotify = async () => {
     if (!selectedTicket || renotifying) return;
     setRenotifying(true);
-    await base44.entities.GroupChatMessage.create({
+    await db.GroupChatMessage.create({
       sender_email: user?.email || 'system@potb.com',
       sender_name: '⭐ VIP Alert',
       message: `⭐ VIP Customer **${selectedTicket.customer_name}** (${selectedTicket.customer_email}) needs attention on ticket #${selectedTicket.ticket_number}. Please prioritize!`,

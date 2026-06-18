@@ -2,6 +2,15 @@
   "name": "EmployeeAccount",
   "type": "object",
   "properties": {
+    "env": {
+      "type": "string",
+      "enum": [
+        "test",
+        "prod"
+      ],
+      "default": "test",
+      "description": "Environment: test or prod"
+    },
     "email": {
       "type": "string",
       "description": "Employee email"
@@ -18,32 +27,27 @@
       "default": "active"
     },
     "employee_code": {
-      "type": "string",
-      "description": "Unique employee code"
+      "type": "string"
     },
     "job_title": {
       "type": "string"
     },
     "generated_password": {
-      "type": "string",
-      "description": "HR-generated password"
+      "type": "string"
     },
     "airtable_record_id": {
       "type": "string"
     },
     "is_blocked": {
       "type": "boolean",
-      "default": false,
-      "description": "If true, employee is blocked from portal access"
+      "default": false
     },
     "portal_access_granted": {
       "type": "boolean",
-      "default": false,
-      "description": "If true, non-POTB employee has been granted portal access"
+      "default": false
     },
     "current_role": {
-      "type": "string",
-      "description": "Current assigned app role (csr, sales, accounting, etc.)"
+      "type": "string"
     }
   },
   "required": [

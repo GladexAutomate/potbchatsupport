@@ -2,6 +2,15 @@
   "name": "Ticket",
   "type": "object",
   "properties": {
+    "env": {
+      "type": "string",
+      "enum": [
+        "test",
+        "prod"
+      ],
+      "default": "test",
+      "description": "Environment: test (preview) or prod (published)"
+    },
     "ticket_number": {
       "type": "string",
       "description": "Auto-generated ticket ID"
@@ -128,16 +137,13 @@
     },
     "resolution_requested_at": {
       "type": "string",
-      "format": "date-time",
-      "description": "When staff triggered the resolution check"
+      "format": "date-time"
     },
     "resolution_requested_by": {
-      "type": "string",
-      "description": "Email of staff who triggered resolution check"
+      "type": "string"
     },
     "resolution_requested_by_name": {
-      "type": "string",
-      "description": "Name of staff who triggered resolution check"
+      "type": "string"
     },
     "dept_sla_log": {
       "type": "array",

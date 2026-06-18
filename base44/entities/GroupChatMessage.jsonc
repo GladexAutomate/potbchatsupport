@@ -2,6 +2,15 @@
   "name": "GroupChatMessage",
   "type": "object",
   "properties": {
+    "env": {
+      "type": "string",
+      "enum": [
+        "test",
+        "prod"
+      ],
+      "default": "test",
+      "description": "Environment: test or prod"
+    },
     "sender_email": {
       "type": "string"
     },
@@ -25,12 +34,10 @@
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "File/image URLs"
+      }
     },
     "ticket_ref": {
       "type": "object",
-      "description": "Ticket endorsement data",
       "properties": {
         "ticket_id": {
           "type": "string"
@@ -56,20 +63,16 @@
       }
     },
     "reply_to_id": {
-      "type": "string",
-      "description": "ID of message being replied to"
+      "type": "string"
     },
     "reply_to_preview": {
-      "type": "string",
-      "description": "Preview text of replied message"
+      "type": "string"
     },
     "reply_to_sender": {
-      "type": "string",
-      "description": "Name of sender of replied message"
+      "type": "string"
     },
     "reactions": {
-      "type": "object",
-      "description": "emoji -> [user emails]"
+      "type": "object"
     },
     "is_pinned": {
       "type": "boolean",
@@ -79,15 +82,13 @@
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "List of user emails who have read this message"
+      }
     },
     "mentions": {
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "Mentioned user emails"
+      }
     }
   },
   "required": [

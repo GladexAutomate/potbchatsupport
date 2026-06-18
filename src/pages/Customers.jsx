@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -62,8 +63,8 @@ export default function Customers() {
   const loadData = async () => {
     setLoading(true);
     const [userData, empData] = await Promise.all([
-      base44.entities.User.list('-created_date', 200),
-      base44.entities.EmployeeAccount.list('-created_date', 500),
+      db.User.list('-created_date', 200),
+      db.EmployeeAccount.list('-created_date', 500),
     ]);
     setUsers(userData || []);
     setEmployees(empData || []);
@@ -94,7 +95,7 @@ export default function Customers() {
   const handleSaveRole = async () => {
     if (!editUser) return;
     setSaving(true);
-    await base44.entities.User.update(editUser.id, {
+    await db.User.update(editUser.id, {
       role: editUser.role,
       department: DEPT_MAP[editUser.role] || '',
       is_active: editUser.is_active !== false,

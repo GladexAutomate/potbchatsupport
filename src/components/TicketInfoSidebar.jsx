@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Clock, ChevronRight, ChevronLeft, AlertTriangle, Send, Loader2, Paperclip, X, FileText } from 'lucide-react';
 import { differenceInMinutes, formatDistanceToNow } from 'date-fns';
@@ -43,8 +44,8 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
   const textareaRef = useRef(null);
 
   useEffect(() => {
-    base44.entities.User.list().then(d => setAgents(d || []));
-    base44.entities.SLAPolicy.filter({ priority: ticket.priority }).then(d => {
+    db.User.list().then(d => setAgents(d || []));
+    db.SLAPolicy.filter({ priority: ticket.priority }).then(d => {
       if (d?.length) setSlaPolicy(d[0]);
     });
   }, [ticket.priority]);
@@ -53,7 +54,7 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
   useEffect(() => {
     if (!ticket.id) return;
     loadStaffMessages();
-    const unsub = base44.entities.TicketMessage.subscribe(event => {
+    const unsub = db.TicketMessage.subscribe(event => {
       if (event.data?.ticket_id === ticket.id && event.data?.is_internal) {
         loadStaffMessages();
       }
@@ -66,7 +67,7 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
   }, [staffMessages]);
 
   const loadStaffMessages = async () => {
-    const msgs = await base44.entities.TicketMessage.filter({ ticket_id: ticket.id, is_internal: true }, 'created_date');
+    const msgs = await db.TicketMessage.filter({ ticket_id: ticket.id, is_internal: true }, 'created_date');
     setStaffMessages(msgs || []);
   };
 
@@ -106,7 +107,7 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
   const handleSendNote = async () => {
     if (!noteText.trim() && attachments.length === 0) return;
     setSendingNote(true);
-    await base44.entities.TicketMessage.create({
+    await db.TicketMessage.create({
       ticket_id: ticket.id,
       sender_email: user?.email || '',
       sender_name: user?.full_name || user?.email || 'Support',
@@ -134,8 +135,8 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
       }
       if (value === 'Resolved') extraFields.resolved_at = new Date().toISOString();
     }
-    await base44.entities.Ticket.update(ticket.id, { [field]: value, ...extraFields });
-    await base44.entities.TicketHistory.create({
+    await db.Ticket.update(ticket.id, { [field]: value, ...extraFields });
+    await db.TicketHistory.create({
       ticket_id: ticket.id,
       event_type: field === 'status' ? 'status_changed' : field === 'priority' ? 'priority_changed' : 'assigned',
       description,

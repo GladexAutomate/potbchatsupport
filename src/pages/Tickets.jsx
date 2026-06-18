@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { useAuth } from '@/lib/AuthContext';
 import StaffMessenger from '@/components/StaffMessenger';
 import { useLocation } from 'react-router-dom';
@@ -44,7 +44,7 @@ export default function Tickets() {
   };
 
   useEffect(() => {
-    base44.entities.VIPCustomer.list().then(vips => {
+    db.VIPCustomer.list().then(vips => {
       setVipEmails(new Set((vips || []).map(v => v.email?.toLowerCase())));
     }).catch(() => {});
   }, []);
@@ -52,7 +52,7 @@ export default function Tickets() {
   useEffect(() => {
     if (!user) return;
     const load = () => {
-      base44.entities.Ticket.list('-created_date', 200).then(data => {
+      db.Ticket.list('-created_date', 200).then(data => {
         const filtered = filterTicketsForUser(data || []);
         // Exclude VIP tickets — they live on the VIP Tickets page
         const nonVip = filtered.filter(t => !vipEmails.has(t.customer_email?.toLowerCase()));
@@ -61,7 +61,7 @@ export default function Tickets() {
       });
     };
     load();
-    const unsub = base44.entities.Ticket.subscribe(load);
+    const unsub = db.Ticket.subscribe(load);
     return () => unsub();
   }, [user, vipEmails]);
 

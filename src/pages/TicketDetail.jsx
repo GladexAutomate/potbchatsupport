@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -36,7 +36,7 @@ export default function TicketDetail() {
   const [edits, setEdits] = useState({});
 
   useEffect(() => {
-    base44.entities.Ticket.list().then(all => {
+    db.Ticket.list().then(all => {
       const found = all.find(t => t.id === id);
       setTicket(found);
       setEdits({
@@ -62,7 +62,7 @@ export default function TicketDetail() {
       updates.first_response_at = new Date().toISOString();
       updates.assigned_to = edits.assigned_to || user.email;
     }
-    await base44.entities.Ticket.update(id, updates);
+    await db.Ticket.update(id, updates);
     setTicket({ ...ticket, ...updates });
     setSaving(false);
   };

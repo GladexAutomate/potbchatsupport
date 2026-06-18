@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Send, Loader2, Paperclip, X, FileText } from 'lucide-react';
@@ -20,7 +21,7 @@ export default function TicketChat({ ticketId }) {
   useEffect(() => {
     if (!ticketId) return;
     loadMessages();
-    const unsub = base44.entities.TicketMessage.subscribe(event => {
+    const unsub = db.TicketMessage.subscribe(event => {
       if (event.data?.ticket_id === ticketId) loadMessages();
     });
     return () => unsub();
@@ -31,7 +32,7 @@ export default function TicketChat({ ticketId }) {
   }, [messages]);
 
   const loadMessages = async () => {
-    const msgs = await base44.entities.TicketMessage.filter({ ticket_id: ticketId }, 'created_date');
+    const msgs = await db.TicketMessage.filter({ ticket_id: ticketId }, 'created_date');
     setMessages((msgs || []).filter(m => !m.is_internal));
   };
 
@@ -50,7 +51,7 @@ export default function TicketChat({ ticketId }) {
   const handleSend = async () => {
     if (!newMessage.trim() && attachments.length === 0) return;
     setSending(true);
-    await base44.entities.TicketMessage.create({
+    await db.TicketMessage.create({
       ticket_id: ticketId,
       sender_email: user?.email || '',
       sender_name: user?.full_name || user?.email || 'Support',

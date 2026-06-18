@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -65,7 +65,7 @@ export default function RolePermissions() {
   const loadPermissions = async () => {
     try {
       setLoading(true);
-      const data = await base44.entities.Permission.list();
+      const data = await db.Permission.list();
       setPermissions(data || []);
     } catch (error) {
       console.error('Failed to load permissions:', error);
@@ -94,12 +94,12 @@ export default function RolePermissions() {
 
     // Persist in background
     if (perm) {
-      base44.entities.Permission.update(perm.id, { has_access: newAccess }).catch(() => {
+      db.Permission.update(perm.id, { has_access: newAccess }).catch(() => {
         // Revert on failure
         setPermissions(prev => prev.map(p => p.id === perm.id ? { ...p, has_access: !newAccess } : p));
       });
     } else {
-      base44.entities.Permission.create({
+      db.Permission.create({
         role, resource_type: resourceType, resource_name: resourceName, resource_label: label, has_access: newAccess,
       }).then(created => {
         // Replace temp record with real one

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { Link } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -49,7 +49,7 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    base44.entities.Ticket.list('-created_date', 100).then(data => {
+    db.Ticket.list('-created_date', 100).then(data => {
       setTickets(data || []);
       setLoading(false);
     });

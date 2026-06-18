@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -40,7 +40,7 @@ export default function CreateTicketModal({ onTicketCreated }) {
   useEffect(() => {
     const loadCsrs = async () => {
       try {
-        const emps = await base44.entities.EmployeeAccount.filter({ current_role: 'csr', status: 'active', is_blocked: false });
+        const emps = await db.EmployeeAccount.filter({ current_role: 'csr', status: 'active', is_blocked: false });
         setCsrList(emps || []);
       } catch (err) {
         console.error('Failed to load CSRs:', err);
@@ -55,7 +55,7 @@ export default function CreateTicketModal({ onTicketCreated }) {
       return;
     }
     setLoading(true);
-    const newTicket = await base44.entities.Ticket.create(formData);
+    const newTicket = await db.Ticket.create(formData);
     setLoading(false);
     setOpen(false);
     setFormData({

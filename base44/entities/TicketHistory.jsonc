@@ -2,6 +2,15 @@
   "name": "TicketHistory",
   "type": "object",
   "properties": {
+    "env": {
+      "type": "string",
+      "enum": [
+        "test",
+        "prod"
+      ],
+      "default": "test",
+      "description": "Environment: test or prod"
+    },
     "ticket_id": {
       "type": "string"
     },
@@ -22,8 +31,7 @@
       "type": "string"
     },
     "actor": {
-      "type": "string",
-      "description": "Email or name of person who triggered event"
+      "type": "string"
     },
     "old_value": {
       "type": "string"

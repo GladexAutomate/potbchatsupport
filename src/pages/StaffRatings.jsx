@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { Star, TrendingUp, Users, Award } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { startOfDay, startOfWeek, startOfMonth, subDays, format, isAfter } from 'date-fns';
@@ -24,8 +24,8 @@ export default function StaffRatings() {
 
   useEffect(() => {
     Promise.all([
-      base44.entities.StaffRating.list('-rated_at', 500),
-      base44.entities.EmployeeAccount.list('', 500)
+      db.StaffRating.list('-rated_at', 500),
+      db.EmployeeAccount.list('', 500)
     ]).then(([ratingData, empData]) => {
       const potbEmails = new Set((empData || [])
         .filter(e => e.employee_code?.toUpperCase().startsWith('POTB'))

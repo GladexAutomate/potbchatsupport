@@ -2,6 +2,15 @@
   "name": "TicketMessage",
   "type": "object",
   "properties": {
+    "env": {
+      "type": "string",
+      "enum": [
+        "test",
+        "prod"
+      ],
+      "default": "test",
+      "description": "Environment: test or prod"
+    },
     "ticket_id": {
       "type": "string",
       "description": "Reference to Ticket id"
@@ -30,20 +39,17 @@
         "resolution_request",
         "system_auto_close"
       ],
-      "default": "regular",
-      "description": "Type of message for special rendering"
+      "default": "regular"
     },
     "is_internal": {
       "type": "boolean",
-      "default": false,
-      "description": "If true, visible to staff only"
+      "default": false
     },
     "attachments": {
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "description": "URLs of any attached files"
+      }
     }
   },
   "required": [

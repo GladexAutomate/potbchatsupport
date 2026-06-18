@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -53,7 +54,7 @@ export default function InternalTicketsBase({ userDepartment }) {
 
   const loadSLAPolicies = async () => {
     try {
-      const policies = await base44.entities.SLAPolicy.list();
+      const policies = await db.SLAPolicy.list();
       setSlaPolicies(policies || []);
     } catch (err) {
       console.error('Error loading SLA policies:', err);
@@ -62,8 +63,8 @@ export default function InternalTicketsBase({ userDepartment }) {
 
   const loadData = async () => {
     try {
-      const created = await base44.entities.InternalTicket.filter({ from_department: userDepartment });
-      const assigned = await base44.entities.InternalTicket.filter({ to_department: userDepartment });
+      const created = await db.InternalTicket.filter({ from_department: userDepartment });
+      const assigned = await db.InternalTicket.filter({ to_department: userDepartment });
       
       const allTickets = [...(created || []), ...(assigned || [])];
       const uniqueTickets = Array.from(new Map(allTickets.map(t => [t.id, t])).values());
@@ -101,7 +102,7 @@ export default function InternalTicketsBase({ userDepartment }) {
   const handleSend = async () => {
     if (!newMessage.trim() && attachments.length === 0) return;
     setSending(true);
-    await base44.entities.InternalTicket.update(selectedTicket.id, {
+    await db.InternalTicket.update(selectedTicket.id, {
       notes: (selectedTicket.notes ? selectedTicket.notes + '\n\n' : '') + 
              `[${new Date().toLocaleString()}] ${user?.full_name}: ${newMessage.trim()}`
     });

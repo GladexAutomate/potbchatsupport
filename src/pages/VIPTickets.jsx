@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { useAuth } from '@/lib/AuthContext';
 import StaffMessenger from '@/components/StaffMessenger';
 import { Crown } from 'lucide-react';
@@ -42,7 +42,7 @@ export default function VIPTickets() {
   };
 
   useEffect(() => {
-    base44.entities.VIPCustomer.list().then(vips => {
+    db.VIPCustomer.list().then(vips => {
       setVipEmails(new Set((vips || []).map(v => v.email?.toLowerCase())));
     }).catch(() => {});
   }, []);
@@ -51,7 +51,7 @@ export default function VIPTickets() {
     if (!user) return;
 
     const loadVIPTickets = () => {
-      base44.entities.Ticket.list('-created_date', 200).then(data => {
+      db.Ticket.list('-created_date', 200).then(data => {
         const filtered = filterTicketsForUser(data || []);
         // Match tickets that are flagged is_vip OR whose customer email is in the VIPCustomer list
         const vipOnly = filtered.filter(t =>
@@ -63,7 +63,7 @@ export default function VIPTickets() {
     };
 
     loadVIPTickets();
-    const unsub = base44.entities.Ticket.subscribe(() => loadVIPTickets());
+    const unsub = db.Ticket.subscribe(() => loadVIPTickets());
     return () => unsub();
   }, [user, vipEmails]);
 

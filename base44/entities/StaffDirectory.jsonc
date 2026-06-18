@@ -2,21 +2,26 @@
   "name": "StaffDirectory",
   "type": "object",
   "properties": {
-    "email": {
+    "env": {
       "type": "string",
-      "description": "Employee email address"
+      "enum": [
+        "test",
+        "prod"
+      ],
+      "default": "test",
+      "description": "Environment: test or prod"
+    },
+    "email": {
+      "type": "string"
     },
     "full_name": {
-      "type": "string",
-      "description": "Full name"
+      "type": "string"
     },
     "employee_code": {
-      "type": "string",
-      "description": "Unique employee code"
+      "type": "string"
     },
     "job_title": {
-      "type": "string",
-      "description": "Job title"
+      "type": "string"
     },
     "status": {
       "type": "string",
@@ -24,35 +29,29 @@
         "active",
         "inactive"
       ],
-      "default": "active",
-      "description": "Employment status"
+      "default": "active"
     },
     "is_potb": {
       "type": "boolean",
-      "default": false,
-      "description": "Is POTB (Portal of The Business) user"
+      "default": false
     },
     "portal_access_granted": {
       "type": "boolean",
-      "default": false,
-      "description": "Portal access for non-POTB employees"
+      "default": false
     },
     "is_blocked": {
       "type": "boolean",
-      "default": false,
-      "description": "If blocked, no portal access"
+      "default": false
     },
     "airtable_record_id": {
       "type": "string"
     },
     "current_role": {
       "type": "string",
-      "description": "Current assigned role (csr, it, sales, accounting, etc.)",
       "default": null
     },
     "user_id": {
-      "type": "string",
-      "description": "Reference to Base44 User ID if exists"
+      "type": "string"
     }
   },
   "required": [

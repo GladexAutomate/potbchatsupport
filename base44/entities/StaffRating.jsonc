@@ -2,6 +2,15 @@
   "name": "StaffRating",
   "type": "object",
   "properties": {
+    "env": {
+      "type": "string",
+      "enum": [
+        "test",
+        "prod"
+      ],
+      "default": "test",
+      "description": "Environment: test or prod"
+    },
     "ticket_id": {
       "type": "string"
     },

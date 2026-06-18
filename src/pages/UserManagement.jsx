@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { getAppEnv } from '@/lib/appEnv';
 import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -77,7 +78,7 @@ export default function UserManagement() {
 
   const loadData = async () => {
     setLoading(true);
-    const empData = await base44.entities.EmployeeAccount.list('-created_date', 500);
+    const empData = await db.EmployeeAccount.list('-created_date', 500);
     setEmployees(empData || []);
     setLoading(false);
   };
@@ -109,7 +110,7 @@ export default function UserManagement() {
   const handleBlockToggle = async (emp) => {
     setActionLoading(emp.id + '_block');
     const newBlocked = !emp.is_blocked;
-    await base44.entities.EmployeeAccount.update(emp.id, { is_blocked: newBlocked });
+    await db.EmployeeAccount.update(emp.id, { is_blocked: newBlocked });
     setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, is_blocked: newBlocked } : e));
     setActionLoading(null);
   };
@@ -117,7 +118,7 @@ export default function UserManagement() {
   const handleAccessToggle = async (emp) => {
     setActionLoading(emp.id + '_access');
     const newAccess = !emp.portal_access_granted;
-    await base44.entities.EmployeeAccount.update(emp.id, { portal_access_granted: newAccess });
+    await db.EmployeeAccount.update(emp.id, { portal_access_granted: newAccess });
     setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, portal_access_granted: newAccess } : e));
     setActionLoading(null);
   };
@@ -131,7 +132,7 @@ export default function UserManagement() {
     if (!roleEditItem || !roleEditItem._selectedRole) return;
     setRoleSaving(true);
     // Always save the custom role to EmployeeAccount — this is the source of truth
-    await base44.entities.EmployeeAccount.update(roleEditItem.id, { current_role: roleEditItem._selectedRole });
+    await db.EmployeeAccount.update(roleEditItem.id, { current_role: roleEditItem._selectedRole });
     setEmployees(prev => prev.map(e => e.id === roleEditItem.id ? { ...e, current_role: roleEditItem._selectedRole } : e));
     // Force re-login so the user's session picks up the new role
     try {

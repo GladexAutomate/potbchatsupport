@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { X, Clock, Tag, ArrowRightLeft, AlertTriangle, CheckCircle2, User, Loader2, Plus } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 
@@ -33,7 +33,7 @@ export default function TicketHistoryModal({ ticket, onClose }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    base44.entities.TicketHistory.filter({ ticket_id: ticket.id }, '-created_date', 100)
+    db.TicketHistory.filter({ ticket_id: ticket.id }, '-created_date', 100)
       .then(d => setHistory(d || []))
       .finally(() => setLoading(false));
   }, [ticket.id]);

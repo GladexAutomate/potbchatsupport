@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -25,7 +26,7 @@ export default function CustomerPortal() {
   const [showStaffModal, setShowStaffModal] = useState(false);
 
   useEffect(() => {
-    base44.entities.ChatbotConfig.list().then(configs => {
+    db.ChatbotConfig.list().then(configs => {
       if (configs?.[0]) setChatConfig(configs[0]);
     }).catch(() => {});
     base44.auth.me().then(async u => {
@@ -33,7 +34,7 @@ export default function CustomerPortal() {
         setUser(u);
         setForm(f => ({ ...f, customer_name: u.full_name || '' }));
         // Check if this email is a staff employee
-        const employees = await base44.entities.EmployeeAccount.filter({ email: u.email }).catch(() => []);
+        const employees = await db.EmployeeAccount.filter({ email: u.email }).catch(() => []);
         if (employees?.length > 0) {
           setEmployeeRecord(employees[0]);
         }
@@ -84,11 +85,11 @@ export default function CustomerPortal() {
     // Check if customer is VIP
     let isVIP = false;
     if (user?.email) {
-      const vipList = await base44.entities.VIPCustomer.filter({ email: user.email });
+      const vipList = await db.VIPCustomer.filter({ email: user.email });
       isVIP = vipList && vipList.length > 0;
     }
     
-    await base44.entities.Ticket.create({
+    await db.Ticket.create({
       customer_name: form.customer_name,
       customer_email: user?.email || '',
       subject: form.subject,

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,7 +18,7 @@ export default function ReplyingCenter() {
   const [deleting, setDeleting] = useState(null);
 
   const load = () =>
-    base44.entities.SavedReply.list('-created_date', 200).then(d => {
+    db.SavedReply.list('-created_date', 200).then(d => {
       setReplies(d || []);
       setLoading(false);
     });
@@ -41,9 +41,9 @@ export default function ReplyingCenter() {
     if (!form.shortcut.trim() || !form.message.trim()) return;
     setSaving(true);
     if (editing) {
-      await base44.entities.SavedReply.update(editing.id, form);
+      await db.SavedReply.update(editing.id, form);
     } else {
-      await base44.entities.SavedReply.create(form);
+      await db.SavedReply.create(form);
     }
     setSaving(false);
     setModalOpen(false);
@@ -52,7 +52,7 @@ export default function ReplyingCenter() {
 
   const handleDelete = async (id) => {
     setDeleting(id);
-    await base44.entities.SavedReply.delete(id);
+    await db.SavedReply.delete(id);
     setDeleting(null);
     load();
   };

@@ -1,6 +1,7 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 
 import { useAuth } from '@/lib/AuthContext';
 import {
@@ -70,9 +71,9 @@ export default function Layout() {
       const count = (msgs || []).filter(m => !m.read_by?.includes(user.email)).length;
       setGroupChatUnread(count);
     };
-    base44.entities.GroupChatMessage.list('created_date', 100).then(computeUnread);
-    const unsub = base44.entities.GroupChatMessage.subscribe(() => {
-      base44.entities.GroupChatMessage.list('created_date', 100).then(computeUnread);
+    db.GroupChatMessage.list('created_date', 100).then(computeUnread);
+    const unsub = db.GroupChatMessage.subscribe(() => {
+      db.GroupChatMessage.list('created_date', 100).then(computeUnread);
     });
     return () => unsub();
   }, [user]);
@@ -80,7 +81,7 @@ export default function Layout() {
   // Load permissions for this role
   useEffect(() => {
     if (!user || isSuperAdmin) return;
-    base44.entities.Permission.filter({ role, resource_type: 'page' }).then(setPermissions).catch(() => {});
+    db.Permission.filter({ role, resource_type: 'page' }).then(setPermissions).catch(() => {});
   }, [user, role]);
 
   // Clear badge when on group chat page

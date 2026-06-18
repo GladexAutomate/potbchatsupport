@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -18,7 +19,7 @@ export default function VIPCustomerSection() {
   const [deleting, setDeleting] = useState(null);
 
   const load = () => {
-    base44.entities.VIPCustomer.list('-created_date', 200).then(d => {
+    db.VIPCustomer.list('-created_date', 200).then(d => {
       setVips(d || []);
       setLoading(false);
     });
@@ -42,9 +43,9 @@ export default function VIPCustomerSection() {
     if (!form.name.trim() || !form.email.trim()) return;
     setSaving(true);
     if (editing) {
-      await base44.entities.VIPCustomer.update(editing.id, form);
+      await db.VIPCustomer.update(editing.id, form);
     } else {
-      await base44.entities.VIPCustomer.create(form);
+      await db.VIPCustomer.create(form);
     }
     setSaving(false);
     setModalOpen(false);
@@ -69,7 +70,7 @@ export default function VIPCustomerSection() {
         console.error('Error creating customer account:', e);
       }
     }
-    await base44.entities.VIPCustomer.delete(id);
+    await db.VIPCustomer.delete(id);
     setDeleting(null);
     load();
   };

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { X, Send, Loader2, Users } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
@@ -27,7 +27,7 @@ export default function EndorseToGroupChatModal({ ticket, onClose }) {
 
   const handleSend = async () => {
     setSending(true);
-    await base44.entities.GroupChatMessage.create({
+    await db.GroupChatMessage.create({
       sender_email: user?.email || '',
       sender_name: user?.full_name || user?.email || 'Staff',
       message: remarks.trim(),
