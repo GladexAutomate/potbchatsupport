@@ -32,7 +32,7 @@ function makeEntityProxy(entityName) {
     async list(sort, limit) {
       const data = await entity.list(sort, limit || 500);
       const env = getEnv();
-      return (data || []).filter(r => r.env === env || r.env == null);
+      return (data || []).filter(r => r.env === env);
     },
 
     // filter — merges env into the query filter
