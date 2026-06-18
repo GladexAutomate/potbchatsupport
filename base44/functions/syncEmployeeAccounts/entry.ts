@@ -13,10 +13,11 @@ Deno.serve(async (req) => {
     }
     if (!isAuthorized) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const isProd = Deno.env.get('APP_ENV') === 'production';
+    const supabaseUrl = isProd ? Deno.env.get('SUPABASE_PROD_URL') : Deno.env.get('SUPABASE_URL');
+    const supabaseKey = isProd ? Deno.env.get('SUPABASE_PROD_SERVICE_ROLE_KEY') : Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     if (!supabaseUrl || !supabaseKey) {
-      return Response.json({ error: 'Missing Supabase secrets' }, { status: 500 });
+      return Response.json({ error: 'Missing Supabase secrets for current environment' }, { status: 500 });
     }
 
     // Fetch all from Supabase employeeaccount table

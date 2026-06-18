@@ -54,14 +54,16 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const supabaseUrl = Deno.env.get('SUPABASE_URL');
-    const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
+    const isProd = Deno.env.get('APP_ENV') === 'production';
+    const supabaseUrl = isProd ? Deno.env.get('SUPABASE_PROD_URL') : Deno.env.get('SUPABASE_URL');
+    const supabaseKey = isProd ? Deno.env.get('SUPABASE_PROD_SERVICE_ROLE_KEY') : Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
+    console.log('ENV:', isProd ? 'PRODUCTION' : 'TEST');
     console.log('SUPABASE_URL set:', supabaseUrl ? 'YES' : 'NO');
     console.log('SUPABASE_KEY set:', supabaseKey ? 'YES' : 'NO');
 
     if (!supabaseUrl || !supabaseKey) {
-      return Response.json({ error: 'Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY secrets' }, { status: 500 });
+      return Response.json({ error: 'Missing Supabase secrets for current environment' }, { status: 500 });
     }
 
     const results = {};
