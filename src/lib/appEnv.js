@@ -4,11 +4,13 @@
  */
 export function getAppEnv() {
   const hostname = window.location.hostname;
-  // Base44 preview runs on localhost or *.base44.app preview URLs
+  // Published custom domains: potbsupport.base44.app or any domain NOT matching preview patterns
+  // Preview: localhost, 127.0.0.1, or preview.base44.app, *.dev.base44.app
   if (
     hostname === 'localhost' ||
     hostname === '127.0.0.1' ||
-    hostname.includes('.base44.app')
+    hostname.startsWith('preview.') ||
+    hostname.includes('.dev.base44.app')
   ) {
     return 'preview';
   }
