@@ -4,7 +4,10 @@ Deno.serve(async (req) => {
   const base44 = createClientFromRequest(req);
 
   // Find tickets with resolution_requested_at set and status still "Pending Resolution"
-  const tickets = await base44.asServiceRole.entities.Ticket.filter({ status: 'Pending Resolution' });
+  // Process both envs
+  const ticketsTest = await base44.asServiceRole.entities.Ticket.filter({ status: 'Pending Resolution', env: 'test' });
+  const ticketsProd = await base44.asServiceRole.entities.Ticket.filter({ status: 'Pending Resolution', env: 'prod' });
+  const tickets = [...(ticketsTest || []), ...(ticketsProd || [])];
 
   // Read configurable auto-close delay from AppSettings
   const settings = await base44.asServiceRole.entities.AppSettings.filter({ key: 'resolution_auto_close_minutes' });
@@ -31,8 +34,11 @@ Deno.serve(async (req) => {
         dept_sla_log: log,
       });
 
+      const env = ticket.env || 'test';
+
       // Send auto-close system message to customer chat
       await base44.asServiceRole.entities.TicketMessage.create({
+        env,
         ticket_id: ticket.id,
         sender_email: 'system',
         sender_name: 'System',
@@ -44,6 +50,7 @@ Deno.serve(async (req) => {
       });
 
       await base44.asServiceRole.entities.TicketHistory.create({
+        env,
         ticket_id: ticket.id,
         event_type: 'status_changed',
         description: 'Ticket auto-closed due to no customer response after 3 minutes.',

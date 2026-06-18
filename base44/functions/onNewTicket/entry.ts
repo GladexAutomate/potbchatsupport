@@ -10,8 +10,11 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true, skipped: 'no ticket data' });
     }
 
-    // Check if customer is VIP
-    const vips = await base44.asServiceRole.entities.VIPCustomer.filter({ email: ticket.customer_email }, 'created_date', 5);
+    // Inherit env from the ticket so records stay in the same environment
+    const env = ticket.env || 'test';
+
+    // Check if customer is VIP (scoped to same env)
+    const vips = await base44.asServiceRole.entities.VIPCustomer.filter({ email: ticket.customer_email, env }, 'created_date', 5);
     const isVIP = vips && vips.length > 0;
 
     if (isVIP) {
@@ -20,6 +23,7 @@ Deno.serve(async (req) => {
 
       // 2. Post Group Chat alert as ticket_endorsement so staff can click "Open Ticket"
       await base44.asServiceRole.entities.GroupChatMessage.create({
+        env,
         sender_email: 'system@potb.com',
         sender_name: '⭐ VIP Alert',
         message: `⭐ VIP Customer **${ticket.customer_name}** (${ticket.customer_email}) just opened a new ticket! Please prioritize this ticket promptly.`,
@@ -38,6 +42,7 @@ Deno.serve(async (req) => {
 
       // 3. Log to ticket history
       await base44.asServiceRole.entities.TicketHistory.create({
+        env,
         ticket_id: ticket.id,
         event_type: 'priority_changed',
         description: 'Priority auto-escalated to Critical — VIP Customer',
