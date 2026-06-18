@@ -44,48 +44,5 @@
     "ticket_id",
     "event_type",
     "description"
-  ],
-  "rls": {
-    "create": {
-      "user_condition": {
-        "role": "admin"
-      },
-      "data.env": "{{user.data.env}}"
-    },
-    "read": {
-      "$or": [
-        {
-          "user_condition": {
-            "role": "admin"
-          }
-        },
-        {
-          "user_condition": {
-            "role": "tl_management"
-          }
-        },
-        {
-          "user_condition": {
-            "role": "csr"
-          }
-        },
-        {
-          "created_by_id": "{{user.id}}"
-        }
-      ],
-      "data.env": "{{user.data.env}}"
-    },
-    "update": {
-      "user_condition": {
-        "role": "admin"
-      },
-      "data.env": "{{user.data.env}}"
-    },
-    "delete": {
-      "user_condition": {
-        "role": "admin"
-      },
-      "data.env": "{{user.data.env}}"
-    }
-  }
+  ]
 }
