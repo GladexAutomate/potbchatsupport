@@ -84,7 +84,9 @@ export default function Customers() {
     || u.full_name?.toLowerCase().includes(search.toLowerCase());
 
   const filteredCustomers = users.filter(u =>
-    !STAFF_ROLES.includes(u.role) && matchesSearch(u)
+    !STAFF_ROLES.includes(u.role)
+    && !empByEmail[u.email?.toLowerCase()]  // exclude employee accounts
+    && matchesSearch(u)
   );
 
   const customerCount = users.filter(u => u.role === 'customer').length;
