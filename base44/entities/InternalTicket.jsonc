@@ -94,6 +94,52 @@
     },
     "notes": {
       "type": "string"
+    },
+    "sla_deadline": {
+      "type": "string",
+      "format": "date-time",
+      "description": "SLA resolution deadline"
+    },
+    "first_response_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When first response was sent"
+    },
+    "resolved_at": {
+      "type": "string",
+      "format": "date-time",
+      "description": "When ticket was resolved"
+    },
+    "dept_sla_log": {
+      "type": "array",
+      "description": "Per-department SLA tracking log",
+      "items": {
+        "type": "object",
+        "properties": {
+          "department": {
+            "type": "string"
+          },
+          "started_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "stopped_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "elapsed_minutes": {
+            "type": "number"
+          },
+          "grade": {
+            "type": "string",
+            "enum": [
+              "Met",
+              "Breached",
+              "Active"
+            ]
+          }
+        }
+      }
     }
   },
   "required": [

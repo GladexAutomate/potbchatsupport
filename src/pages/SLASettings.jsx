@@ -14,6 +14,7 @@ export default function SLASettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [ticketType, setTicketType] = useState('external'); // 'external' or 'internal'
   const { toast } = useToast();
 
   // Check role-based access
@@ -84,6 +85,29 @@ export default function SLASettings() {
           SLA Policies
         </h1>
         <p className="text-muted-foreground">Configure response and resolution time thresholds for each priority level.</p>
+      </div>
+
+      <div className="flex gap-3 mb-6">
+        <button
+          onClick={() => setTicketType('external')}
+          className={`px-4 py-2 rounded-md font-medium transition-colors ${
+            ticketType === 'external'
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-secondary text-foreground hover:bg-secondary/80'
+          }`}
+        >
+          External Tickets
+        </button>
+        <button
+          onClick={() => setTicketType('internal')}
+          className={`px-4 py-2 rounded-md font-medium transition-colors ${
+            ticketType === 'internal'
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-secondary text-foreground hover:bg-secondary/80'
+          }`}
+        >
+          Internal Tickets
+        </button>
       </div>
 
       <div className="space-y-4 mb-6">
