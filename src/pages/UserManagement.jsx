@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { getAppEnv } from '@/lib/appEnv';
 import { base44 } from '@/api/base44Client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -85,7 +86,7 @@ export default function UserManagement() {
 
   const handleSyncEmployees = async () => {
     setSyncing(true);
-    await base44.functions.invoke('syncEmployeeAccounts', {});
+    await base44.functions.invoke('syncEmployeeAccounts', { env: getAppEnv() });
     await loadData();
     setSyncing(false);
   };

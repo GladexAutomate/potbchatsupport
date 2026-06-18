@@ -54,7 +54,8 @@ Deno.serve(async (req) => {
       return Response.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const isProd = Deno.env.get('APP_ENV') === 'production';
+    const body = await req.json().catch(() => ({}));
+    const isProd = body.env === 'published';
     const supabaseUrl = isProd ? Deno.env.get('SUPABASE_PROD_URL') : Deno.env.get('SUPABASE_URL');
     const supabaseKey = isProd ? Deno.env.get('SUPABASE_PROD_SERVICE_ROLE_KEY') : Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 
