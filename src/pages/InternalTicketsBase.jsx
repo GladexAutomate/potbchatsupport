@@ -54,6 +54,14 @@ export default function InternalTicketsBase({ userDepartment }) {
   useEffect(() => {
     loadData();
     loadSLAPolicies();
+    
+    // Subscribe to real-time updates
+    const unsubscribe = db.InternalTicket.subscribe((event) => {
+      if (event.type === 'create') {
+        loadData();
+      }
+    });
+    return unsubscribe;
   }, []);
 
   const loadSLAPolicies = async () => {
