@@ -131,14 +131,27 @@ export default function GroupChatMessageBubble({ msg, currentUser, isMe, onReply
               <p className="text-xs italic text-muted-foreground border-t border-border/50 pt-2 mt-1">"{msg.message}"</p>
             )}
             <button
-              onClick={() => {
-                let route = '/tickets';
-                if (msg.ticket_ref.is_vip) {
-                  route = '/vip-tickets';
-                } else if (msg.ticket_ref.escalated) {
-                  route = '/escalations';
+              onClick={async () => {
+                try {
+                  // Fetch latest ticket data to get current flags
+                  const ticket = await base44.entities.Ticket.get(msg.ticket_ref.ticket_id);
+                  let route = '/tickets';
+                  if (ticket?.is_vip) {
+                    route = '/vip-tickets';
+                  } else if (ticket?.escalated) {
+                    route = '/escalations';
+                  }
+                  navigate(`${route}?open=${msg.ticket_ref.ticket_id}`, { replace: true });
+                } catch (e) {
+                  // Fallback to message data if ticket fetch fails
+                  let route = '/tickets';
+                  if (msg.ticket_ref.is_vip) {
+                    route = '/vip-tickets';
+                  } else if (msg.ticket_ref.escalated) {
+                    route = '/escalations';
+                  }
+                  navigate(`${route}?open=${msg.ticket_ref.ticket_id}`, { replace: true });
                 }
-                navigate(`${route}?open=${msg.ticket_ref.ticket_id}`, { replace: true });
               }}
               className="mt-2 flex items-center gap-1 text-xs text-primary hover:underline font-medium"
             >
