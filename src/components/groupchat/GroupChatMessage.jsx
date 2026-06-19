@@ -41,6 +41,7 @@ export default function GroupChatMessageBubble({ msg, currentUser, isMe, onReply
   const repliedMsg = msg.reply_to_id ? allMessages.find(m => m.id === msg.reply_to_id) : null;
 
   const handleReact = async (emoji) => {
+    if (!currentUser?.email) return;
     const reactions = { ...(msg.reactions || {}) };
     const users = reactions[emoji] ? [...reactions[emoji]] : [];
     const idx = users.indexOf(currentUser.email);
@@ -201,7 +202,7 @@ export default function GroupChatMessageBubble({ msg, currentUser, isMe, onReply
                   onClick={() => handleReact(emoji)}
                   title={users.map(email => staffMap[email.toLowerCase()] || email).join(', ')}
                   className={`flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded-full border transition-colors
-                    ${users.includes(currentUser.email) ? 'bg-primary/10 border-primary/30 text-primary' : 'bg-muted border-border/50 hover:bg-muted/80'}`}
+                    ${currentUser?.email && users.includes(currentUser.email) ? 'bg-primary/10 border-primary/30 text-primary' : 'bg-muted border-border/50 hover:bg-muted/80'}`}
                 >
                   {emoji} {users.length}
                 </button>
