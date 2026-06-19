@@ -21,6 +21,7 @@ export default function SubmitInternalTicket() {
   const [user, setUser] = useState(null);
   const [departments, setDepartments] = useState([]);
   const [form, setForm] = useState({ from_department: '', to_department: '', subject: '', description: '' });
+  const [formInitialized, setFormInitialized] = useState(false);
   const [attachments, setAttachments] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [dragOver, setDragOver] = useState(false);
@@ -44,6 +45,7 @@ export default function SubmitInternalTicket() {
           const dept = deptMap[u.role?.toLowerCase()];
           if (dept && departmentList.includes(dept)) {
             setForm(f => ({ ...f, from_department: dept }));
+            setFormInitialized(true);
           }
         }
       } catch (err) {
@@ -217,7 +219,7 @@ export default function SubmitInternalTicket() {
                   </div>
 
                   <Button onClick={handleSubmitTicket} 
-                    disabled={submitting || uploading || !form.from_department || !form.to_department || !form.subject || !form.description}
+                   disabled={submitting || uploading || !formInitialized || !form.to_department || !form.subject || !form.description}
                     className="w-full bg-primary hover:bg-primary/90">
                     {submitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Submitting...</> : 'Submit Ticket'}
                   </Button>
@@ -242,7 +244,7 @@ export default function SubmitInternalTicket() {
                 <Button variant="outline" onClick={() => navigate('/dashboard')} className="border-white/20 text-white hover:bg-white/10">
                   Back to Dashboard
                 </Button>
-                <Button onClick={() => { setView('form'); setForm({...form, subject:'', description:'', to_department:''}); setAttachments([]); }}
+                <Button onClick={() => { setView('form'); setForm(f => ({ from_department: f.from_department, to_department: '', subject:'', description:''})); setAttachments([]); }}
                   className="bg-primary hover:bg-primary/90">Submit Another</Button>
               </div>
             </motion.div>
