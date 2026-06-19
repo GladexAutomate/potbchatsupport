@@ -350,10 +350,10 @@ export default function UserManagement() {
                   const accessLoading = actionLoading === emp.id + '_access';
 
                   // Show manage role button:
-                  // - POTB: only when active tab (active status, not blocked)
+                  // - POTB: only when not blocked
                   // - Non-POTB: only when portal_access_granted is ON
                   const showRoleBtn = isPotb
-                    ? (!isBlocked && emp.status === 'active')
+                    ? !isBlocked
                     : (!isBlocked && !!emp.portal_access_granted);
 
                   return (
