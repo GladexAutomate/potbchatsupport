@@ -79,7 +79,14 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
       if (isCSR || canEscalate) {
         const currentDept = ticket.department || 'CSR';
         const updatedLog = stopAndStartSLA(ticket.dept_sla_log, currentDept, department);
-        await db.Ticket.update(ticket.id, { department, priority, status, escalated, dept_sla_log: updatedLog });
+        // Always persist the escalated state, even if false
+        await db.Ticket.update(ticket.id, { 
+          department, 
+          priority, 
+          status, 
+          escalated,  // This now persists false if unchecked
+          dept_sla_log: updatedLog 
+        });
       } else {
         // Non-escalate roles: route back to L1/CSR
         const currentDept = ticket.department || 'CSR';
