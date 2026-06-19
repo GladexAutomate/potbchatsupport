@@ -7,6 +7,8 @@ import { Input } from '@/components/ui/input';
 import { Send, Loader2, Paperclip, X, FileText, Pin, Search, Users, MessageSquare } from 'lucide-react';
 import GroupChatMessageBubble from '@/components/groupchat/GroupChatMessage';
 import { motion, AnimatePresence } from 'framer-motion';
+import { formatDateRelative } from '@/lib/timezone';
+import { toZonedTime } from 'date-fns-tz';
 
 export default function GroupChat() {
   const { user } = useAuth();
@@ -233,7 +235,7 @@ export default function GroupChat() {
                   <div className="flex items-center gap-3 my-4">
                     <div className="flex-1 h-px bg-border/50" />
                     <span className="text-xs text-muted-foreground px-2 bg-background rounded-full border border-border/50 py-0.5">
-                      {new Date(msg.created_date).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                      {toZonedTime(new Date(msg.created_date), 'Asia/Manila').toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
                     </span>
                     <div className="flex-1 h-px bg-border/50" />
                   </div>

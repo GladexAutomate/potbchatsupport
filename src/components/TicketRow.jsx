@@ -1,4 +1,7 @@
 import { User } from 'lucide-react';
+import { formatDateRelative } from '@/lib/timezone';
+import { formatDistanceToNow } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 
 const STATUS_COLOR = {
   'Open': 'bg-blue-500/10 text-blue-400 border-blue-500/20',
@@ -15,7 +18,7 @@ const PRIORITY_COLOR = {
   'Critical': 'bg-red-500/10 text-red-500',
 };
 
-export default function TicketRow({ t, isVip, unread, selectedTicket, handleSelectTicket, ticketTags, allTags, toPHTime, formatDistanceToNow }) {
+export default function TicketRow({ t, isVip, unread, selectedTicket, handleSelectTicket, ticketTags, allTags }) {
   const hasUnread = unread[t.id] > 0;
   const isClosed = t.status === 'Closed';
   const isSelected = selectedTicket?.id === t.id;
@@ -67,7 +70,7 @@ export default function TicketRow({ t, isVip, unread, selectedTicket, handleSele
               {t.customer_name}
             </span>
             <span className="text-xs text-muted-foreground ml-1 flex-shrink-0">
-              {formatDistanceToNow(toPHTime(t.updated_date || t.created_date), { addSuffix: false })}
+              {formatDateRelative(t.updated_date || t.created_date)}
             </span>
           </div>
           <p className={`text-xs truncate ${showRed || isVip ? 'font-semibold text-foreground' : 'text-muted-foreground'}`}>

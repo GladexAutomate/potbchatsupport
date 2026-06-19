@@ -6,22 +6,22 @@ const TIMEZONE = 'Asia/Manila';
 
 /**
  * Format a date for display in Philippines timezone
- * Returns relative time (e.g., "2 hours ago")
+ * Returns formatted date string (e.g., "Jun. 19, 2026")
  */
 export const formatDateRelative = (date) => {
   if (!date) return '';
   const zonedDate = toZonedTime(new Date(date), TIMEZONE);
-  return formatDistanceToNow(zonedDate, { addSuffix: true });
+  return format(zonedDate, 'MMM. d, yyyy');
 };
 
 /**
- * Format a date for display in Philippines timezone
- * Returns formatted date string (e.g., "Jun 19, 2026 2:30 PM")
+ * Format a date for display in Philippines timezone with time
+ * Returns formatted date string (e.g., "Jun. 19, 2026 2:30 PM")
  */
-export const formatDateFull = (date, formatStr = 'MMM dd, yyyy p') => {
+export const formatDateFull = (date) => {
   if (!date) return '';
   const zonedDate = toZonedTime(new Date(date), TIMEZONE);
-  return format(zonedDate, formatStr, { timeZone: TIMEZONE });
+  return format(zonedDate, 'MMM. d, yyyy h:mm a');
 };
 
 /**

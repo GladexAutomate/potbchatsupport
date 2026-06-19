@@ -14,22 +14,9 @@ import RerouteTicketModal from '@/components/RerouteTicketModal';
 import TicketHistoryModal from '@/components/TicketHistoryModal';
 import TicketInfoSidebar from '@/components/TicketInfoSidebar';
 import CreateTicketModal from '@/components/CreateTicketModal';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDateFull } from '@/lib/timezone';
 
-const toPHTime = (dateStr) => {
-  const date = new Date(dateStr);
-  // Add 8 hours offset for PH time (UTC+8)
-  return new Date(date.getTime() + 8 * 60 * 60 * 1000);
-};
 
-const formatPHTime = (dateStr) => {
-  const d = toPHTime(dateStr);
-  const month = d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
-  const day = d.getUTCDate();
-  const hours = String(d.getUTCHours()).padStart(2, '0');
-  const mins = String(d.getUTCMinutes()).padStart(2, '0');
-  return `${month} ${day}, ${hours}:${mins}`;
-};
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -392,16 +379,16 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
                     </span>
                     <span className="text-xs text-yellow-600/70">({vipTickets.length})</span>
                   </div>
-                  {vipTickets.map(t => <TicketRow key={t.id} t={t} isVip={true} unread={unread} selectedTicket={selectedTicket} handleSelectTicket={handleSelectTicket} ticketTags={ticketTags} allTags={allTags} toPHTime={toPHTime} formatDistanceToNow={formatDistanceToNow} />)}
+                  {vipTickets.map(t => <TicketRow key={t.id} t={t} isVip={true} unread={unread} selectedTicket={selectedTicket} handleSelectTicket={handleSelectTicket} ticketTags={ticketTags} allTags={allTags} />)}
                   {regularTickets.length > 0 && (
                     <div className="px-4 py-2 bg-muted/30 border-b border-border/30">
                       <span className="text-xs font-semibold text-muted-foreground">Regular Tickets</span>
                     </div>
                   )}
-                </>
-              )}
-              {/* Regular tickets */}
-              {regularTickets.map(t => <TicketRow key={t.id} t={t} isVip={false} unread={unread} selectedTicket={selectedTicket} handleSelectTicket={handleSelectTicket} ticketTags={ticketTags} allTags={allTags} toPHTime={toPHTime} formatDistanceToNow={formatDistanceToNow} />)}
+                  </>
+                  )}
+                  {/* Regular tickets */}
+                  {regularTickets.map(t => <TicketRow key={t.id} t={t} isVip={false} unread={unread} selectedTicket={selectedTicket} handleSelectTicket={handleSelectTicket} ticketTags={ticketTags} allTags={allTags} />)}
             </>
           )}
         </div>
@@ -517,7 +504,7 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
                           )}
                         </div>
                         <p className="text-xs text-muted-foreground mt-1 px-1">
-                          {formatPHTime(msg.created_date)}
+                          {formatDateFull(msg.created_date)}
                         </p>
                       </div>
                     </motion.div>

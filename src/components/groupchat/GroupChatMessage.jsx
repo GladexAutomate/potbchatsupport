@@ -2,12 +2,10 @@ import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { db } from '@/lib/db';
 import { Pin, Reply, ExternalLink, FileText, SmilePlus } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
+import { formatDateFull } from '@/lib/timezone';
 
 const EMOJIS = ['👍', '✅', '🔥', '❤️', '😂', '🙏'];
-
-const toPHTime = (d) => new Date(new Date(d).getTime() + 8 * 60 * 60 * 1000);
 
 const PRIORITY_COLOR = {
   Low: 'bg-slate-500/10 text-slate-400',
@@ -184,7 +182,7 @@ export default function GroupChatMessageBubble({ msg, currentUser, isMe, onReply
         {/* Timestamp + read receipts */}
         <div className={`flex items-center gap-2 mt-0.5 px-1 ${isMe ? 'flex-row-reverse' : ''}`}>
           <span className="text-[10px] text-muted-foreground">
-            {formatDistanceToNow(toPHTime(msg.created_date), { addSuffix: true })}
+            {formatDateFull(msg.created_date)}
           </span>
           {isMe && msg.read_by?.length > 1 && (
             <span className="text-[10px] text-muted-foreground">

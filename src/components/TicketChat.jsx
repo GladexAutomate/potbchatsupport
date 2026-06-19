@@ -4,20 +4,9 @@ import { db } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Send, Loader2, Paperclip, X, FileText } from 'lucide-react';
-import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
-
-const toPHTime = (dateStr) => new Date(new Date(dateStr).getTime() + 8 * 60 * 60 * 1000);
-
-const formatPHTime = (dateStr) => {
-  const d = toPHTime(dateStr);
-  const month = d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
-  const day = d.getUTCDate();
-  const hours = String(d.getUTCHours()).padStart(2, '0');
-  const mins = String(d.getUTCMinutes()).padStart(2, '0');
-  return `${month} ${day}, ${hours}:${mins}`;
-};
+import { formatDateFull } from '@/lib/timezone';
 
 export default function TicketChat({ ticketId }) {
   const { user } = useAuth();
@@ -106,7 +95,7 @@ export default function TicketChat({ ticketId }) {
                     )}
                   </div>
                   <p className="text-muted-foreground text-xs mt-1 text-right">
-                    {formatPHTime(msg.created_date)}
+                    {formatDateFull(msg.created_date)}
                     {isStaff && ' · You'}
                   </p>
                 </div>
