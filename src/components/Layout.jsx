@@ -81,58 +81,55 @@ export default function Layout() {
       Notification.requestPermission();
     }
     
-    let loadTimer;
-    
-    // Subscribe to group chat for mentions
+    // Subscribe to group chat for mentions — check on create/update only
     const unsub = db.GroupChatMessage.subscribe((event) => {
-      clearTimeout(loadTimer);
-      loadTimer = setTimeout(() => {
-        if (event.data && user?.full_name && event.data.sender_email !== user?.email) {
-          const hasMentions = event.data.mentions?.length > 0;
-          if (hasMentions) {
-            const isMentioned = event.data.mentions.some(m => 
-              m.toLowerCase().includes(user.full_name.toLowerCase()) || 
-              m.toLowerCase().includes(user.email.toLowerCase())
-            );
-            if (isMentioned && !notifiedMessageIds.has(event.data.id)) {
-              setNotifiedMessageIds(prev => new Set([...prev, event.data.id]));
-              
-              setMentionNotification({
-                sender: event.data.sender_name,
-                message: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
-                timestamp: Date.now(),
-              });
-              
-              if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification(`🔔 ${event.data.sender_name} mentioned you in Group Chat`, {
-                  body: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
-                  icon: '/favicon.ico',
-                  tag: 'group-chat-mention',
-                  requireInteraction: true,
-                });
-              }
-              
-              try {
-                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBg==');
-                audio.play().catch(() => {});
-              } catch (e) {}
-              
-              // Show notification repeatedly every 5 seconds until dismissed
-              clearInterval(mentionTimerRef.current);
-              mentionTimerRef.current = setInterval(() => {
-                setMentionNotification({
-                  sender: event.data.sender_name,
-                  message: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
-                  timestamp: Date.now(),
-                });
-              }, 5000);
-            }
-          }
-        }
-      }, 500);
+      if (event.type !== 'create' && event.type !== 'update') return;
+      if (!event.data || user?.full_name === undefined || event.data.sender_email === user?.email) return;
+      
+      const hasMentions = event.data.mentions?.length > 0;
+      if (!hasMentions) return;
+      
+      const isMentioned = event.data.mentions.some(m => 
+        m.toLowerCase().includes(user.full_name.toLowerCase()) || 
+        m.toLowerCase().includes(user.email.toLowerCase())
+      );
+      
+      if (!isMentioned || notifiedMessageIds.has(event.data.id)) return;
+      
+      setNotifiedMessageIds(prev => new Set([...prev, event.data.id]));
+      
+      setMentionNotification({
+        sender: event.data.sender_name,
+        message: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
+        timestamp: Date.now(),
+      });
+      
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification(`🔔 ${event.data.sender_name} mentioned you in Group Chat`, {
+          body: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
+          icon: '/favicon.ico',
+          tag: 'group-chat-mention',
+          requireInteraction: true,
+        });
+      }
+      
+      try {
+        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBg==');
+        audio.play().catch(() => {});
+      } catch (e) {}
+      
+      // Show notification repeatedly every 5 seconds until dismissed
+      clearInterval(mentionTimerRef.current);
+      mentionTimerRef.current = setInterval(() => {
+        setMentionNotification({
+          sender: event.data.sender_name,
+          message: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
+          timestamp: Date.now(),
+        });
+      }, 5000);
     });
     
-    return () => { clearTimeout(loadTimer); unsub(); clearInterval(mentionTimerRef.current); };
+    return () => { unsub(); clearInterval(mentionTimerRef.current); };
   }, [user?.full_name, user?.email, notifiedMessageIds]);
 
   // Unread count subscription
