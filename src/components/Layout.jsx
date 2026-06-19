@@ -80,19 +80,28 @@ export default function Layout() {
 
   // Load permissions for this role — ignore env so permissions sync across test/prod
   useEffect(() => {
-    if (!user || isSuperAdmin) return;
-    const loadPerms = async () => {
-      // Load ALL permissions for this role regardless of env — users/permissions should be global
-      const allPerms = await db.Permission.list(null, 500);
-      const rolePerms = (allPerms || []).filter(p => p.role === role && p.resource_type === 'page');
-      console.log(`Loaded ${rolePerms?.length || 0} permissions for role '${role}'`, rolePerms?.map(p => p.resource_name));
-      setPermissions(rolePerms || []);
-    };
-    loadPerms().catch(e => {
-      console.error('Failed to load permissions:', e);
+    if (!user) return;
+    if (isSuperAdmin) {
       setPermissions([]);
-    });
-  }, [user, role]);
+      return;
+    }
+    const loadPerms = async () => {
+      try {
+        const allPerms = await db.Permission.list(null, 500);
+        console.log('All permissions count:', allPerms?.length, 'Looking for role:', role);
+        if (allPerms && allPerms.length > 0) {
+          console.log('Sample perm:', allPerms[0]);
+        }
+        const rolePerms = (allPerms || []).filter(p => p.role === role && p.resource_type === 'page');
+        console.log(`Filtered to ${rolePerms?.length} permissions for role '${role}'`);
+        setPermissions(rolePerms);
+      } catch (e) {
+        console.error('Failed to load permissions:', e);
+        setPermissions([]);
+      }
+    };
+    loadPerms();
+  }, [user, role, isSuperAdmin]);
 
   // Clear badge when on group chat page
   useEffect(() => {
