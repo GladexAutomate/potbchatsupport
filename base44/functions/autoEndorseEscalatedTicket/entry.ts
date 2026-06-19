@@ -10,6 +10,16 @@ Deno.serve(async (req) => {
       return Response.json({ success: true });
     }
 
+    // Check if message already exists for this ticket to prevent duplicates
+    const existingMessages = await base44.asServiceRole.entities.GroupChatMessage.filter({
+      message_type: 'ticket_endorsement',
+      'ticket_ref.ticket_id': ticket.id,
+    });
+
+    if (existingMessages && existingMessages.length > 0) {
+      return Response.json({ success: true, skipped: true });
+    }
+
     // Create group chat endorsement message
     await base44.asServiceRole.entities.GroupChatMessage.create({
       env: ticket.env || 'test',
