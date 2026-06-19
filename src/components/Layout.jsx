@@ -83,9 +83,13 @@ export default function Layout() {
      if (!user || isSuperAdmin) return;
      const loadPerms = async () => {
        const perms = await db.Permission.filter({ role, resource_type: 'page' }, null, 100);
+       console.log(`Loaded ${perms?.length || 0} permissions for role ${role}:`, perms?.map(p => ({ name: p.resource_name, access: p.has_access })));
        setPermissions(perms || []);
      };
-     loadPerms().catch(() => setPermissions([]));
+     loadPerms().catch(e => {
+       console.error('Failed to load permissions:', e);
+       setPermissions([]);
+     });
    }, [user, role]);
 
   // Clear badge when on group chat page
@@ -103,10 +107,14 @@ export default function Layout() {
   }, [user, role]);
 
   const hasPageAccess = (pageKey) => {
-    if (isSuperAdmin) return true;
-    const perm = permissions.find(p => p.resource_name === pageKey);
-    return perm?.has_access === true;
-  };
+     if (isSuperAdmin) return true;
+     // Debug: log what we're checking
+     const perm = permissions.find(p => p.resource_name === pageKey);
+     if (!perm && pageKey.startsWith('internal')) {
+       console.warn(`No permission found for ${pageKey}. Available:`, permissions.map(p => p.resource_name));
+     }
+     return perm?.has_access === true;
+   };
 
   // Map user roles to their internal ticket pages
   const departmentRoutes = {
