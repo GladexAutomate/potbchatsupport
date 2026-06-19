@@ -140,15 +140,19 @@ export default function UserManagement() {
     // Always save the custom role to EmployeeAccount — this is the source of truth
     await db.EmployeeAccount.update(roleEditItem.id, { POTBChatsupportrole: roleEditItem._selectedRole });
     setEmployees(prev => prev.map(e => e.id === roleEditItem.id ? { ...e, POTBChatsupportrole: roleEditItem._selectedRole } : e));
-    // If saving role for current user, refresh their session immediately
-    if (user?.email?.toLowerCase() === roleEditItem.email?.toLowerCase()) {
+
+    const isCurrentUser = user?.email?.toLowerCase() === roleEditItem.email?.toLowerCase();
+
+    // If saving role for current user, refresh their session
+    if (isCurrentUser) {
       await refreshUserRole();
-    }
-    // Force re-login for other users so their session picks up the new role
-    try {
-      await base44.functions.invoke('logoutUserByEmail', { target_email: roleEditItem.email });
-    } catch (err) {
-      console.warn('Logout error (non-critical):', err);
+    } else {
+      // For other users, force re-login so they pick up the new role
+      try {
+        await base44.functions.invoke('logoutUserByEmail', { target_email: roleEditItem.email });
+      } catch (err) {
+        console.warn('Logout error (non-critical):', err);
+      }
     }
     setRoleSaving(false);
     setRoleEditItem(null);
