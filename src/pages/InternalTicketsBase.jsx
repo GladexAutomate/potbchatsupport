@@ -54,14 +54,18 @@ export default function InternalTicketsBase({ userDepartment }) {
   const hasAccess = user && ['super_admin', 'admin', 'tl_management', 'csr', 'sales', 'accounting', 'sign_ups', 'on_boarding', 'corp_training', 'it'].includes(user.role);
 
   useEffect(() => {
+    let loadTimer;
     loadData();
     loadSLAPolicies();
     
-    // Subscribe to real-time updates - reload on any change
-    const unsubscribe = db.InternalTicket.subscribe((event) => {
-      loadData();
+    // Subscribe to real-time updates with debounce to avoid rate limiting
+    const unsubscribe = db.InternalTicket.subscribe(() => {
+      clearTimeout(loadTimer);
+      loadTimer = setTimeout(() => {
+        loadData();
+      }, 500);
     });
-    return unsubscribe;
+    return () => { clearTimeout(loadTimer); unsubscribe(); };
   }, []);
 
   const loadSLAPolicies = async () => {

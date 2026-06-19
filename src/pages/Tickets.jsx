@@ -58,6 +58,7 @@ export default function Tickets() {
 
   useEffect(() => {
     if (!user) return;
+    let loadTimer;
     const load = () => {
       db.Ticket.list('-created_date', 200).then(data => {
         const filtered = filterTicketsForUser(data || []);
@@ -68,9 +69,12 @@ export default function Tickets() {
       });
     };
     load();
-    // Real-time subscription for instant updates when tickets are rerouted
-    const unsub = db.Ticket.subscribe(() => load());
-    return () => unsub();
+    // Real-time subscription with debounce to avoid rate limiting
+    const unsub = db.Ticket.subscribe(() => {
+      clearTimeout(loadTimer);
+      loadTimer = setTimeout(() => load(), 500);
+    });
+    return () => { clearTimeout(loadTimer); unsub(); };
   }, [user, vipEmails]);
 
   return (

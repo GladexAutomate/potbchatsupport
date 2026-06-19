@@ -101,17 +101,21 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Load all messages once for unread badge computation
+  // Load all messages once for unread badge computation with debounce
   useEffect(() => {
+    let loadTimer;
     db.TicketMessage.list('-created_date', 500).then(msgs => {
       setAllMessages(msgs || []);
     });
     const unsub = db.TicketMessage.subscribe(() => {
-      db.TicketMessage.list('-created_date', 500).then(msgs => {
-        setAllMessages(msgs || []);
-      });
+      clearTimeout(loadTimer);
+      loadTimer = setTimeout(() => {
+        db.TicketMessage.list('-created_date', 500).then(msgs => {
+          setAllMessages(msgs || []);
+        });
+      }, 500); // Debounce rapid updates
     });
-    return () => unsub();
+    return () => { clearTimeout(loadTimer); unsub(); };
   }, []);
 
   // Compute unread counts: customer messages that staff hasn't replied after
@@ -138,20 +142,24 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
     setUnread(counts);
   }, [allMessages, tickets, lastSeenMap]);
 
-  // Load messages for selected ticket with real-time updates
+  // Load messages for selected ticket with real-time updates (debounced)
   useEffect(() => {
     if (!selectedTicket) return;
+    let loadTimer;
     loadMessages(selectedTicket.id);
     setLastSeenMap(prev => ({ ...prev, [selectedTicket.id]: new Date().toISOString() }));
 
-    // Subscribe to all message updates, instantly reload if it's our ticket
+    // Subscribe with debounce to avoid rate limiting on rapid updates
     const unsub = db.TicketMessage.subscribe(event => {
-      if (event.data?.ticket_id === selectedTicket.id || !selectedTicket.id) {
-        loadMessages(selectedTicket.id);
-        setLastSeenMap(prev => ({ ...prev, [selectedTicket.id]: new Date().toISOString() }));
+      if (event.data?.ticket_id === selectedTicket.id) {
+        clearTimeout(loadTimer);
+        loadTimer = setTimeout(() => {
+          loadMessages(selectedTicket.id);
+          setLastSeenMap(prev => ({ ...prev, [selectedTicket.id]: new Date().toISOString() }));
+        }, 300);
       }
     });
-    return () => unsub();
+    return () => { clearTimeout(loadTimer); unsub(); };
   }, [selectedTicket?.id]);
 
   useEffect(() => {

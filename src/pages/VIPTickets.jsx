@@ -56,6 +56,7 @@ export default function VIPTickets() {
 
   useEffect(() => {
     if (!user) return;
+    let loadTimer;
 
     const loadVIPTickets = () => {
       db.Ticket.list('-created_date', 200).then(data => {
@@ -70,9 +71,12 @@ export default function VIPTickets() {
     };
 
     loadVIPTickets();
-    // Real-time subscription for instant updates when VIP tickets are created or rerouted
-    const unsub = db.Ticket.subscribe(() => loadVIPTickets());
-    return () => unsub();
+    // Real-time subscription with debounce to avoid rate limiting
+    const unsub = db.Ticket.subscribe(() => {
+      clearTimeout(loadTimer);
+      loadTimer = setTimeout(() => loadVIPTickets(), 500);
+    });
+    return () => { clearTimeout(loadTimer); unsub(); };
   }, [user, vipEmails]);
 
   return (

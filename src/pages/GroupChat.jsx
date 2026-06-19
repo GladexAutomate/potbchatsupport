@@ -32,13 +32,17 @@ export default function GroupChat() {
   const isImageUrl = (url) => /\.(png|jpg|jpeg|gif|webp)(\?|$)/i.test(url);
 
   useEffect(() => {
+    let loadTimer;
     loadMessages();
     db.User.list().then(d => setAllStaff(d || []));
-    // Real-time subscription for instant message updates
+    // Real-time subscription with debounce to avoid rate limiting
     const unsub = db.GroupChatMessage.subscribe(() => {
-      loadMessages();
+      clearTimeout(loadTimer);
+      loadTimer = setTimeout(() => {
+        loadMessages();
+      }, 500);
     });
-    return () => unsub();
+    return () => { clearTimeout(loadTimer); unsub(); };
   }, []);
 
   useEffect(() => {
