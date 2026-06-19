@@ -207,10 +207,15 @@ export default function UserManagement() {
       if (emp.is_blocked || (emp.email?.toLowerCase() === 'automate@gladextours.com')) continue;
       const customRole = bulkRoleMappings[emp.job_title];
       if (customRole && !emp.POTBChatsupportrole) {
-        updates.push(db.EmployeeAccount.update(emp.id, { POTBChatsupportrole: customRole }));
+        updates.push({ empId: emp.id, role: customRole });
       }
     }
-    await Promise.all(updates);
+    // Process updates sequentially with delays to avoid rate limits
+    for (let i = 0; i < updates.length; i++) {
+      const { empId, role } = updates[i];
+      await db.EmployeeAccount.update(empId, { POTBChatsupportrole: role });
+      if (i < updates.length - 1) await new Promise(r => setTimeout(r, 100)); // 100ms delay between updates
+    }
     await loadData();
     setBulkApplyOpen(false);
     setBulkRoleMappings({});
