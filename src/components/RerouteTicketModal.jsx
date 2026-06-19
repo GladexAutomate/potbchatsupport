@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { db } from '@/lib/db';
+import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -86,7 +87,7 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
       ? `Rerouted to ${department}${note.trim() ? ` — ${note.trim()}` : ''}`
       : `Returned to L1/CSR queue${note.trim() ? ` — ${note.trim()}` : ''}`;
 
-    await Promise.all([
+    const promises = [
       db.TicketMessage.create({
         ticket_id: ticket.id,
         sender_email: 'system',
@@ -104,7 +105,28 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
         old_value: ticket.department || 'L1/CSR',
         new_value: isCSR ? department : 'L1/CSR',
       }),
-    ]);
+    ];
+
+    // If marked as escalated, create an internal escalation ticket
+    if (escalated && isCSR) {
+      promises.push(
+        base44.entities.InternalTicket.create({
+          env: ticket.env || 'test',
+          ticket_number: ticket.ticket_number,
+          from_department: ticket.department || 'CSR',
+          to_department: 'TL/Management',
+          subject: ticket.subject,
+          description: `Escalated ticket: ${ticket.description}${note.trim() ? `\n\nEscalation note: ${note.trim()}` : ''}`,
+          created_by_email: user?.email,
+          created_by_name: user?.full_name,
+          status: 'Open',
+          priority: priority,
+          escalated: true,
+        })
+      );
+    }
+
+    await Promise.all(promises);
 
     setSaving(false);
     onSaved?.();
