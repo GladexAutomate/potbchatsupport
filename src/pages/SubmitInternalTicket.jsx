@@ -36,15 +36,20 @@ export default function SubmitInternalTicket() {
         const u = await base44.auth.me();
         if (u) {
           setUser(u);
-          // Map role to department
+          // Map role to department - handle various role formats
+          const role = u.role?.toLowerCase().trim();
           const deptMap = {
             'csr': 'CSR', 'sales': 'Sales', 'it': 'IT', 'accounting': 'Accounting',
             'sign_ups': 'Sign-Ups', 'on_boarding': 'On-Boarding', 'corp_training': 'Corp/Training',
-            'admin': 'Admin', 'tl_management': 'TL/Management'
+            'admin': 'Admin', 'tl_management': 'TL/Management', 'tlmanagement': 'TL/Management',
+            'sign-ups': 'Sign-Ups', 'on-boarding': 'On-Boarding', 'corp-training': 'Corp/Training'
           };
-          const dept = deptMap[u.role?.toLowerCase()];
+          const dept = deptMap[role];
           if (dept && departmentList.includes(dept)) {
             setForm(f => ({ ...f, from_department: dept }));
+            setFormInitialized(true);
+          } else {
+            // If role doesn't map, still initialize form but leave from_department empty for TL/Admin
             setFormInitialized(true);
           }
         }
