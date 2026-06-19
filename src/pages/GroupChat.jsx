@@ -4,7 +4,8 @@ import { db } from '@/lib/db';
 import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Loader2, Paperclip, X, FileText, Pin, Search, Users, MessageSquare, Bell } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Send, Loader2, Paperclip, X, FileText, Pin, Search, Users, MessageSquare, Bell, AlertCircle } from 'lucide-react';
 import GroupChatMessageBubble from '@/components/groupchat/GroupChatMessage';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDateRelative } from '@/lib/timezone';
@@ -29,6 +30,7 @@ export default function GroupChat() {
   const [mentionQuery, setMentionQuery] = useState('');
   const [notifiedMessageIds, setNotifiedMessageIds] = useState(new Set());
   const [mentionNotification, setMentionNotification] = useState(null);
+  const [mentionDialogOpen, setMentionDialogOpen] = useState(false);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const inputRef = useRef(null);
@@ -62,6 +64,9 @@ export default function GroupChat() {
                 message: msg.message?.slice(0, 100) || '📎 Sent an attachment',
                 timestamp: Date.now(),
               });
+              
+              // Open modal dialog
+              setMentionDialogOpen(true);
               
               // Toast notification
               toast({
@@ -234,6 +239,29 @@ export default function GroupChat() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] relative">
+      {/* Mention pop-up dialog */}
+      <Dialog open={mentionDialogOpen} onOpenChange={setMentionDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="w-5 h-5 text-blue-500" />
+              You've Been Mentioned!
+            </DialogTitle>
+          </DialogHeader>
+          {mentionNotification && (
+            <div className="space-y-4">
+              <div className="bg-blue-50 dark:bg-blue-950 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+                <p className="text-sm font-semibold text-foreground mb-2">{mentionNotification.sender}</p>
+                <p className="text-sm text-muted-foreground">{mentionNotification.message}</p>
+              </div>
+              <Button onClick={() => setMentionDialogOpen(false)} className="w-full">
+                Got it
+              </Button>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
       {/* Mention notification banner */}
       <AnimatePresence>
         {mentionNotification && (
