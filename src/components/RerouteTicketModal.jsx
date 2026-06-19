@@ -139,6 +139,7 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
         title: 'Error',
         description: error.message || 'Failed to reroute ticket',
         variant: 'destructive',
+        duration: 3000,
       });
     }
   };
