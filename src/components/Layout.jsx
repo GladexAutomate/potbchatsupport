@@ -123,28 +123,30 @@ export default function Layout() {
     'corp_training': 'Corp/Training',
   };
 
+  // Map internal ticket page keys to their routes
+  const internalPageKeys = {
+    'internal-tickets-sales': { label: 'Sales Tickets', route: '/internal-tickets-sales' },
+    'internal-tickets-it': { label: 'IT Tickets', route: '/internal-tickets-it' },
+    'internal-tickets-accounting': { label: 'Accounting Tickets', route: '/internal-tickets-accounting' },
+    'internal-tickets-signups': { label: 'Sign-Ups Tickets', route: '/internal-tickets-signups' },
+    'internal-tickets-onboarding': { label: 'On-Boarding Tickets', route: '/internal-tickets-onboarding' },
+    'internal-tickets-corptraining': { label: 'Corp/Training Tickets', route: '/internal-tickets-corptraining' },
+    'internal-tickets-admin': { label: 'Internal Tickets Admin', route: '/internal-tickets-admin' },
+  };
+
   // Build internal tickets nav before filtering
   const internalOperationsChildren = (() => {
     const children = [];
-    if (departmentRoutes[role]) {
-      children.push({
-        label: `My ${departmentLabels[role]} Tickets`,
-        href: departmentRoutes[role],
-        icon: Send,
-        pageKey: `internal-${role}`
-      });
-    }
-    // Super admins see all department tickets
-    if (role === 'super_admin') {
-      Object.entries(departmentRoutes).forEach(([dept, route]) => {
+    Object.entries(internalPageKeys).forEach(([pageKey, data]) => {
+      if (hasPageAccess(pageKey)) {
         children.push({
-          label: `${departmentLabels[dept]} Tickets`,
-          href: route,
+          label: data.label,
+          href: data.route,
           icon: Send,
-          pageKey: `internal-${dept}`
+          pageKey: pageKey
         });
-      });
-    }
+      }
+    });
     return children;
   })();
 
