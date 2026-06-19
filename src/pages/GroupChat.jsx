@@ -54,11 +54,21 @@ export default function GroupChat() {
             );
             if (isMentioned) {
               setNotifiedMessageIds(prev => new Set([...prev, msg.id]));
+              
+              // Toast notification
               toast({
                 title: `${msg.sender_name} mentioned you`,
                 description: msg.message?.slice(0, 100) || '📎 Sent an attachment',
                 duration: 5000,
               });
+              
+              // Browser notification (desktop alert)
+              if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification(`${msg.sender_name} mentioned you in Group Chat`, {
+                  body: msg.message?.slice(0, 100) || '📎 Sent an attachment',
+                  icon: '/favicon.ico',
+                });
+              }
             }
           }
         });
@@ -67,6 +77,11 @@ export default function GroupChat() {
 
     loadAndNotify();
     db.User.list().then(d => setAllStaff(d || []));
+    
+    // Request notification permission on first load
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
     
     // Real-time subscription with debounce to avoid rate limiting
     const unsub = db.GroupChatMessage.subscribe(() => {
