@@ -172,20 +172,21 @@ export const AuthProvider = ({ children }) => {
       const currentUser = await base44.auth.me();
 
       // Overlay the custom role from EmployeeAccount or StaffDirectory (source of truth for app roles)
-      try {
-        const empRecords = await db.EmployeeAccount.filter({ email: currentUser.email });
-        if (empRecords && empRecords.length > 0 && empRecords[0].POTBChatsupportrole) {
-          currentUser.role = empRecords[0].POTBChatsupportrole;
-        } else {
-          // Fall back to StaffDirectory if not in EmployeeAccount
-          const staffRecords = await db.StaffDirectory.filter({ email: currentUser.email });
-          if (staffRecords && staffRecords.length > 0 && staffRecords[0].current_role) {
-            currentUser.role = staffRecords[0].current_role;
-          }
-        }
-      } catch (e) {
-        // Non-critical — fall back to platform role
-      }
+       try {
+         const appEnv = window.location.hostname.startsWith('preview.') || window.location.hostname.includes('.dev.base44.app') ? 'test' : 'prod';
+         const empRecords = await db.EmployeeAccount.filter({ email: currentUser.email, env: appEnv });
+         if (empRecords && empRecords.length > 0 && empRecords[0].POTBChatsupportrole) {
+           currentUser.role = empRecords[0].POTBChatsupportrole;
+         } else {
+           // Fall back to StaffDirectory if not in EmployeeAccount
+           const staffRecords = await db.StaffDirectory.filter({ email: currentUser.email, env: appEnv });
+           if (staffRecords && staffRecords.length > 0 && staffRecords[0].current_role) {
+             currentUser.role = staffRecords[0].current_role;
+           }
+         }
+       } catch (e) {
+         // Non-critical — fall back to platform role
+       }
 
       setUser(currentUser);
       setIsAuthenticated(true);
