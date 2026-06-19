@@ -138,6 +138,7 @@ export default function Layout() {
 
   // Map user roles to their internal ticket pages
   const departmentRoutes = {
+    'csr': '/internal-tickets-csr',
     'sales': '/internal-tickets-sales',
     'it': '/internal-tickets-it',
     'accounting': '/internal-tickets-accounting',
