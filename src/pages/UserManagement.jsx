@@ -77,6 +77,7 @@ export default function UserManagement() {
   const [roleSaving, setRoleSaving] = useState(false);
   const [bulkApplyOpen, setBulkApplyOpen] = useState(false);
   const [bulkApplying, setBulkApplying] = useState(false);
+  const [bulkRoleMappings, setBulkRoleMappings] = useState({});
 
   const loadData = async () => {
     setLoading(true);
@@ -204,16 +205,19 @@ export default function UserManagement() {
     const updates = [];
     for (const emp of filteredEmployees) {
       if (emp.is_blocked || (emp.email?.toLowerCase() === 'automate@gladextours.com')) continue;
-      const suggested = suggestRole(emp.job_title);
-      if (suggested && !emp.POTBChatsupportrole) {
-        updates.push(db.EmployeeAccount.update(emp.id, { POTBChatsupportrole: suggested }));
+      const customRole = bulkRoleMappings[emp.job_title];
+      if (customRole && !emp.POTBChatsupportrole) {
+        updates.push(db.EmployeeAccount.update(emp.id, { POTBChatsupportrole: customRole }));
       }
     }
     await Promise.all(updates);
     await loadData();
     setBulkApplyOpen(false);
+    setBulkRoleMappings({});
     setBulkApplying(false);
   };
+
+  const uniqueJobTitles = [...new Set(filteredEmployees.filter(e => !e.is_blocked && !e.POTBChatsupportrole && e.job_title).map(e => e.job_title))].sort();
 
   return (
     <div className="p-6 max-w-7xl mx-auto">
@@ -473,46 +477,53 @@ export default function UserManagement() {
 
       {/* Bulk Apply Roles Modal */}
        {bulkApplyOpen && (
-         <Dialog open onOpenChange={() => setBulkApplyOpen(false)}>
-           <DialogContent className="max-w-sm">
-             <DialogHeader>
-               <DialogTitle className="flex items-center gap-2">
-                 <BadgeCheck className="w-4 h-4 text-primary" /> Auto-Assign Roles by Job Title
-               </DialogTitle>
-             </DialogHeader>
-             <div className="space-y-4 py-4">
-               <p className="text-sm text-muted-foreground">
-                 This will assign app roles to employees without a role based on their job titles. Only employees without a role will be updated.
-               </p>
-               <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg space-y-2">
-                 <p className="text-xs font-medium text-blue-600">Preview:</p>
-                 <div className="space-y-1 max-h-40 overflow-y-auto">
-                   {filteredEmployees
-                     .filter(e => !e.is_blocked && !e.current_role && e.email?.toLowerCase() !== 'automate@gladextours.com')
-                     .slice(0, 10)
-                     .map(emp => {
-                       const suggested = suggestRole(emp.job_title);
-                       return suggested ? (
-                         <div key={emp.id} className="text-xs text-blue-600 flex items-center gap-2">
-                           <span className="font-mono">{emp.full_name}</span>
-                           <span className="text-muted-foreground">→</span>
-                           <span className="font-medium">{ROLE_LABEL[suggested] || suggested}</span>
-                         </div>
-                       ) : null;
-                     })}
-                 </div>
-               </div>
-             </div>
-             <DialogFooter>
-               <Button variant="outline" onClick={() => setBulkApplyOpen(false)}>Cancel</Button>
-               <Button onClick={handleBulkApplySuggestedRoles} disabled={bulkApplying} className="gap-2">
-                 {bulkApplying ? <Loader2 className="w-4 h-4 animate-spin" /> : <BadgeCheck className="w-4 h-4" />}
-                 Apply Roles
-               </Button>
-             </DialogFooter>
-           </DialogContent>
-         </Dialog>
-       )}
+          <Dialog open onOpenChange={() => { setBulkApplyOpen(false); setBulkRoleMappings({}); }}>
+            <DialogContent className="max-w-md">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <BadgeCheck className="w-4 h-4 text-primary" /> Auto-Assign Roles by Job Title
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-4">
+                <p className="text-sm text-muted-foreground">
+                  Map job titles to app roles. Only employees without a role will be updated.
+                </p>
+                <div className="space-y-2 max-h-64 overflow-y-auto">
+                  {uniqueJobTitles.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No unassigned employees with job titles.</p>
+                  ) : (
+                    uniqueJobTitles.map(jobTitle => (
+                      <div key={jobTitle} className="p-3 border border-border/50 rounded-lg space-y-2">
+                        <p className="text-xs font-medium text-foreground">{jobTitle || '(No Title)'}</p>
+                        <Select 
+                          value={bulkRoleMappings[jobTitle] || ''} 
+                          onValueChange={v => setBulkRoleMappings(prev => ({ ...prev, [jobTitle]: v }))}
+                        >
+                          <SelectTrigger className="text-xs"><SelectValue placeholder="Select role..." /></SelectTrigger>
+                          <SelectContent>
+                            {STAFF_ROLES.map(r => (
+                              <SelectItem key={r} value={r}>{ROLE_LABEL[r]}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-muted-foreground">
+                          {filteredEmployees.filter(e => e.job_title === jobTitle && !e.is_blocked && !e.POTBChatsupportrole).length} employees
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => { setBulkApplyOpen(false); setBulkRoleMappings({}); }}>Cancel</Button>
+                <Button onClick={handleBulkApplySuggestedRoles} disabled={bulkApplying || Object.keys(bulkRoleMappings).length === 0} className="gap-2">
+                  {bulkApplying ? <Loader2 className="w-4 h-4 animate-spin" /> : <BadgeCheck className="w-4 h-4" />}
+                  Apply Roles
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        )}
 
        {/* Invite Staff Modal */}
        {inviteOpen && (
