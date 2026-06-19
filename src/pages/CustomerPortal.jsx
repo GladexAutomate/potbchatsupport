@@ -126,7 +126,7 @@ export default function CustomerPortal() {
               <ClipboardList className="w-4 h-4" /> My Tickets
             </Button>
           </Link>
-          {(getAppEnv() === 'preview' || employeeRecord) && (
+          {user && (
             <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10 gap-2" onClick={handleStaffLoginClick}>
               <ShieldCheck className="w-4 h-4" /> Staff Login
             </Button>
