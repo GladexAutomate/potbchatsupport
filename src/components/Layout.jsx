@@ -80,23 +80,32 @@ export default function Layout() {
 
   // Load permissions for this role — ignore env so permissions sync across test/prod
   useEffect(() => {
-    if (!user) return;
+    console.log('[Layout] Permission effect triggered. User:', user?.email, 'Role:', role, 'IsSuperAdmin:', isSuperAdmin);
+    if (!user) {
+      console.log('[Layout] No user, skipping');
+      return;
+    }
     if (isSuperAdmin) {
+      console.log('[Layout] Super admin, setting empty perms');
       setPermissions([]);
       return;
     }
     const loadPerms = async () => {
       try {
+        console.log('[Layout] Loading permissions for role:', role);
         const allPerms = await db.Permission.list(null, 500);
-        console.log('All permissions count:', allPerms?.length, 'Looking for role:', role);
+        console.log('[Layout] Total permissions loaded:', allPerms?.length);
         if (allPerms && allPerms.length > 0) {
-          console.log('Sample perm:', allPerms[0]);
+          console.log('[Layout] First permission structure:', JSON.stringify(allPerms[0], null, 2));
         }
-        const rolePerms = (allPerms || []).filter(p => p.role === role && p.resource_type === 'page');
-        console.log(`Filtered to ${rolePerms?.length} permissions for role '${role}'`);
+        const rolePerms = (allPerms || []).filter(p => {
+          console.log('[Layout] Checking perm - role:', p.role, 'resourceType:', p.resource_type, 'matches:', p.role === role && p.resource_type === 'page');
+          return p.role === role && p.resource_type === 'page';
+        });
+        console.log(`[Layout] Filtered to ${rolePerms?.length} permissions for role '${role}'`, rolePerms?.map(p => p.resource_name));
         setPermissions(rolePerms);
       } catch (e) {
-        console.error('Failed to load permissions:', e);
+        console.error('[Layout] Failed to load permissions:', e);
         setPermissions([]);
       }
     };
