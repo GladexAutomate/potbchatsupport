@@ -11,6 +11,7 @@ import { useAuth } from '@/lib/AuthContext';
 export default function SLASettings() {
   const { user } = useAuth();
   const [policies, setPolicies] = useState([]);
+  const [initialResponseSLA, setInitialResponseSLA] = useState(5);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -22,11 +23,19 @@ export default function SLASettings() {
 
   useEffect(() => {
     if (!hasAccess) return;
-    base44.entities.SLAPolicy.list().then(data => {
-      setPolicies(data || []);
+    Promise.all([
+      base44.entities.SLAPolicy.list(),
+      base44.entities.AppSettings.filter({ key: 'initial_response_sla_seconds' })
+    ]).then(([policyData, settingsData]) => {
+      setPolicies(policyData || []);
+      if (settingsData && settingsData.length > 0) {
+        setInitialResponseSLA(Number(settingsData[0].value) || 5);
+      } else {
+        setInitialResponseSLA(5);
+      }
       setLoading(false);
     }).catch(err => {
-      console.error('Error loading SLA policies:', err);
+      console.error('Error loading SLA settings:', err);
       setLoading(false);
     });
   }, [hasAccess]);
@@ -39,12 +48,28 @@ export default function SLASettings() {
   const saveAll = async () => {
     setSaving(true);
     try {
+      // Save SLA policies
       await Promise.all(policies.map(p =>
         base44.entities.SLAPolicy.update(p.id, {
           response_time_hours: p.response_time_hours,
           resolution_time_hours: p.resolution_time_hours
         })
       ));
+
+      // Save initial response SLA setting
+      const existingSetting = await base44.entities.AppSettings.filter({ key: 'initial_response_sla_seconds' });
+      if (existingSetting && existingSetting.length > 0) {
+        await base44.entities.AppSettings.update(existingSetting[0].id, {
+          value: String(initialResponseSLA)
+        });
+      } else {
+        await base44.entities.AppSettings.create({
+          key: 'initial_response_sla_seconds',
+          value: String(initialResponseSLA),
+          label: 'Initial Response SLA (seconds)'
+        });
+      }
+
       setSaved(true);
       toast({ title: 'Success', description: 'SLA policies updated successfully.' });
       setTimeout(() => setSaved(false), 3000);
@@ -86,6 +111,31 @@ export default function SLASettings() {
         </h1>
         <p className="text-muted-foreground">Configure response and resolution time thresholds for each priority level.</p>
       </div>
+
+      {/* Initial Response SLA */}
+      <Card className="mb-6 border border-border/50 bg-primary/5">
+        <CardHeader>
+          <CardTitle className="text-lg">Initial Response SLA</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-2 max-w-xs">
+            <Label htmlFor="initial-response-sla" className="text-sm font-medium">
+              Seconds to Initial Response
+            </Label>
+            <Input
+              id="initial-response-sla"
+              type="number"
+              min="1"
+              value={initialResponseSLA}
+              onChange={(e) => {
+                setInitialResponseSLA(Number(e.target.value) || 5);
+              }}
+              className="h-9"
+            />
+            <p className="text-xs text-muted-foreground mt-2">Applies to all new customer and internal tickets</p>
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="flex gap-3 mb-6">
         <button
