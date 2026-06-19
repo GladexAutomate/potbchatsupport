@@ -10,7 +10,7 @@ import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, Che
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { formatDateRelative, formatDateFull } from '@/lib/timezone';
+import { formatDateRelative, formatDateFull, convertOldTimestampFormat } from '@/lib/timezone';
 import { toZonedTime } from 'date-fns-tz';
 import { format } from 'date-fns';
 
@@ -316,12 +316,12 @@ export default function InternalTicketsBase({ userDepartment }) {
 
               {selectedTicket.notes && (
                 <div>
-                  <p className="text-xs text-muted-foreground mb-2">Internal Notes</p>
-                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
-                    <p className="text-xs text-amber-900 dark:text-amber-200 whitespace-pre-wrap font-mono">{selectedTicket.notes}</p>
+                    <p className="text-xs text-muted-foreground mb-2">Internal Notes</p>
+                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+                      <p className="text-xs text-amber-900 dark:text-amber-200 whitespace-pre-wrap font-mono">{convertOldTimestampFormat(selectedTicket.notes)}</p>
+                    </div>
                   </div>
-                </div>
-              )}
+                )}
 
               <div ref={messagesEndRef} />
             </div>

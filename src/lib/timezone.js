@@ -37,3 +37,17 @@ export const getNowInTimezone = () => {
 export const localToUTC = (localDate) => {
   return fromZonedTime(new Date(localDate), TIMEZONE);
 };
+
+/**
+ * Convert old 24-hour timestamp format to 12-hour AM/PM format in note text
+ * Converts "[DD/MM/YYYY, HH:MM:SS]" to "[MMM. DD, YYYY, h:mm a]"
+ */
+export const convertOldTimestampFormat = (text) => {
+  if (!text) return text;
+  return text.replace(/\[(\d{2})\/(\d{2})\/(\d{4}),\s(\d{2}):(\d{2}):(\d{2})\]/g, (match, day, month, year, hours, mins, secs) => {
+    const date = new Date(year, month - 1, day, hours, mins, secs);
+    const zonedDate = toZonedTime(date, TIMEZONE);
+    const formatted = format(zonedDate, 'MMM. d, yyyy, h:mm a');
+    return `[${formatted}]`;
+  });
+};
