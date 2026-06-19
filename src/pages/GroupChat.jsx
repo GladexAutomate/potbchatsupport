@@ -69,7 +69,8 @@ export default function GroupChat() {
     if (!newMessage.trim() && attachments.length === 0) return;
     setSending(true);
 
-    const mentions = [...newMessage.matchAll(/@(\w+)/g)].map(m => m[0]);
+    // Match mentions: @Name or @NameWithSpace (capture until space or end of mention)
+    const mentions = [...newMessage.matchAll(/@([\w\s]+?)(?:\s|$)/g)].map(m => `@${m[1].trim()}`);
 
     await db.GroupChatMessage.create({
       sender_email: user?.email || '',
