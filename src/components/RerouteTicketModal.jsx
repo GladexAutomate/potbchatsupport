@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ArrowRightLeft, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
+import CenterToast from './CenterToast';
 
 const CSR_ROLES = ['admin', 'csr'];
 const ESCALATE_ROLES = ['admin', 'csr', 'tl_management'];
@@ -44,6 +45,8 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
   const [escalated, setEscalated] = useState(ticket?.escalated || false);
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showCenterToast, setShowCenterToast] = useState(false);
+  const [toastMessage, setToastMessage] = useState('');
 
   const stopAndStartSLA = (existingLog, stoppingDept, nextDept) => {
     const now = new Date().toISOString();
@@ -126,15 +129,12 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
 
       await Promise.all(promises);
 
-      toast({
-        title: 'Success',
-        description: escalated ? 'Ticket escalated and notified' : 'Ticket rerouted successfully',
-        duration: 2000,
-      });
+       setToastMessage(escalated ? 'Ticket escalated and notified' : 'Ticket rerouted successfully');
+       setShowCenterToast(true);
 
-      setSaving(false);
-      onSaved?.();
-      onClose();
+       setSaving(false);
+       onSaved?.();
+       setTimeout(() => onClose(), 2300);
     } catch (error) {
       setSaving(false);
       toast({
@@ -147,7 +147,9 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
   };
 
   return (
-    <Dialog open onOpenChange={onClose}>
+    <>
+      {showCenterToast && <CenterToast message={toastMessage} duration={2000} onComplete={() => setShowCenterToast(false)} />}
+      <Dialog open onOpenChange={onClose}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
@@ -233,7 +235,8 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
             {isCSR || canEscalate ? 'Reroute Ticket' : 'Return to L1/CSR'}
           </Button>
         </DialogFooter>
-      </DialogContent>
-    </Dialog>
-  );
-}
+        </DialogContent>
+        </Dialog>
+        </>
+        );
+        }
