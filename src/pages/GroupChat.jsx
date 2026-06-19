@@ -13,7 +13,6 @@ import { toZonedTime } from 'date-fns-tz';
 
 export default function GroupChat() {
   const { user } = useAuth();
-  const { setMentionNotification, mentionTimerRef } = useGlobalMentionContext();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
