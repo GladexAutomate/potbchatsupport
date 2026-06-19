@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/db';
 import { useAuth } from '@/lib/AuthContext';
+import { getAppEnv } from '@/lib/appEnv';
 import StaffMessenger from '@/components/StaffMessenger';
 import { Crown } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
@@ -27,11 +28,17 @@ export default function VIPTickets() {
   const filterTicketsForUser = (allTickets) => {
     if (!user) return [];
     const role = user.role;
-    // L1 (CSR) and TL/Management see all tickets
-    if (['super_admin', 'admin', 'csr', 'tl_management'].includes(role)) return allTickets;
+    const currentEnv = getAppEnv();
+    const targetEnv = currentEnv === 'preview' ? 'test' : 'prod';
 
-    // L2 roles: only assigned to them, created by them, or in their assignment history
-    return allTickets.filter(t => {
+    // Filter by environment first
+    const envFiltered = allTickets.filter(t => (t.env || 'test') === targetEnv);
+
+    // L1 (CSR) and TL/Management see all tickets (in current env)
+    if (['super_admin', 'admin', 'csr', 'tl_management'].includes(role)) return envFiltered;
+
+    // L2 roles: only assigned to them, created by them, or in their assignment history (in current env)
+    return envFiltered.filter(t => {
       const isAssignedToUser = t.assigned_to?.toLowerCase() === user.email?.toLowerCase();
       const isCreatedByUser = t.created_by_id === user.id;
       const hasAssignmentHistory = (t.dept_sla_log || []).some(log => 
