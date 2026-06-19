@@ -146,8 +146,9 @@ export default function GroupChat() {
     if (!newMessage.trim() && attachments.length === 0) return;
     setSending(true);
 
-    // Match mentions: @Name or @NameWithSpace (capture until space or end of mention)
-    const mentions = [...newMessage.matchAll(/@([\w\s]+?)(?:\s|$)/g)].map(m => `@${m[1].trim()}`);
+    // Match mentions: @Name or @FirstName LastName
+    const mentions = [...newMessage.matchAll(/@([\w]+(?:\s+[\w]+)*)/g)].map(m => `@${m[1]}`);
+    const uniqueMentions = [...new Set(mentions)]; // Remove duplicates
 
     await db.GroupChatMessage.create({
       sender_email: user?.email || '',
@@ -160,7 +161,7 @@ export default function GroupChat() {
       reply_to_sender: replyTo?.sender_name || null,
       reactions: {},
       read_by: [user?.email || ''],
-      mentions,
+      mentions: uniqueMentions,
     });
 
     setNewMessage('');
