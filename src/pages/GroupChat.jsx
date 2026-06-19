@@ -105,7 +105,7 @@ export default function GroupChat() {
     // Real-time subscription with debounce to avoid rate limiting
     const unsub = db.GroupChatMessage.subscribe(() => {
       clearTimeout(loadTimer);
-      loadTimer = setTimeout(() => loadAndNotify(), 1500);
+      loadTimer = setTimeout(() => loadAndNotify(), 3000);
     });
     return () => { clearTimeout(loadTimer); unsub(); };
   }, [user?.full_name, user?.email, toast]);
@@ -114,17 +114,20 @@ export default function GroupChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Mark messages as read
+  // Mark messages as read with longer debounce to prevent rate limit
   useEffect(() => {
     if (!user || messages.length === 0) return;
     
     const readTimer = setTimeout(() => {
       const unreadMessages = messages.filter(msg => !msg.read_by?.includes(user.email));
-      unreadMessages.forEach(async (msg) => {
-        const updated = [...(msg.read_by || []), user.email];
-        await db.GroupChatMessage.update(msg.id, { read_by: updated });
-      });
-    }, 1000); // Debounce read marking by 1 second to batch updates
+      if (unreadMessages.length > 0) {
+        Promise.all(unreadMessages.map(msg => 
+          db.GroupChatMessage.update(msg.id, { 
+            read_by: [...(msg.read_by || []), user.email] 
+          })
+        )).catch(() => {});
+      }
+    }, 4000); // Increased debounce to 4 seconds to batch updates and prevent rate limiting
 
     return () => clearTimeout(readTimer);
   }, [messages, user]);
