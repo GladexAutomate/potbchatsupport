@@ -75,6 +75,8 @@ export default function UserManagement() {
   const [actionLoading, setActionLoading] = useState(null);
   const [roleEditItem, setRoleEditItem] = useState(null);
   const [roleSaving, setRoleSaving] = useState(false);
+  const [bulkApplyOpen, setBulkApplyOpen] = useState(false);
+  const [bulkApplying, setBulkApplying] = useState(false);
 
   const loadData = async () => {
     setLoading(true);
@@ -197,6 +199,22 @@ export default function UserManagement() {
     setInviteRole('csr');
   };
 
+  const handleBulkApplySuggestedRoles = async () => {
+    setBulkApplying(true);
+    const updates = [];
+    for (const emp of filteredEmployees) {
+      if (emp.is_blocked || (emp.email?.toLowerCase() === 'automate@gladextours.com')) continue;
+      const suggested = suggestRole(emp.job_title);
+      if (suggested && !emp.current_role) {
+        updates.push(db.EmployeeAccount.update(emp.id, { current_role: suggested }));
+      }
+    }
+    await Promise.all(updates);
+    await loadData();
+    setBulkApplyOpen(false);
+    setBulkApplying(false);
+  };
+
   return (
     <div className="p-6 max-w-7xl mx-auto">
       <div className="flex items-center justify-between mb-6">
@@ -246,17 +264,23 @@ export default function UserManagement() {
             <span className="text-xs text-muted-foreground ml-1">({filteredEmployees.length})</span>
           </div>
           <div className="flex items-center gap-2">
-            {['active', 'inactive', 'non_potb'].includes(empTab) && filteredEmployees.length > 0 && (
-              <Button variant="outline" size="sm" onClick={handleExport} className="gap-2">
-                <Download className="w-4 h-4" />
-                Export CSV
-              </Button>
-            )}
-            <Button variant="outline" size="sm" onClick={handleSyncEmployees} disabled={syncing} className="gap-2">
-              {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-              Sync from Supabase
-            </Button>
-          </div>
+             {filteredEmployees.length > 0 && (
+               <Button variant="outline" size="sm" onClick={() => setBulkApplyOpen(true)} className="gap-2">
+                 <BadgeCheck className="w-4 h-4" />
+                 Auto-Assign Roles
+               </Button>
+             )}
+             {['active', 'inactive', 'non_potb'].includes(empTab) && filteredEmployees.length > 0 && (
+               <Button variant="outline" size="sm" onClick={handleExport} className="gap-2">
+                 <Download className="w-4 h-4" />
+                 Export CSV
+               </Button>
+             )}
+             <Button variant="outline" size="sm" onClick={handleSyncEmployees} disabled={syncing} className="gap-2">
+               {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+               Sync from Supabase
+             </Button>
+           </div>
         </div>
 
         {/* Tab Nav */}
@@ -447,44 +471,87 @@ export default function UserManagement() {
         </Dialog>
       )}
 
-      {/* Invite Staff Modal */}
-      {inviteOpen && (
-        <Dialog open onOpenChange={() => setInviteOpen(false)}>
-          <DialogContent className="max-w-sm">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <UserPlus className="w-4 h-4 text-primary" /> Invite Staff Member
-              </DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-2">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Email Address</Label>
-                <Input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
-                  placeholder="staff@company.com" type="email" />
-              </div>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Staff Role</Label>
-                <Select value={inviteRole} onValueChange={setInviteRole}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {STAFF_ROLES.map(r => <SelectItem key={r} value={r}>{ROLE_LABEL[r]}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <p className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
-                ℹ️ An invitation email will be sent. The user's role can be updated after they register.
-              </p>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
-              <Button onClick={handleInvite} disabled={inviting || !inviteEmail.trim()} className="gap-2">
-                {inviting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
-                Send Invite
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-      )}
-    </div>
-  );
-}
+      {/* Bulk Apply Roles Modal */}
+       {bulkApplyOpen && (
+         <Dialog open onOpenChange={() => setBulkApplyOpen(false)}>
+           <DialogContent className="max-w-sm">
+             <DialogHeader>
+               <DialogTitle className="flex items-center gap-2">
+                 <BadgeCheck className="w-4 h-4 text-primary" /> Auto-Assign Roles by Job Title
+               </DialogTitle>
+             </DialogHeader>
+             <div className="space-y-4 py-4">
+               <p className="text-sm text-muted-foreground">
+                 This will assign app roles to employees without a role based on their job titles. Only employees without a role will be updated.
+               </p>
+               <div className="p-3 bg-blue-500/10 border border-blue-500/20 rounded-lg space-y-2">
+                 <p className="text-xs font-medium text-blue-600">Preview:</p>
+                 <div className="space-y-1 max-h-40 overflow-y-auto">
+                   {filteredEmployees
+                     .filter(e => !e.is_blocked && !e.current_role && e.email?.toLowerCase() !== 'automate@gladextours.com')
+                     .slice(0, 10)
+                     .map(emp => {
+                       const suggested = suggestRole(emp.job_title);
+                       return suggested ? (
+                         <div key={emp.id} className="text-xs text-blue-600 flex items-center gap-2">
+                           <span className="font-mono">{emp.full_name}</span>
+                           <span className="text-muted-foreground">→</span>
+                           <span className="font-medium">{ROLE_LABEL[suggested] || suggested}</span>
+                         </div>
+                       ) : null;
+                     })}
+                 </div>
+               </div>
+             </div>
+             <DialogFooter>
+               <Button variant="outline" onClick={() => setBulkApplyOpen(false)}>Cancel</Button>
+               <Button onClick={handleBulkApplySuggestedRoles} disabled={bulkApplying} className="gap-2">
+                 {bulkApplying ? <Loader2 className="w-4 h-4 animate-spin" /> : <BadgeCheck className="w-4 h-4" />}
+                 Apply Roles
+               </Button>
+             </DialogFooter>
+           </DialogContent>
+         </Dialog>
+       )}
+
+       {/* Invite Staff Modal */}
+       {inviteOpen && (
+         <Dialog open onOpenChange={() => setInviteOpen(false)}>
+           <DialogContent className="max-w-sm">
+             <DialogHeader>
+               <DialogTitle className="flex items-center gap-2">
+                 <UserPlus className="w-4 h-4 text-primary" /> Invite Staff Member
+               </DialogTitle>
+             </DialogHeader>
+             <div className="space-y-4 py-2">
+               <div className="space-y-1.5">
+                 <Label className="text-xs">Email Address</Label>
+                 <Input value={inviteEmail} onChange={e => setInviteEmail(e.target.value)}
+                   placeholder="staff@company.com" type="email" />
+               </div>
+               <div className="space-y-1.5">
+                 <Label className="text-xs">Staff Role</Label>
+                 <Select value={inviteRole} onValueChange={setInviteRole}>
+                   <SelectTrigger><SelectValue /></SelectTrigger>
+                   <SelectContent>
+                     {STAFF_ROLES.map(r => <SelectItem key={r} value={r}>{ROLE_LABEL[r]}</SelectItem>)}
+                   </SelectContent>
+                 </Select>
+               </div>
+               <p className="text-xs text-muted-foreground bg-muted/50 p-3 rounded-lg">
+                 ℹ️ An invitation email will be sent. The user's role can be updated after they register.
+               </p>
+             </div>
+             <DialogFooter>
+               <Button variant="outline" onClick={() => setInviteOpen(false)}>Cancel</Button>
+               <Button onClick={handleInvite} disabled={inviting || !inviteEmail.trim()} className="gap-2">
+                 {inviting ? <Loader2 className="w-4 h-4 animate-spin" /> : <UserPlus className="w-4 h-4" />}
+                 Send Invite
+               </Button>
+             </DialogFooter>
+           </DialogContent>
+         </Dialog>
+       )}
+      </div>
+      );
+      }
