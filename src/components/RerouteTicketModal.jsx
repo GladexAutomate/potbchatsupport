@@ -11,6 +11,7 @@ import { ArrowRightLeft, Loader2 } from 'lucide-react';
 import { useToast } from '@/components/ui/use-toast';
 
 const CSR_ROLES = ['admin', 'csr'];
+const ESCALATE_ROLES = ['admin', 'csr', 'tl_management'];
 const ALL_DEPARTMENTS = ['Sales', 'IT', 'Accounting', 'Sign-Ups', 'On-Boarding', 'Corp/Training', 'Admin', 'TL/Management'];
 // Non-CSR roles can only route back to L1/CSR queue (General = no dept, or these specific ones)
 const CSR_BACK_DEPARTMENTS = ['General'];
@@ -30,11 +31,12 @@ const DEPT_NOTES = {
 };
 
 export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const isCSR = CSR_ROLES.includes(user?.role);
-  // Non-CSR can only route back to L1/CSR — clear dept and set back to Open
-  const availableDepartments = isCSR ? ALL_DEPARTMENTS : [];
+   const { user } = useAuth();
+   const { toast } = useToast();
+   const isCSR = CSR_ROLES.includes(user?.role);
+   const canEscalate = ESCALATE_ROLES.includes(user?.role);
+   // Non-CSR can only route back to L1/CSR — clear dept and set back to Open
+   const availableDepartments = isCSR ? ALL_DEPARTMENTS : [];
 
   const [department, setDepartment] = useState(isCSR ? (ticket?.department || '') : '');
   const [priority, setPriority] = useState(ticket?.priority || 'Medium');
@@ -76,15 +78,15 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
         const updatedLog = stopAndStartSLA(ticket.dept_sla_log, currentDept, department);
         await db.Ticket.update(ticket.id, { department, priority, status, escalated, dept_sla_log: updatedLog });
       } else {
-        // Non-CSR: route back to L1/CSR
+        // Non-CSR: route back to L1/CSR (TL/Management can still escalate)
         const currentDept = ticket.department || 'CSR';
         const updatedLog = stopAndStartSLA(ticket.dept_sla_log, currentDept, 'CSR');
-        await db.Ticket.update(ticket.id, { department: null, status: 'Open', escalated: false, dept_sla_log: updatedLog });
+        await db.Ticket.update(ticket.id, { department: null, status: 'Open', escalated: canEscalate ? escalated : false, dept_sla_log: updatedLog });
       }
 
       const routeMsg = isCSR
         ? `🔀 Ticket rerouted to ${department} dept | Priority: ${priority} | ${escalated ? '⬆ Escalated' : 'Not escalated'}`
-        : `🔀 Ticket returned to L1/CSR queue`;
+        : `🔀 Ticket returned to L1/CSR queue${escalated ? ' | ⬆ Escalated' : ''}`;
 
       const historyDesc = isCSR
         ? `Rerouted to ${department}${note.trim() ? ` — ${note.trim()}` : ''}`
@@ -111,7 +113,7 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
       ];
 
       // If marked as escalated, create an internal escalation ticket via backend function
-      if (escalated && isCSR) {
+      if (escalated && canEscalate) {
         promises.push(
           base44.functions.invoke('escalateTicket', {
             ticket,
@@ -156,13 +158,13 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-          {!isCSR && (
-            <div className="p-3 rounded-lg border border-blue-500/30 bg-blue-500/5 text-sm text-blue-600">
-              This will return the ticket to the <strong>L1/CSR queue</strong> and mark it as <strong>Open</strong>.
-            </div>
-          )}
+           {!isCSR && (
+             <div className="p-3 rounded-lg border border-blue-500/30 bg-blue-500/5 text-sm text-blue-600">
+               This will return the ticket to the <strong>L1/CSR queue</strong> and mark it as <strong>Open</strong>.
+             </div>
+           )}
 
-          {isCSR && (
+           {isCSR && canEscalate && (
             <>
               <div className="space-y-1.5">
                 <Label className="text-xs">Route to Department</Label>
@@ -211,9 +213,22 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
                 </label>
               </div>
             </>
-          )}
+            )}
 
-          <div className="space-y-1.5">
+            {!isCSR && canEscalate && (
+            <>
+              <div className="flex items-center gap-3 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
+                <input type="checkbox" id="escalate" checked={escalated} onChange={e => setEscalated(e.target.checked)}
+                  className="w-4 h-4 accent-amber-500" />
+                <label htmlFor="escalate" className="text-sm font-medium text-amber-600 cursor-pointer">
+                  ⬆ Mark as Escalated
+                  <p className="text-xs text-muted-foreground font-normal">Escalate to management for critical or VIP issues</p>
+                </label>
+              </div>
+            </>
+            )}
+
+            <div className="space-y-1.5">
             <Label className="text-xs">Routing Note (optional)</Label>
             <Textarea
               value={note}
