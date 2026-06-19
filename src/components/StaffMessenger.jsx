@@ -79,6 +79,7 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
   const [lightboxUrl, setLightboxUrl] = useState(null);
   const [endorseOpen, setEndorseOpen] = useState(false);
   const [vipEmails, setVipEmails] = useState(new Set());
+  const [showArchived, setShowArchived] = useState(false);
 
   const isImageUrl = (url) => /\.(png|jpg|jpeg|gif|webp)(\?|$)/i.test(url);
 
@@ -270,7 +271,9 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
       || t.ticket_number?.toLowerCase().includes(search.toLowerCase());
     const matchStatus = statusFilter === 'All' || t.status === statusFilter;
     const matchPriority = priorityFilter === 'All' || t.priority === priorityFilter;
-    return matchSearch && matchStatus && matchPriority;
+    const isArchived = t.status === 'Resolved' || t.status === 'Closed';
+    const matchArchive = showArchived || !isArchived;
+    return matchSearch && matchStatus && matchPriority && matchArchive;
   });
 
   const isVIP = (ticket) => vipEmails.has(ticket.customer_email?.toLowerCase());
@@ -340,6 +343,9 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
               })()}
               <button onClick={handleExportCSV} title="Export CSV" className="text-muted-foreground hover:text-foreground p-1 rounded hover:bg-muted transition-colors">
                 <Download className="w-3.5 h-3.5" />
+              </button>
+              <button onClick={() => setShowArchived(!showArchived)} title={showArchived ? 'Hide archived' : 'Show archived'} className={`text-xs px-1.5 py-0.5 rounded transition-colors ${showArchived ? 'bg-muted text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+                {showArchived ? '✓' : '○'} Archived
               </button>
             </div>
           </div>
