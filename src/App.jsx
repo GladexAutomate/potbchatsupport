@@ -9,7 +9,7 @@ import Layout from './components/Layout';
 import CustomerPortal from './pages/CustomerPortal';
 import Dashboard from './pages/Dashboard';
 import Tickets from './pages/Tickets';
-import TicketDetail from './pages/TicketDetail';
+
 import KPI from './pages/KPI';
 import ChatbotConfig from './pages/ChatbotConfig';
 import Settings from './pages/Settings';
@@ -82,7 +82,6 @@ const AuthenticatedApp = () => {
       <Route element={<Layout />}>
         <Route path="/dashboard" element={<Dashboard />} />
         <Route path="/tickets" element={<Tickets />} />
-        <Route path="/tickets/:id" element={<TicketDetail />} />
         <Route path="/kpi" element={<KPI />} />
         <Route path="/chatbot-config" element={<ChatbotConfig />} />
         <Route path="/settings" element={<Settings />} />
