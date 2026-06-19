@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, ChevronLeft, Plus } from 'lucide-react';
+import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, ChevronLeft, Plus, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 import { useNavigate } from 'react-router-dom';
@@ -133,6 +133,22 @@ export default function InternalTicketsBase({ userDepartment }) {
     }));
     setNewMessage('');
     setAttachments([]);
+    await loadData();
+    setSending(false);
+  };
+
+  const handleCloseTicket = async () => {
+    setSending(true);
+    await db.InternalTicket.update(selectedTicket.id, { status: 'Closed' });
+    await db.TicketHistory.create({
+      ticket_id: selectedTicket.id,
+      event_type: 'status_changed',
+      description: `Internal ticket closed`,
+      actor: user?.full_name || user?.email || 'Staff',
+      old_value: selectedTicket.status,
+      new_value: 'Closed'
+    });
+    setSelectedTicket(prev => ({ ...prev, status: 'Closed' }));
     await loadData();
     setSending(false);
   };
@@ -297,7 +313,19 @@ export default function InternalTicketsBase({ userDepartment }) {
                 </div>
                 <p className="text-xs text-muted-foreground truncate">{selectedTicket.subject}</p>
               </div>
-            </div>
+              {selectedTicket.status !== 'Closed' && (
+                <Button
+                  onClick={handleCloseTicket}
+                  disabled={sending}
+                  size="sm"
+                  variant="outline"
+                  className="gap-1.5 text-xs h-8 ml-2"
+                >
+                  {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                  Close
+                </Button>
+              )}
+              </div>
 
             {/* Details Card */}
             <div className="px-5 py-3 bg-muted/10 border-b border-border/30">
@@ -390,26 +418,32 @@ export default function InternalTicketsBase({ userDepartment }) {
              )}
 
             {/* Input */}
-            <div className="p-4 pt-2 flex items-end gap-2 bg-card border-t border-border/50">
-              <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
-                className="text-muted-foreground hover:text-foreground p-1.5 shrink-0 rounded-lg hover:bg-muted transition-colors">
-                {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
-              </button>
-              <input ref={fileInputRef} type="file" multiple className="hidden"
-                onChange={e => handleFileUpload(e.target.files)} />
-              <Input
-                value={newMessage}
-                onChange={e => setNewMessage(e.target.value)}
-                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                placeholder="Add internal note..."
-                className="flex-1 rounded-full border-0 focus-visible:ring-1 bg-muted"
-              />
-              <Button onClick={handleSend}
-                disabled={sending || (!newMessage.trim() && attachments.length === 0)}
-                size="icon" className="bg-primary hover:bg-primary/90 rounded-full shrink-0">
-                {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-              </Button>
-            </div>
+            {selectedTicket.status === 'Closed' ? (
+              <div className="p-4 text-center text-sm text-muted-foreground bg-muted/30 border-t border-border/50">
+                This ticket is closed. No further updates allowed.
+              </div>
+            ) : (
+              <div className="p-4 pt-2 flex items-end gap-2 bg-card border-t border-border/50">
+                <button onClick={() => fileInputRef.current?.click()} disabled={uploading}
+                  className="text-muted-foreground hover:text-foreground p-1.5 shrink-0 rounded-lg hover:bg-muted transition-colors">
+                  {uploading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Paperclip className="w-4 h-4" />}
+                </button>
+                <input ref={fileInputRef} type="file" multiple className="hidden"
+                  onChange={e => handleFileUpload(e.target.files)} />
+                <Input
+                  value={newMessage}
+                  onChange={e => setNewMessage(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                  placeholder="Add internal note..."
+                  className="flex-1 rounded-full border-0 focus-visible:ring-1 bg-muted"
+                />
+                <Button onClick={handleSend}
+                  disabled={sending || (!newMessage.trim() && attachments.length === 0)}
+                  size="icon" className="bg-primary hover:bg-primary/90 rounded-full shrink-0">
+                  {sending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+                </Button>
+              </div>
+            )}
           </>
         )}
       </div>
