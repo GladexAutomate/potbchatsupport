@@ -79,10 +79,14 @@ export default function Layout() {
   }, [user]);
 
   // Load permissions for this role
-  useEffect(() => {
-    if (!user || isSuperAdmin) return;
-    db.Permission.filter({ role, resource_type: 'page' }).then(setPermissions).catch(() => {});
-  }, [user, role]);
+   useEffect(() => {
+     if (!user || isSuperAdmin) return;
+     const loadPerms = async () => {
+       const perms = await db.Permission.filter({ role, resource_type: 'page' }, null, 100);
+       setPermissions(perms || []);
+     };
+     loadPerms().catch(() => setPermissions([]));
+   }, [user, role]);
 
   // Clear badge when on group chat page
   useEffect(() => {
