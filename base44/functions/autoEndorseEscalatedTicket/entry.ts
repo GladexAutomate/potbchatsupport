@@ -3,10 +3,11 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const { ticket } = await req.json();
+    const payload = await req.json();
+    const ticket = payload.data || payload;
 
-    if (!ticket) {
-      return Response.json({ error: 'Missing ticket data' }, { status: 400 });
+    if (!ticket || !ticket.escalated) {
+      return Response.json({ success: true });
     }
 
     // Create group chat endorsement message
