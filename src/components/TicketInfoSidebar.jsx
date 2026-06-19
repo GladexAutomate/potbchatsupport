@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { db } from '@/lib/db';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Clock, ChevronRight, ChevronLeft, AlertTriangle, Send, Loader2, Paperclip, X, FileText } from 'lucide-react';
+import { Clock, ChevronRight, ChevronLeft, AlertTriangle, Send, Loader2, Paperclip, X, FileText, History } from 'lucide-react';
 import { differenceInMinutes, formatDistanceToNow } from 'date-fns';
 import { useAuth } from '@/lib/AuthContext';
 
@@ -39,6 +39,7 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
   const [staffMessages, setStaffMessages] = useState([]);
   const [attachments, setAttachments] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [history, setHistory] = useState([]);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
@@ -61,6 +62,23 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
     });
     return () => unsub();
   }, [ticket.id]);
+
+  // Load ticket history
+  useEffect(() => {
+    if (!ticket.id) return;
+    loadHistory();
+    const unsub = db.TicketHistory.subscribe(event => {
+      if (event.data?.ticket_id === ticket.id) {
+        loadHistory();
+      }
+    });
+    return () => unsub();
+  }, [ticket.id]);
+
+  const loadHistory = async () => {
+    const hist = await db.TicketHistory.filter({ ticket_id: ticket.id }, '-created_date');
+    setHistory((hist || []).filter(h => ['status_changed', 'priority_changed', 'assigned'].includes(h.event_type)));
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -302,6 +320,24 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Created</p>
           <p className="text-xs text-muted-foreground">{formatPHTime(ticket.created_date)}</p>
         </div>
+
+        {/* History Log */}
+        {history.length > 0 && (
+          <div>
+            <div className="flex items-center gap-1.5 mb-2">
+              <History className="w-3.5 h-3.5 text-muted-foreground" />
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Changes</p>
+            </div>
+            <div className="space-y-2 max-h-32 overflow-y-auto">
+              {history.map(entry => (
+                <div key={entry.id} className="text-xs border-l-2 border-muted-foreground/30 pl-2.5 py-0.5">
+                  <p className="font-medium text-foreground">{entry.description}</p>
+                  <p className="text-muted-foreground text-[10px] mt-0.5">{entry.actor} · {formatPHTime(entry.created_date)}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* Internal Staff Chat */}
         <div className="pt-2 border-t border-border/50 flex flex-col gap-2">
