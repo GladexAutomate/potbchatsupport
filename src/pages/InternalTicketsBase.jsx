@@ -7,10 +7,10 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, ChevronLeft, Plus } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 import { useNavigate } from 'react-router-dom';
+import { formatDateRelative } from '@/lib/timezone';
 
 const STATUS_COLOR = {
   'Open': 'bg-blue-500/10 text-blue-400 border-blue-500/20',
@@ -106,12 +106,12 @@ export default function InternalTicketsBase({ userDepartment }) {
     setSending(true);
     await db.InternalTicket.update(selectedTicket.id, {
       notes: (selectedTicket.notes ? selectedTicket.notes + '\n\n' : '') + 
-             `[${new Date().toLocaleString()}] ${user?.full_name}: ${newMessage.trim()}`
+             `[${new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' })}] ${user?.full_name}: ${newMessage.trim()}`
     });
     setSelectedTicket(prev => ({
       ...prev,
       notes: (prev.notes ? prev.notes + '\n\n' : '') + 
-             `[${new Date().toLocaleString()}] ${user?.full_name}: ${newMessage.trim()}`
+             `[${new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' })}] ${user?.full_name}: ${newMessage.trim()}`
     }));
     setNewMessage('');
     setAttachments([]);
@@ -298,7 +298,7 @@ export default function InternalTicketsBase({ userDepartment }) {
                 </div>
                 <div>
                   <p className="text-muted-foreground mb-0.5">Date</p>
-                  <p className="font-semibold">{formatDistanceToNow(new Date(selectedTicket.created_date), { addSuffix: true })}</p>
+                  <p className="font-semibold">{formatDateRelative(selectedTicket.created_date)}</p>
                 </div>
               </div>
             </div>
