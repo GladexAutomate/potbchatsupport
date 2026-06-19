@@ -57,21 +57,6 @@ const AuthenticatedApp = () => {
     }
   }
 
-  // Show login page if not authenticated and loading is complete
-  if (authChecked && !isAuthenticated) {
-    navigateToLogin();
-    return null;
-  }
-
-  // Additional safety: if still loading, don't show any routes yet
-  if (!authChecked) {
-    return (
-      <div className="fixed inset-0 flex items-center justify-center">
-        <div className="w-8 h-8 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
-      </div>
-    );
-  }
-
   return (
     <Routes>
       {/* Public customer portal - customers & unauthenticated */}
