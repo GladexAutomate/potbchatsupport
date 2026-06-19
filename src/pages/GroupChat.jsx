@@ -4,14 +4,16 @@ import { db } from '@/lib/db';
 import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Loader2, Paperclip, X, FileText, Pin, Search, Users, MessageSquare } from 'lucide-react';
+import { Send, Loader2, Paperclip, X, FileText, Pin, Search, Users, MessageSquare, Bell } from 'lucide-react';
 import GroupChatMessageBubble from '@/components/groupchat/GroupChatMessage';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDateRelative } from '@/lib/timezone';
 import { toZonedTime } from 'date-fns-tz';
+import { useToast } from '@/components/ui/use-toast';
 
 export default function GroupChat() {
   const { user } = useAuth();
+  const { toast } = useToast();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -25,6 +27,7 @@ export default function GroupChat() {
   const [showPinned, setShowPinned] = useState(false);
   const [mentionSuggestions, setMentionSuggestions] = useState([]);
   const [mentionQuery, setMentionQuery] = useState('');
+  const [notifiedMessageIds, setNotifiedMessageIds] = useState(new Set());
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const inputRef = useRef(null);
@@ -36,14 +39,35 @@ export default function GroupChat() {
     loadMessages();
     db.User.list().then(d => setAllStaff(d || []));
     // Real-time subscription with debounce to avoid rate limiting
-    const unsub = db.GroupChatMessage.subscribe(() => {
+    const unsub = db.GroupChatMessage.subscribe((event) => {
       clearTimeout(loadTimer);
-      loadTimer = setTimeout(() => {
-        loadMessages();
+      loadTimer = setTimeout(async () => {
+        const msgs = await db.GroupChatMessage.list('created_date', 200);
+        setMessages(msgs || []);
+        
+        // Check if user was mentioned in any new message
+        if (msgs && user?.full_name) {
+          msgs.forEach(msg => {
+            if (!notifiedMessageIds.has(msg.id) && msg.mentions?.length > 0 && msg.sender_email !== user?.email) {
+              const isMentioned = msg.mentions.some(m => 
+                m.toLowerCase().includes(user.full_name.toLowerCase()) || 
+                m.toLowerCase().includes(user.email.toLowerCase())
+              );
+              if (isMentioned) {
+                setNotifiedMessageIds(prev => new Set([...prev, msg.id]));
+                toast({
+                  title: `${msg.sender_name} mentioned you`,
+                  description: msg.message?.slice(0, 100) || '📎 Sent an attachment',
+                  duration: 5000,
+                });
+              }
+            }
+          });
+        }
       }, 500);
     });
     return () => { clearTimeout(loadTimer); unsub(); };
-  }, []);
+  }, [user, toast, notifiedMessageIds]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
