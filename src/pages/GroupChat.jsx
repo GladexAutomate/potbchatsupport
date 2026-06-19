@@ -36,38 +36,45 @@ export default function GroupChat() {
 
   useEffect(() => {
     let loadTimer;
-    loadMessages();
-    db.User.list().then(d => setAllStaff(d || []));
-    // Real-time subscription with debounce to avoid rate limiting
-    const unsub = db.GroupChatMessage.subscribe((event) => {
-      clearTimeout(loadTimer);
-      loadTimer = setTimeout(async () => {
-        const msgs = await db.GroupChatMessage.list('created_date', 200);
-        setMessages(msgs || []);
-        
-        // Check if user was mentioned in any new message
-        if (msgs && user?.full_name) {
-          msgs.forEach(msg => {
-            if (!notifiedMessageIds.has(msg.id) && msg.mentions?.length > 0 && msg.sender_email !== user?.email) {
-              const isMentioned = msg.mentions.some(m => 
-                m.toLowerCase().includes(user.full_name.toLowerCase()) || 
-                m.toLowerCase().includes(user.email.toLowerCase())
-              );
-              if (isMentioned) {
-                setNotifiedMessageIds(prev => new Set([...prev, msg.id]));
-                toast({
-                  title: `${msg.sender_name} mentioned you`,
-                  description: msg.message?.slice(0, 100) || '📎 Sent an attachment',
-                  duration: 5000,
-                });
-              }
+    const loadAndNotify = async () => {
+      const msgs = await db.GroupChatMessage.list('created_date', 200);
+      setMessages(msgs || []);
+      
+      // Check for new mentions and notify only once per message
+      if (msgs && user?.full_name) {
+        msgs.forEach(msg => {
+          const isNewMessage = !notifiedMessageIds.has(msg.id);
+          const hasMentions = msg.mentions?.length > 0;
+          const isNotFromMe = msg.sender_email !== user?.email;
+          
+          if (isNewMessage && hasMentions && isNotFromMe) {
+            const isMentioned = msg.mentions.some(m => 
+              m.toLowerCase().includes(user.full_name.toLowerCase()) || 
+              m.toLowerCase().includes(user.email.toLowerCase())
+            );
+            if (isMentioned) {
+              setNotifiedMessageIds(prev => new Set([...prev, msg.id]));
+              toast({
+                title: `${msg.sender_name} mentioned you`,
+                description: msg.message?.slice(0, 100) || '📎 Sent an attachment',
+                duration: 5000,
+              });
             }
-          });
-        }
-      }, 500);
+          }
+        });
+      }
+    };
+
+    loadAndNotify();
+    db.User.list().then(d => setAllStaff(d || []));
+    
+    // Real-time subscription with debounce to avoid rate limiting
+    const unsub = db.GroupChatMessage.subscribe(() => {
+      clearTimeout(loadTimer);
+      loadTimer = setTimeout(() => loadAndNotify(), 500);
     });
     return () => { clearTimeout(loadTimer); unsub(); };
-  }, [user, toast, notifiedMessageIds]);
+  }, [user?.full_name, user?.email, toast]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
