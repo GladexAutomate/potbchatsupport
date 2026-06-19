@@ -57,6 +57,22 @@ const AuthenticatedApp = () => {
     }
   }
 
+  // In preview, allow all routes; in published, enforce auth
+  const isPreview = window.location.hostname.includes('preview');
+  
+  if (!isPreview && authChecked && !isAuthenticated) {
+    navigateToLogin();
+    return null;
+  }
+
+  if (!isPreview && !authChecked) {
+    return (
+      <div className="fixed inset-0 flex items-center justify-center">
+        <div className="w-8 h-8 border-4 border-slate-200 border-t-primary rounded-full animate-spin"></div>
+      </div>
+    );
+  }
+
   return (
     <Routes>
       {/* Public customer portal - customers & unauthenticated */}
