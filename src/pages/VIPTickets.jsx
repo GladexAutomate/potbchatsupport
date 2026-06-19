@@ -70,6 +70,7 @@ export default function VIPTickets() {
     };
 
     loadVIPTickets();
+    // Real-time subscription for instant updates when VIP tickets are created or rerouted
     const unsub = db.Ticket.subscribe(() => loadVIPTickets());
     return () => unsub();
   }, [user, vipEmails]);

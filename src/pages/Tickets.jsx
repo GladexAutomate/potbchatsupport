@@ -68,7 +68,8 @@ export default function Tickets() {
       });
     };
     load();
-    const unsub = db.Ticket.subscribe(load);
+    // Real-time subscription for instant updates when tickets are rerouted
+    const unsub = db.Ticket.subscribe(() => load());
     return () => unsub();
   }, [user, vipEmails]);
 
