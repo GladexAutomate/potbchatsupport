@@ -24,6 +24,13 @@ const PAGES = [
   { name: 'chatbot-config', label: 'Chatbot Config', description: 'Configure the AI chatbot embed URL, greeting message, and escalation settings.' },
   { name: 'replying-center', label: 'Replying Center', description: 'Focused inbox for responding to open tickets with saved replies and attachments.' },
   { name: 'conversation-tags', label: 'Conversation Tags', description: 'Create and manage tags used to categorize and label support tickets.' },
+  { name: 'internal-tickets-sales', label: 'Internal Tickets - Sales', description: 'Inter-department tickets routed to or from the Sales department.' },
+  { name: 'internal-tickets-it', label: 'Internal Tickets - IT', description: 'Inter-department tickets routed to or from the IT department.' },
+  { name: 'internal-tickets-accounting', label: 'Internal Tickets - Accounting', description: 'Inter-department tickets routed to or from the Accounting department.' },
+  { name: 'internal-tickets-signups', label: 'Internal Tickets - Sign-Ups', description: 'Inter-department tickets routed to or from the Sign-Ups department.' },
+  { name: 'internal-tickets-onboarding', label: 'Internal Tickets - On-Boarding', description: 'Inter-department tickets routed to or from the On-Boarding department.' },
+  { name: 'internal-tickets-corptraining', label: 'Internal Tickets - Corp/Training', description: 'Inter-department tickets routed to or from the Corp/Training department.' },
+  { name: 'escalations', label: 'Internal Escalations', description: 'View and manage internal escalations and urgent inter-department tickets.' },
 ];
 
 const FEATURES = [
