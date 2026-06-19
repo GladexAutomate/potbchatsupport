@@ -11,6 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Label } from '@/components/ui/label';
 import { Search, Users, Shield, Loader2, UserPlus, RefreshCw, Briefcase, BadgeCheck, Ban, Unlock, ToggleLeft, ToggleRight, ShieldCheck, Save, Download } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
+import { useAuth } from '@/lib/AuthContext';
 
 const STAFF_ROLES = ['csr', 'sales', 'accounting', 'sign_ups', 'on_boarding', 'corp_training', 'admin', 'tl_management'];
 const EDITABLE_ROLES = ['customer', ...STAFF_ROLES];
@@ -63,21 +64,22 @@ const EMP_TABS = [
 ];
 
 export default function UserManagement() {
-  const [employees, setEmployees] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [syncing, setSyncing] = useState(false);
-  const [search, setSearch] = useState('');
-  const [empTab, setEmpTab] = useState('all');
-  const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState('csr');
-  const [inviting, setInviting] = useState(false);
-  const [actionLoading, setActionLoading] = useState(null);
-  const [roleEditItem, setRoleEditItem] = useState(null);
-  const [roleSaving, setRoleSaving] = useState(false);
-  const [bulkApplyOpen, setBulkApplyOpen] = useState(false);
-  const [bulkApplying, setBulkApplying] = useState(false);
-  const [bulkRoleMappings, setBulkRoleMappings] = useState({});
+   const { user, refreshUserRole } = useAuth();
+   const [employees, setEmployees] = useState([]);
+   const [loading, setLoading] = useState(true);
+   const [syncing, setSyncing] = useState(false);
+   const [search, setSearch] = useState('');
+   const [empTab, setEmpTab] = useState('all');
+   const [inviteOpen, setInviteOpen] = useState(false);
+   const [inviteEmail, setInviteEmail] = useState('');
+   const [inviteRole, setInviteRole] = useState('csr');
+   const [inviting, setInviting] = useState(false);
+   const [actionLoading, setActionLoading] = useState(null);
+   const [roleEditItem, setRoleEditItem] = useState(null);
+   const [roleSaving, setRoleSaving] = useState(false);
+   const [bulkApplyOpen, setBulkApplyOpen] = useState(false);
+   const [bulkApplying, setBulkApplying] = useState(false);
+   const [bulkRoleMappings, setBulkRoleMappings] = useState({});
 
   const loadData = async () => {
     setLoading(true);
@@ -138,7 +140,11 @@ export default function UserManagement() {
     // Always save the custom role to EmployeeAccount — this is the source of truth
     await db.EmployeeAccount.update(roleEditItem.id, { POTBChatsupportrole: roleEditItem._selectedRole });
     setEmployees(prev => prev.map(e => e.id === roleEditItem.id ? { ...e, POTBChatsupportrole: roleEditItem._selectedRole } : e));
-    // Force re-login so the user's session picks up the new role
+    // If saving role for current user, refresh their session immediately
+    if (user?.email?.toLowerCase() === roleEditItem.email?.toLowerCase()) {
+      await refreshUserRole();
+    }
+    // Force re-login for other users so their session picks up the new role
     try {
       await base44.functions.invoke('logoutUserByEmail', { target_email: roleEditItem.email });
     } catch (err) {

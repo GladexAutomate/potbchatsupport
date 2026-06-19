@@ -234,6 +234,13 @@ export const AuthProvider = ({ children }) => {
     base44.auth.redirectToLogin(window.location.href);
   };
 
+  const refreshUserRole = async () => {
+    // Reload just the user's role from the database
+    if (user) {
+      await checkUserAuth();
+    }
+  };
+
   return (
     <AuthContext.Provider value={{ 
       user, 
@@ -246,6 +253,7 @@ export const AuthProvider = ({ children }) => {
       logout,
       navigateToLogin,
       checkUserAuth,
+      refreshUserRole,
       checkAppState
     }}>
       {children}
