@@ -1,5 +1,5 @@
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { db } from '@/lib/db';
 import { getAppEnv } from '@/lib/appEnv';
@@ -7,10 +7,11 @@ import { useAuth } from '@/lib/AuthContext';
 import {
   LayoutDashboard, Ticket, BarChart2, Settings, MessageSquare,
   ChevronLeft, ChevronRight, LogOut, Menu, X, ShieldCheck, Users,
-  MessageSquareText, Tag, Star, MessagesSquare, Crown, UserCheck, Shield, Lock, Send, FolderOpen, Clock
+  MessageSquareText, Tag, Star, MessagesSquare, Crown, UserCheck, Shield, Lock, Send, FolderOpen, Clock, AlertCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { motion, AnimatePresence } from 'framer-motion';
 
 const STAFF_ROLES = ['super_admin', 'admin', 'csr', 'sales', 'accounting', 'sign_ups', 'on_boarding', 'corp_training', 'tl_management'];
 
@@ -58,6 +59,10 @@ export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [groupChatUnread, setGroupChatUnread] = useState(0);
   const [permissions, setPermissions] = useState([]);
+  const [mentionNotification, setMentionNotification] = useState(null);
+  const [notifiedMessageIds, setNotifiedMessageIds] = useState(new Set());
+  const [allStaff, setAllStaff] = useState([]);
+  const mentionTimerRef = useRef(null);
   const location = useLocation();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -65,6 +70,72 @@ export default function Layout() {
   const role = user?.role || 'customer';
   const isSuperAdmin = role === 'super_admin';
 
+  // Load staff directory and subscribe to mentions
+  useEffect(() => {
+    if (!user) return;
+    
+    db.User.list().then(d => setAllStaff(d || []));
+    
+    // Request notification permission on first load
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+    
+    let loadTimer;
+    
+    // Subscribe to group chat for mentions
+    const unsub = db.GroupChatMessage.subscribe((event) => {
+      clearTimeout(loadTimer);
+      loadTimer = setTimeout(() => {
+        if (event.data && user?.full_name && event.data.sender_email !== user?.email) {
+          const hasMentions = event.data.mentions?.length > 0;
+          if (hasMentions) {
+            const isMentioned = event.data.mentions.some(m => 
+              m.toLowerCase().includes(user.full_name.toLowerCase()) || 
+              m.toLowerCase().includes(user.email.toLowerCase())
+            );
+            if (isMentioned && !notifiedMessageIds.has(event.data.id)) {
+              setNotifiedMessageIds(prev => new Set([...prev, event.data.id]));
+              
+              setMentionNotification({
+                sender: event.data.sender_name,
+                message: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
+                timestamp: Date.now(),
+              });
+              
+              if ('Notification' in window && Notification.permission === 'granted') {
+                new Notification(`🔔 ${event.data.sender_name} mentioned you in Group Chat`, {
+                  body: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
+                  icon: '/favicon.ico',
+                  tag: 'group-chat-mention',
+                  requireInteraction: true,
+                });
+              }
+              
+              try {
+                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBg==');
+                audio.play().catch(() => {});
+              } catch (e) {}
+              
+              // Show notification repeatedly every 5 seconds until dismissed
+              clearInterval(mentionTimerRef.current);
+              mentionTimerRef.current = setInterval(() => {
+                setMentionNotification({
+                  sender: event.data.sender_name,
+                  message: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
+                  timestamp: Date.now(),
+                });
+              }, 5000);
+            }
+          }
+        }
+      }, 500);
+    });
+    
+    return () => { clearTimeout(loadTimer); unsub(); clearInterval(mentionTimerRef.current); };
+  }, [user?.full_name, user?.email, notifiedMessageIds]);
+
+  // Unread count subscription
   useEffect(() => {
     if (!user) return;
     const computeUnread = (msgs) => {
@@ -368,7 +439,35 @@ export default function Layout() {
   );
 
   return (
-    <div className="flex h-screen bg-background overflow-hidden">
+    <div className="flex h-screen bg-background overflow-hidden relative">
+      {/* Mention notification - global */}
+      <AnimatePresence>
+        {mentionNotification && (
+          <motion.div
+            initial={{ scale: 0.9, opacity: 0, y: -20 }}
+            animate={{ scale: 1, opacity: 1, y: 0 }}
+            exit={{ scale: 0.9, opacity: 0, y: -20 }}
+            className="fixed top-8 right-8 z-40 max-w-md bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800 rounded-lg shadow-lg p-4 pointer-events-auto"
+          >
+            <div className="flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
+              <div className="flex-1 min-w-0">
+                <p className="font-semibold text-sm text-foreground">{mentionNotification.sender} mentioned you</p>
+                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{mentionNotification.message}</p>
+              </div>
+              <button
+                onClick={() => {
+                  clearInterval(mentionTimerRef.current);
+                  setMentionNotification(null);
+                }}
+                className="text-muted-foreground hover:text-foreground flex-shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       {/* Desktop Sidebar */}
       <aside
         className={cn(
@@ -398,7 +497,7 @@ export default function Layout() {
         </div>
       )}
 
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden z-0">
         {/* Mobile Header */}
         <header className="md:hidden flex items-center gap-3 px-4 py-3 bg-card border-b border-border">
           <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)}>

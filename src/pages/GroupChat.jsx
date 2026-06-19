@@ -4,16 +4,14 @@ import { db } from '@/lib/db';
 import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Send, Loader2, Paperclip, X, FileText, Pin, Search, Users, MessageSquare, AlertCircle } from 'lucide-react';
+import { Send, Loader2, Paperclip, X, FileText, Pin, Search, Users, MessageSquare } from 'lucide-react';
 import GroupChatMessageBubble from '@/components/groupchat/GroupChatMessage';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDateRelative } from '@/lib/timezone';
 import { toZonedTime } from 'date-fns-tz';
-import { useToast } from '@/components/ui/use-toast';
 
 export default function GroupChat() {
   const { user } = useAuth();
-  const { toast } = useToast();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -27,9 +25,6 @@ export default function GroupChat() {
   const [showPinned, setShowPinned] = useState(false);
   const [mentionSuggestions, setMentionSuggestions] = useState([]);
   const [mentionQuery, setMentionQuery] = useState('');
-  const [notifiedMessageIds, setNotifiedMessageIds] = useState(new Set());
-  const [mentionNotification, setMentionNotification] = useState(null);
-  const mentionTimerRef = useRef(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const inputRef = useRef(null);
@@ -48,11 +43,6 @@ export default function GroupChat() {
     initialLoad();
     db.User.list().then(d => setAllStaff(d || []));
     
-    // Request notification permission on first load
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-    
     // Real-time subscription - append new messages only, don't reload entire list
     const unsub = db.GroupChatMessage.subscribe((event) => {
       clearTimeout(loadTimer);
@@ -63,51 +53,6 @@ export default function GroupChat() {
             const newMessages = [...prev, event.data].sort((a, b) => 
               new Date(a.created_date) - new Date(b.created_date)
             );
-            
-            // Check for mentions in new message
-            if (user?.full_name && event.data.sender_email !== user?.email) {
-              const hasMentions = event.data.mentions?.length > 0;
-              if (hasMentions) {
-                const isMentioned = event.data.mentions.some(m => 
-                  m.toLowerCase().includes(user.full_name.toLowerCase()) || 
-                  m.toLowerCase().includes(user.email.toLowerCase())
-                );
-                if (isMentioned && !notifiedMessageIds.has(event.data.id)) {
-                  setNotifiedMessageIds(prev => new Set([...prev, event.data.id]));
-                  
-                  setMentionNotification({
-                    sender: event.data.sender_name,
-                    message: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
-                    timestamp: Date.now(),
-                  });
-                  
-                  if ('Notification' in window && Notification.permission === 'granted') {
-                    new Notification(`🔔 ${event.data.sender_name} mentioned you in Group Chat`, {
-                      body: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
-                      icon: '/favicon.ico',
-                      tag: 'group-chat-mention',
-                      requireInteraction: true,
-                    });
-                  }
-                  
-                  try {
-                    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBg==');
-                    audio.play().catch(() => {});
-                  } catch (e) {}
-                  
-                  // Show notification repeatedly every 5 seconds until dismissed
-                  clearInterval(mentionTimerRef.current);
-                  mentionTimerRef.current = setInterval(() => {
-                    setMentionNotification({
-                      sender: event.data.sender_name,
-                      message: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
-                      timestamp: Date.now(),
-                    });
-                  }, 5000);
-                }
-              }
-            }
-            
             return newMessages;
           }
           return prev;
@@ -115,8 +60,8 @@ export default function GroupChat() {
       }, 500);
     });
     
-    return () => { clearTimeout(loadTimer); unsub(); clearInterval(mentionTimerRef.current); };
-  }, [user?.full_name, user?.email, notifiedMessageIds]);
+    return () => { clearTimeout(loadTimer); unsub(); };
+  }, []);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -250,35 +195,6 @@ export default function GroupChat() {
 
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] relative">
-      {/* Mention pop-up notification - non-blocking */}
-      <AnimatePresence>
-        {mentionNotification && (
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0, y: -20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0, y: -20 }}
-            className="fixed top-8 right-8 z-40 max-w-md bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800 rounded-lg shadow-lg p-4 pointer-events-auto"
-          >
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm text-foreground">{mentionNotification.sender} mentioned you</p>
-                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{mentionNotification.message}</p>
-              </div>
-              <button
-                onClick={() => {
-                  clearInterval(mentionTimerRef.current);
-                  setMentionNotification(null);
-                }}
-                className="text-muted-foreground hover:text-foreground flex-shrink-0"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
       {/* Header */}
       <div className="px-5 py-3.5 border-b border-border/50 bg-card flex items-center gap-3 flex-shrink-0">
         <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
