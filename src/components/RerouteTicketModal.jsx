@@ -110,21 +110,14 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
         }),
       ];
 
-      // If marked as escalated, create an internal escalation ticket
+      // If marked as escalated, create an internal escalation ticket via backend function
       if (escalated && isCSR) {
         promises.push(
-          base44.asServiceRole.entities.InternalTicket.create({
-            env: ticket.env || 'test',
-            ticket_number: ticket.ticket_number || `INT-${Date.now()}`,
-            from_department: ticket.department || 'CSR',
-            to_department: 'TL/Management',
-            subject: ticket.subject,
-            description: `Escalated ticket: ${ticket.description}${note.trim() ? `\n\nEscalation note: ${note.trim()}` : ''}`,
-            created_by_email: user?.email || 'system',
-            created_by_name: user?.full_name || 'System',
-            status: 'Open',
-            priority: priority,
-            escalated: true,
+          base44.functions.invoke('escalateTicket', {
+            ticket,
+            fromDept: ticket.department || 'CSR',
+            toPriority: priority,
+            escalationNote: note.trim(),
           })
         );
       }
