@@ -35,20 +35,15 @@ export default function SubmitInternalTicket() {
         const u = await base44.auth.me();
         if (u) {
           setUser(u);
-          // Get user's department from StaffDirectory
-          const staffRecords = await db.StaffDirectory.filter({ email: u.email });
-          if (staffRecords && staffRecords.length > 0) {
-            const role = staffRecords[0].current_role;
-            // Map role to department: csr/sales → Sales, it → IT, accounting → Accounting, etc.
-            const deptMap = {
-              'csr': 'Sales', 'sales': 'Sales', 'it': 'IT', 'accounting': 'Accounting',
-              'sign_ups': 'Sign-Ups', 'on_boarding': 'On-Boarding', 'corp_training': 'Corp/Training',
-              'admin': 'Admin', 'tl_management': 'TL/Management'
-            };
-            const dept = deptMap[role?.toLowerCase()];
-            if (dept && departmentList.includes(dept)) {
-              setForm(f => ({ ...f, from_department: dept }));
-            }
+          // Map role to department: csr/sales → Sales, it → IT, accounting → Accounting, etc.
+          const deptMap = {
+            'csr': 'Sales', 'sales': 'Sales', 'it': 'IT', 'accounting': 'Accounting',
+            'sign_ups': 'Sign-Ups', 'on_boarding': 'On-Boarding', 'corp_training': 'Corp/Training',
+            'admin': 'Admin', 'tl_management': 'TL/Management'
+          };
+          const dept = deptMap[u.role?.toLowerCase()];
+          if (dept && departmentList.includes(dept)) {
+            setForm(f => ({ ...f, from_department: dept }));
           }
         }
       } catch (err) {
