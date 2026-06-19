@@ -21,20 +21,22 @@ export default function EmailLogin() {
     setLoading(true);
 
     try {
-      // Check if email exists in EmployeeAccount
-      const employees = await base44.entities.EmployeeAccount.filter({ email }).catch(() => []);
-      
-      if (employees && employees.length > 0) {
-        // Employee - redirect to Base44 login with email
-        base44.auth.redirectToLogin(`/dashboard?type=employee&email=${encodeURIComponent(email)}`);
-      } else {
-        // Customer - redirect to Base44 login with email
-        base44.auth.redirectToLogin(`/?type=customer&email=${encodeURIComponent(email)}`);
-      }
-    } catch (err) {
-      setError('An error occurred. Please try again.');
-      setLoading(false);
-    }
+       // Check if email exists in EmployeeAccount
+       const employees = await base44.entities.EmployeeAccount.filter({ email }).catch(() => []);
+
+       if (employees && employees.length > 0) {
+         // Employee - store intent in sessionStorage and redirect to Base44 login
+         sessionStorage.setItem('loginRedirect', '/dashboard');
+         base44.auth.redirectToLogin();
+       } else {
+         // Customer - redirect to Base44 login
+         sessionStorage.setItem('loginRedirect', '/');
+         base44.auth.redirectToLogin();
+       }
+     } catch (err) {
+       setError('An error occurred. Please try again.');
+       setLoading(false);
+     }
   };
 
   return (

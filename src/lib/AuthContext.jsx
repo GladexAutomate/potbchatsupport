@@ -174,8 +174,8 @@ export const AuthProvider = ({ children }) => {
       // Overlay the custom role from EmployeeAccount or StaffDirectory (source of truth for app roles)
       try {
         const empRecords = await db.EmployeeAccount.filter({ email: currentUser.email });
-        if (empRecords && empRecords.length > 0 && empRecords[0].current_role) {
-          currentUser.role = empRecords[0].current_role;
+        if (empRecords && empRecords.length > 0 && empRecords[0].POTBChatsupportrole) {
+          currentUser.role = empRecords[0].POTBChatsupportrole;
         } else {
           // Fall back to StaffDirectory if not in EmployeeAccount
           const staffRecords = await db.StaffDirectory.filter({ email: currentUser.email });
@@ -189,6 +189,14 @@ export const AuthProvider = ({ children }) => {
 
       setUser(currentUser);
       setIsAuthenticated(true);
+
+      // Handle redirect after successful auth
+      const redirect = sessionStorage.getItem('loginRedirect');
+      if (redirect) {
+        sessionStorage.removeItem('loginRedirect');
+        window.location.href = redirect;
+      }
+
       setIsLoadingAuth(false);
       setAuthChecked(true);
     } catch (error) {
@@ -196,7 +204,7 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingAuth(false);
       setIsAuthenticated(false);
       setAuthChecked(true);
-      
+
       // If user auth fails, it might be an expired token
       if (error.status === 401 || error.status === 403) {
         setAuthError({
