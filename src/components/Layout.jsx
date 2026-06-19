@@ -158,6 +158,7 @@ export default function Layout() {
 
   // Map internal ticket page keys to their routes
   const internalPageKeys = {
+    'internal-tickets-csr': { label: 'CSR Tickets', route: '/internal-tickets-csr' },
     'internal-tickets-sales': { label: 'Sales Tickets', route: '/internal-tickets-sales' },
     'internal-tickets-it': { label: 'IT Tickets', route: '/internal-tickets-it' },
     'internal-tickets-accounting': { label: 'Accounting Tickets', route: '/internal-tickets-accounting' },
