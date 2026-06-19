@@ -34,10 +34,14 @@ Deno.serve(async (req) => {
     }
     const rows = await res.json();
 
-    // Get existing EmployeeAccount records to find which to update vs create
-    const existing = await base44.asServiceRole.entities.EmployeeAccount.list('-created_date', 1000);
+    const targetEnv = isProd ? 'prod' : 'test';
+
+    // Get existing EmployeeAccount records FOR THIS ENV only — so accounts that exist
+    // in another env still get created here.
+    const existingAll = await base44.asServiceRole.entities.EmployeeAccount.list('-created_date', 2000);
     const existingByEmail = {};
-    for (const e of existing) {
+    for (const e of existingAll) {
+      if (e.env !== targetEnv) continue;
       existingByEmail[e.email?.toLowerCase()] = e;
     }
 
@@ -53,6 +57,7 @@ Deno.serve(async (req) => {
       if (!email) continue;
 
       const payload = {
+        env: targetEnv,
         email: d.email,
         full_name: d.full_name || '',
         status: d.status || 'active',
