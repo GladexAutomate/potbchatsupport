@@ -139,7 +139,9 @@ export default function GroupChat() {
   };
 
   const insertMention = (staff) => {
-    const replaced = newMessage.replace(/@\w*$/, `@${staff.full_name?.replace(/\s+/g, '') || staff.email} `);
+    // Replace the @ mention with the staff name (keep spaces, just use the name as-is)
+    const displayName = staff.full_name || staff.email;
+    const replaced = newMessage.replace(/@[\w]*$/, `@${displayName} `);
     setNewMessage(replaced);
     setMentionSuggestions([]);
     inputRef.current?.focus();
