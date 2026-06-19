@@ -98,12 +98,16 @@ export default function GroupChat() {
   // Mark messages as read
   useEffect(() => {
     if (!user || messages.length === 0) return;
-    messages.forEach(async (msg) => {
-      if (!msg.read_by?.includes(user.email)) {
+    
+    const readTimer = setTimeout(() => {
+      const unreadMessages = messages.filter(msg => !msg.read_by?.includes(user.email));
+      unreadMessages.forEach(async (msg) => {
         const updated = [...(msg.read_by || []), user.email];
         await db.GroupChatMessage.update(msg.id, { read_by: updated });
-      }
-    });
+      });
+    }, 1000); // Debounce read marking by 1 second to batch updates
+
+    return () => clearTimeout(readTimer);
   }, [messages, user]);
 
   const loadMessages = async () => {
