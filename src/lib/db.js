@@ -68,7 +68,18 @@ function makeEntityProxy(entityName) {
     async filter(query, sort, limit) {
       const env = getEnv();
       const envQuery = { ...(query || {}), env };
-      return entity.filter(envQuery, sort, limit);
+      const cacheKey = `${entityName}:filter:${JSON.stringify(envQuery)}:${sort || ''}:${limit || ''}:${env}`;
+      
+      // If a request is already in flight, return the same promise
+      if (inflightRequests.has(cacheKey)) {
+        return inflightRequests.get(cacheKey);
+      }
+      
+      const promise = entity.filter(envQuery, sort, limit);
+      inflightRequests.set(cacheKey, promise);
+      setTimeout(() => inflightRequests.delete(cacheKey), 5000);
+      
+      return promise;
     },
 
     // get — direct get by id (no env filter; id is globally unique)
