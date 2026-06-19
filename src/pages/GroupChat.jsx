@@ -146,9 +146,14 @@ export default function GroupChat() {
     if (!newMessage.trim() && attachments.length === 0) return;
     setSending(true);
 
-    // Match mentions: @Name or @FirstName LastName
-    const mentions = [...newMessage.matchAll(/@([\w]+(?:\s+[\w]+)*)/g)].map(m => `@${m[1]}`);
-    const uniqueMentions = [...new Set(mentions)]; // Remove duplicates
+    // Extract full mentions from message and match with staff directory
+    const mentionMatches = [...newMessage.matchAll(/@([\w]+(?:\s+[\w]+)*)/g)];
+    const mentions = mentionMatches.map(m => {
+      const mentionedName = m[1];
+      const matchedStaff = allStaff.find(s => s.full_name === mentionedName);
+      return matchedStaff ? matchedStaff.full_name : mentionedName;
+    });
+    const uniqueMentions = [...new Set(mentions)];
 
     await db.GroupChatMessage.create({
       sender_email: user?.email || '',
