@@ -9,7 +9,7 @@ import GroupChatMessageBubble from '@/components/groupchat/GroupChatMessage';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDateRelative } from '@/lib/timezone';
 import { toZonedTime } from 'date-fns-tz';
-import { useGlobalMentionContext } from '@/lib/MentionContext';
+
 
 export default function GroupChat() {
   const { user } = useAuth();

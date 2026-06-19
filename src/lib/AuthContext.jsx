@@ -109,7 +109,7 @@ export const AuthProvider = ({ children }) => {
       });
       
       try {
-        const publicSettings = await appClient.get(`/prod/public-settings/by-id/${appParams.appId}`);
+        const publicSettings = await appClient.get(`/public-settings/by-id/${appParams.appId}`);
         setAppPublicSettings(publicSettings);
         setIsLoadingPublicSettings(false);
         
