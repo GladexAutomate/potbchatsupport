@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '@/lib/db';
+import { getAppEnv } from '@/lib/appEnv';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -67,7 +68,8 @@ export default function RolePermissions() {
   const loadPermissions = async () => {
     try {
       setLoading(true);
-      const data = await db.Permission.list();
+      const env = getAppEnv() === 'preview' ? 'test' : 'prod';
+      const data = await db.Permission.filter({ env });
       setPermissions(data || []);
     } catch (error) {
       console.error('Failed to load permissions:', error);
@@ -85,13 +87,14 @@ export default function RolePermissions() {
   const togglePermission = async (role, resourceType, resourceName, label) => {
     const perm = getPermission(role, resourceType, resourceName);
     const newAccess = perm ? !perm.has_access : true;
+    const env = getAppEnv() === 'preview' ? 'test' : 'prod';
 
     // Optimistic update — apply immediately so UI stays responsive
     if (perm) {
       setPermissions(prev => prev.map(p => p.id === perm.id ? { ...p, has_access: newAccess } : p));
     } else {
       const tempId = `temp_${role}_${resourceType}_${resourceName}`;
-      setPermissions(prev => [...prev, { id: tempId, role, resource_type: resourceType, resource_name: resourceName, resource_label: label, has_access: newAccess }]);
+      setPermissions(prev => [...prev, { id: tempId, role, resource_type: resourceType, resource_name: resourceName, resource_label: label, has_access: newAccess, env }]);
     }
 
     // Persist in background
@@ -102,7 +105,7 @@ export default function RolePermissions() {
       });
     } else {
       db.Permission.create({
-        role, resource_type: resourceType, resource_name: resourceName, resource_label: label, has_access: newAccess,
+        env, role, resource_type: resourceType, resource_name: resourceName, resource_label: label, has_access: newAccess,
       }).then(created => {
         // Replace temp record with real one
         const tempId = `temp_${role}_${resourceType}_${resourceName}`;

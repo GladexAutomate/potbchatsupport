@@ -2,7 +2,7 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { db } from '@/lib/db';
-
+import { getAppEnv } from '@/lib/appEnv';
 import { useAuth } from '@/lib/AuthContext';
 import {
   LayoutDashboard, Ticket, BarChart2, Settings, MessageSquare,
@@ -81,7 +81,8 @@ export default function Layout() {
   // Load permissions for this role
   useEffect(() => {
     if (!user || isSuperAdmin) return;
-    db.Permission.filter({ role, resource_type: 'page' }).then(setPermissions).catch(() => {});
+    const env = getAppEnv() === 'preview' ? 'test' : 'prod';
+    db.Permission.filter({ env, role, resource_type: 'page' }).then(setPermissions).catch(() => {});
   }, [user, role]);
 
   // Clear badge when on group chat page
