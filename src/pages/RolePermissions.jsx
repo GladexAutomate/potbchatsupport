@@ -30,6 +30,7 @@ const PAGES = [
   { name: 'internal-tickets-signups', label: 'Internal Tickets - Sign-Ups', description: 'Inter-department tickets routed to or from the Sign-Ups department.' },
   { name: 'internal-tickets-onboarding', label: 'Internal Tickets - On-Boarding', description: 'Inter-department tickets routed to or from the On-Boarding department.' },
   { name: 'internal-tickets-corptraining', label: 'Internal Tickets - Corp/Training', description: 'Inter-department tickets routed to or from the Corp/Training department.' },
+  { name: 'internal-tickets-admin', label: 'Internal Tickets Admin', description: 'Manage all internal inter-department tickets and their routing.' },
   { name: 'escalations', label: 'Internal Escalations', description: 'View and manage internal escalations and urgent inter-department tickets.' },
 ];
 
