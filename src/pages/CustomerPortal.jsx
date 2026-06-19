@@ -35,17 +35,37 @@ export default function CustomerPortal() {
         setUser(u);
         setForm(f => ({ ...f, customer_name: u.full_name || '' }));
         // Check if this email is a registered staff employee (case-insensitive)
-        const emailLower = u.email?.toLowerCase();
-        const allEmployees = await db.EmployeeAccount.list().catch(() => []);
-        const allStaff = await db.StaffDirectory.list().catch(() => []);
+        const emailLower = u.email?.toLowerCase()?.trim();
+        console.log('Looking for staff with email:', emailLower);
 
-        const validEmployee = allEmployees?.find(e => e.email?.toLowerCase() === emailLower && !e.is_blocked);
-        const validStaff = allStaff?.find(e => e.email?.toLowerCase() === emailLower && !e.is_blocked);
+        try {
+          const allEmployees = await db.EmployeeAccount.list().catch(() => []);
+          const allStaff = await db.StaffDirectory.list().catch(() => []);
 
-        if (validEmployee) {
-          setEmployeeRecord(validEmployee);
-        } else if (validStaff) {
-          setEmployeeRecord(validStaff);
+          console.log('EmployeeAccount records found:', allEmployees?.length);
+          console.log('StaffDirectory records found:', allStaff?.length);
+
+          const validEmployee = allEmployees?.find(e => {
+            const empEmail = e.email?.toLowerCase()?.trim();
+            return empEmail === emailLower && !e.is_blocked;
+          });
+
+          const validStaff = allStaff?.find(e => {
+            const staffEmail = e.email?.toLowerCase()?.trim();
+            return staffEmail === emailLower && !e.is_blocked;
+          });
+
+          if (validEmployee) {
+            console.log('Found employee:', validEmployee);
+            setEmployeeRecord(validEmployee);
+          } else if (validStaff) {
+            console.log('Found staff:', validStaff);
+            setEmployeeRecord(validStaff);
+          } else {
+            console.log('No staff record found for:', emailLower);
+          }
+        } catch (err) {
+          console.error('Error looking up staff:', err);
         }
       }
     }).catch(() => {});
