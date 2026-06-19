@@ -29,6 +29,7 @@ export default function GroupChat() {
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const inputRef = useRef(null);
+  const mentionTimerRef = useRef(null);
 
   const isImageUrl = (url) => /\.(png|jpg|jpeg|gif|webp)(\?|$)/i.test(url);
 
@@ -72,12 +73,6 @@ export default function GroupChat() {
               if (isMentioned && !localStorage.getItem(`mentioned_${event.data.id}`)) {
                 localStorage.setItem(`mentioned_${event.data.id}`, 'true');
                 
-                setMentionNotification({
-                  sender: event.data.sender_name,
-                  message: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
-                  timestamp: Date.now(),
-                });
-                
                 if ('Notification' in window && Notification.permission === 'granted') {
                   new Notification(`🔔 ${event.data.sender_name} mentioned you in Group Chat`, {
                     body: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
@@ -91,15 +86,6 @@ export default function GroupChat() {
                   const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBg==');
                   audio.play().catch(() => {});
                 } catch (e) {}
-                
-                clearInterval(mentionTimerRef.current);
-                mentionTimerRef.current = setInterval(() => {
-                  setMentionNotification({
-                    sender: event.data.sender_name,
-                    message: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
-                    timestamp: Date.now(),
-                  });
-                }, 5000);
               }
             }
             
@@ -111,7 +97,7 @@ export default function GroupChat() {
     });
     
     return () => { clearTimeout(loadTimer); unsub(); };
-  }, [user?.full_name, user?.email, setMentionNotification, mentionTimerRef]);
+  }, [user?.full_name, user?.email]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
