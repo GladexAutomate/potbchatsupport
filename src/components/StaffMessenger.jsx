@@ -85,14 +85,14 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
 
   // Auto-open ticket from URL param (e.g. from Group Chat "Open Ticket" link)
   useEffect(() => {
-    if (autoOpenTicketId && !autoOpened && !loading && tickets.length > 0) {
+    if (autoOpenTicketId && !autoOpened && tickets.length > 0) {
       const target = tickets.find(t => t.id === autoOpenTicketId);
       if (target) {
         handleSelectTicket(target);
         setAutoOpened(true);
       }
     }
-  }, [autoOpenTicketId, tickets, loading]);
+  }, [autoOpenTicketId, tickets]);
 
   // Load saved replies, tags, and VIP emails once
   useEffect(() => {
