@@ -10,6 +10,7 @@ import { MessageSquare, Ticket, CheckCircle, ChevronRight, Bot, Loader2, ShieldC
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import StaffLoginModal from '@/components/StaffLoginModal';
+import { getAppEnv } from '@/lib/appEnv';
 
 export default function CustomerPortal() {
   const [view, setView] = useState('home'); // home | chat | ticket | success
@@ -125,9 +126,11 @@ export default function CustomerPortal() {
               <ClipboardList className="w-4 h-4" /> My Tickets
             </Button>
           </Link>
-          <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10 gap-2" onClick={handleStaffLoginClick}>
-            <ShieldCheck className="w-4 h-4" /> Staff Login
-          </Button>
+          {getAppEnv() === 'preview' && (
+            <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10 gap-2" onClick={handleStaffLoginClick}>
+              <ShieldCheck className="w-4 h-4" /> Staff Login
+            </Button>
+          )}
         </div>
       </header>
 
