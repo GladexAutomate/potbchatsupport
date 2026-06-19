@@ -10,17 +10,19 @@ import { ChevronDown, ChevronUp, Lock, Zap, Shield } from 'lucide-react';
 const PAGES = [
   { name: 'dashboard', label: 'Dashboard', description: 'Overview of ticket stats, team performance, and live activity feed.' },
   { name: 'tickets', label: 'Tickets', description: 'Full ticket queue — view, filter, and manage all customer support tickets.' },
-  { name: 'kpi', label: 'KPI', description: 'Key performance indicators: response times, resolution rates, and SLA compliance.' },
-  { name: 'chatbot-config', label: 'Chatbot Config', description: 'Configure the AI chatbot embed URL, greeting message, and escalation settings.' },
-  { name: 'settings', label: 'Settings', description: 'App-wide settings including SLA policies, saved replies, and system configuration.' },
+  { name: 'vip-tickets', label: 'VIP Tickets', description: 'Filtered view of tickets from VIP customers, flagged for priority handling.' },
+  { name: 'escalations', label: 'Escalations', description: 'View and manage escalated tickets requiring urgent or senior attention.' },
+  { name: 'group-chat', label: 'Group Chat', description: 'Internal team chat for staff collaboration, ticket endorsements, and announcements.' },
+  { name: 'kpi', label: 'KPI & SLA', description: 'Key performance indicators: response times, resolution rates, and SLA compliance.' },
+  { name: 'staff-ratings', label: 'Staff Ratings', description: 'View customer satisfaction ratings and feedback submitted per staff member.' },
   { name: 'users', label: 'User Management', description: 'View and manage employee accounts, block/unblock users, and assign app roles.' },
-  { name: 'manage-roles', label: 'Manage Roles', description: 'Configure page and feature access permissions for each staff role.' },
   { name: 'customers', label: 'Customers', description: 'Browse registered customer accounts and manage their profile details.' },
+  { name: 'manage-roles', label: 'Role Permissions', description: 'Configure page and feature access permissions for each staff role.' },
+  { name: 'sla-settings', label: 'SLA Policies', description: 'Configure SLA response and resolution time thresholds by priority level.' },
+  { name: 'test-accounts', label: 'Test Accounts', description: 'Manage test login credentials for QA and testing purposes.' },
+  { name: 'chatbot-config', label: 'Chatbot Config', description: 'Configure the AI chatbot embed URL, greeting message, and escalation settings.' },
   { name: 'replying-center', label: 'Replying Center', description: 'Focused inbox for responding to open tickets with saved replies and attachments.' },
   { name: 'conversation-tags', label: 'Conversation Tags', description: 'Create and manage tags used to categorize and label support tickets.' },
-  { name: 'staff-ratings', label: 'Staff Ratings', description: 'View customer satisfaction ratings and feedback submitted per staff member.' },
-  { name: 'group-chat', label: 'Group Chat', description: 'Internal team chat for staff collaboration, ticket endorsements, and announcements.' },
-  { name: 'vip-tickets', label: 'VIP Tickets', description: 'Filtered view of tickets from VIP customers, flagged for priority handling.' },
 ];
 
 const FEATURES = [
