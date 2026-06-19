@@ -10,7 +10,9 @@ import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, Che
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { formatDateRelative } from '@/lib/timezone';
+import { formatDateRelative, formatDateFull } from '@/lib/timezone';
+import { toZonedTime } from 'date-fns-tz';
+import { format } from 'date-fns';
 
 const STATUS_COLOR = {
   'Open': 'bg-blue-500/10 text-blue-400 border-blue-500/20',
@@ -104,14 +106,16 @@ export default function InternalTicketsBase({ userDepartment }) {
   const handleSend = async () => {
     if (!newMessage.trim() && attachments.length === 0) return;
     setSending(true);
+    const zonedDate = toZonedTime(new Date(), 'Asia/Manila');
+    const timestamp = format(zonedDate, 'MMM. d, yyyy h:mm a');
     await db.InternalTicket.update(selectedTicket.id, {
       notes: (selectedTicket.notes ? selectedTicket.notes + '\n\n' : '') + 
-             `[${new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' })}] ${user?.full_name}: ${newMessage.trim()}`
+             `[${timestamp}] ${user?.full_name}: ${newMessage.trim()}`
     });
     setSelectedTicket(prev => ({
       ...prev,
       notes: (prev.notes ? prev.notes + '\n\n' : '') + 
-             `[${new Date().toLocaleString('en-US', { timeZone: 'Asia/Manila' })}] ${user?.full_name}: ${newMessage.trim()}`
+             `[${timestamp}] ${user?.full_name}: ${newMessage.trim()}`
     }));
     setNewMessage('');
     setAttachments([]);
