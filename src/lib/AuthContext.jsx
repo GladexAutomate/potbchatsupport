@@ -170,11 +170,17 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingAuth(true);
       const currentUser = await base44.auth.me();
 
-      // Overlay the custom role from EmployeeAccount (source of truth for app roles)
+      // Overlay the custom role from EmployeeAccount or StaffDirectory (source of truth for app roles)
       try {
         const empRecords = await base44.entities.EmployeeAccount.filter({ email: currentUser.email });
         if (empRecords && empRecords.length > 0 && empRecords[0].current_role) {
           currentUser.role = empRecords[0].current_role;
+        } else {
+          // Fall back to StaffDirectory if not in EmployeeAccount
+          const staffRecords = await base44.entities.StaffDirectory.filter({ email: currentUser.email });
+          if (staffRecords && staffRecords.length > 0 && staffRecords[0].current_role) {
+            currentUser.role = staffRecords[0].current_role;
+          }
         }
       } catch (e) {
         // Non-critical — fall back to platform role
