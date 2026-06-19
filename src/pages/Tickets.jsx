@@ -62,7 +62,7 @@ export default function Tickets() {
       db.Ticket.list('-created_date', 200).then(data => {
         const filtered = filterTicketsForUser(data || []);
         // Exclude VIP tickets — they live on the VIP Tickets page
-        const nonVip = filtered.filter(t => !vipEmails.has(t.customer_email?.toLowerCase()));
+        const nonVip = filtered.filter(t => t.is_vip !== true && !vipEmails.has(t.customer_email?.toLowerCase()));
         setTickets(nonVip);
         setLoading(false);
       });
