@@ -12,7 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useGlobalMentionContext } from '@/lib/MentionContext';
+
 
 const STAFF_ROLES = ['super_admin', 'admin', 'csr', 'sales', 'accounting', 'sign_ups', 'on_boarding', 'corp_training', 'tl_management'];
 
@@ -60,7 +60,8 @@ export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [groupChatUnread, setGroupChatUnread] = useState(0);
   const [permissions, setPermissions] = useState([]);
-  const { mentionNotification, mentionTimerRef, setMentionNotification } = useGlobalMentionContext();
+  const [mentionNotification, setMentionNotification] = useState(null);
+  const mentionTimerRef = useRef(null);
   const location = useLocation();
   const { user } = useAuth();
   const navigate = useNavigate();
