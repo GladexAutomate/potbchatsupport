@@ -16,7 +16,7 @@ Deno.serve(async (req) => {
     const internalTicket = await base44.asServiceRole.entities.InternalTicket.create({
       env: ticket.env || 'test',
       ticket_number: ticket.ticket_number || `INT-${Date.now()}`,
-      from_department: fromDept,
+      from_department: 'CSR',
       to_department: 'TL/Management',
       subject: ticket.subject,
       description: `Escalated ticket: ${ticket.description}${escalationNote ? `\n\nEscalation note: ${escalationNote}` : ''}`,
