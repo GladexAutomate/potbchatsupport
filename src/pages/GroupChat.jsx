@@ -212,14 +212,16 @@ export default function GroupChat() {
   const handleInputChange = (e) => {
     const val = e.target.value;
     setNewMessage(val);
-    // Mention detection
-    const match = val.match(/@(\w*)$/);
+    // Mention detection - match @ followed by name until space or end
+    const match = val.match(/@([\w\s]*)$/);
     if (match) {
-      const q = match[1].toLowerCase();
+      const q = match[1].toLowerCase().trim();
       setMentionQuery(q);
-      setMentionSuggestions(allStaff.filter(s =>
-        (s.full_name?.toLowerCase().includes(q) || s.email?.toLowerCase().includes(q)) && s.email !== user?.email
-      ).slice(0, 5));
+      if (allStaff.length > 0) {
+        setMentionSuggestions(allStaff.filter(s =>
+          s.full_name && (s.full_name.toLowerCase().includes(q) || s.email?.toLowerCase().includes(q)) && s.email !== user?.email
+        ).slice(0, 5));
+      }
     } else {
       setMentionSuggestions([]);
     }
