@@ -26,7 +26,7 @@ export default function SubmitInternalTicket() {
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef(null);
 
-  const departmentList = ['Sales', 'IT', 'Accounting', 'Sign-Ups', 'On-Boarding', 'Corp/Training', 'Admin', 'TL/Management'];
+  const departmentList = ['CSR', 'Sales', 'IT', 'Accounting', 'Sign-Ups', 'On-Boarding', 'Corp/Training', 'Admin', 'TL/Management'];
   const isTLOrAdmin = authUser && ['super_admin', 'tl_management'].includes(authUser.role);
 
   useEffect(() => {
@@ -35,9 +35,9 @@ export default function SubmitInternalTicket() {
         const u = await base44.auth.me();
         if (u) {
           setUser(u);
-          // Map role to department: csr/sales → Sales, it → IT, accounting → Accounting, etc.
+          // Map role to department
           const deptMap = {
-            'csr': 'Sales', 'sales': 'Sales', 'it': 'IT', 'accounting': 'Accounting',
+            'csr': 'CSR', 'sales': 'Sales', 'it': 'IT', 'accounting': 'Accounting',
             'sign_ups': 'Sign-Ups', 'on_boarding': 'On-Boarding', 'corp_training': 'Corp/Training',
             'admin': 'Admin', 'tl_management': 'TL/Management'
           };

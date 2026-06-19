@@ -17,6 +17,7 @@
     "from_department": {
       "type": "string",
       "enum": [
+        "CSR",
         "Sales",
         "IT",
         "Accounting",
@@ -30,6 +31,7 @@
     "to_department": {
       "type": "string",
       "enum": [
+        "CSR",
         "Sales",
         "IT",
         "Accounting",
