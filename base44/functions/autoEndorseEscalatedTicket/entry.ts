@@ -5,19 +5,11 @@ Deno.serve(async (req) => {
     const base44 = createClientFromRequest(req);
     const payload = await req.json();
     const ticket = payload.data || payload;
+    const event = payload.event || {};
 
-    if (!ticket || !ticket.escalated) {
+    // Only create message on initial create, not on updates
+    if (!ticket || !ticket.escalated || event.type !== 'create') {
       return Response.json({ success: true });
-    }
-
-    // Check if message already exists for this ticket to prevent duplicates
-    const existingMessages = await base44.asServiceRole.entities.GroupChatMessage.filter({
-      message_type: 'ticket_endorsement',
-      'ticket_ref.ticket_id': ticket.id,
-    });
-
-    if (existingMessages && existingMessages.length > 0) {
-      return Response.json({ success: true, skipped: true });
     }
 
     // Create group chat endorsement message
