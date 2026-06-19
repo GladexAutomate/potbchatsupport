@@ -8,6 +8,17 @@ import { format } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 
+const toPHTime = (dateStr) => new Date(new Date(dateStr).getTime() + 8 * 60 * 60 * 1000);
+
+const formatPHTime = (dateStr) => {
+  const d = toPHTime(dateStr);
+  const month = d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
+  const day = d.getUTCDate();
+  const hours = String(d.getUTCHours()).padStart(2, '0');
+  const mins = String(d.getUTCMinutes()).padStart(2, '0');
+  return `${month} ${day}, ${hours}:${mins}`;
+};
+
 export default function TicketChat({ ticketId }) {
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
@@ -95,7 +106,7 @@ export default function TicketChat({ ticketId }) {
                     )}
                   </div>
                   <p className="text-muted-foreground text-xs mt-1 text-right">
-                    {format(new Date(msg.created_date), 'MMM d, HH:mm')}
+                    {formatPHTime(msg.created_date)}
                     {isStaff && ' · You'}
                   </p>
                 </div>
