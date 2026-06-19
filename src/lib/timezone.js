@@ -11,7 +11,7 @@ const TIMEZONE = 'Asia/Manila';
 export const formatDateRelative = (date) => {
   if (!date) return '';
   const zonedDate = toZonedTime(new Date(date), TIMEZONE);
-  return format(zonedDate, 'MMM. d, yyyy');
+  return format(zonedDate, 'MMM. d, yyyy h:mm a');
 };
 
 /**

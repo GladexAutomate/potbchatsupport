@@ -107,7 +107,7 @@ export default function InternalTicketsBase({ userDepartment }) {
     if (!newMessage.trim() && attachments.length === 0) return;
     setSending(true);
     const zonedDate = toZonedTime(new Date(), 'Asia/Manila');
-    const timestamp = format(zonedDate, 'MMM. d, yyyy h:mm a');
+    const timestamp = format(zonedDate, 'MMM. d, yyyy, h:mm a');
     await db.InternalTicket.update(selectedTicket.id, {
       notes: (selectedTicket.notes ? selectedTicket.notes + '\n\n' : '') + 
              `[${timestamp}] ${user?.full_name}: ${newMessage.trim()}`
@@ -301,8 +301,8 @@ export default function InternalTicketsBase({ userDepartment }) {
                   <p className="font-semibold">{selectedTicket.created_by_name}</p>
                 </div>
                 <div>
-                  <p className="text-muted-foreground mb-0.5">Date</p>
-                  <p className="font-semibold">{formatDateRelative(selectedTicket.created_date)}</p>
+                   <p className="text-muted-foreground mb-0.5">Date & Time</p>
+                   <p className="font-semibold">{formatDateFull(selectedTicket.created_date)}</p>
                 </div>
               </div>
             </div>
