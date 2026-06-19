@@ -116,14 +116,20 @@ export default function InternalTicketsBase({ userDepartment }) {
     setSending(true);
     const zonedDate = toZonedTime(new Date(), 'Asia/Manila');
     const timestamp = format(zonedDate, 'MMM. d, yyyy, h:mm a');
+
+    const newAttachmentUrls = attachments.map(a => a.url);
+    const updatedAttachments = [...(selectedTicket.attachments || []), ...newAttachmentUrls];
+
     await db.InternalTicket.update(selectedTicket.id, {
       notes: (selectedTicket.notes ? selectedTicket.notes + '\n\n' : '') + 
-             `[${timestamp}] ${user?.full_name}: ${newMessage.trim()}`
+             `[${timestamp}] ${user?.full_name}: ${newMessage.trim()}`,
+      attachments: updatedAttachments
     });
     setSelectedTicket(prev => ({
       ...prev,
       notes: (prev.notes ? prev.notes + '\n\n' : '') + 
-             `[${timestamp}] ${user?.full_name}: ${newMessage.trim()}`
+             `[${timestamp}] ${user?.full_name}: ${newMessage.trim()}`,
+      attachments: updatedAttachments
     }));
     setNewMessage('');
     setAttachments([]);
