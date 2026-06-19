@@ -127,22 +127,20 @@ export default function CustomerPortal() {
           <span className="text-white/40 text-sm ml-2">Support</span>
         </div>
         <div className="ml-auto flex items-center gap-2">
-          <Link to="/my-tickets">
-            <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10 gap-2">
-              <ClipboardList className="w-4 h-4" /> My Tickets
-            </Button>
-          </Link>
-          {employeeRecord && (
-            <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10 gap-2" onClick={handleStaffLoginClick}>
-              <ShieldCheck className="w-4 h-4" /> Staff Login
-            </Button>
-          )}
-          {user && (
-            <Button variant="ghost" size="sm" className="text-white/60 hover:text-white hover:bg-white/10" onClick={() => base44.auth.logout('/')}>
-              Switch Account
-            </Button>
-          )}
-        </div>
+           <Link to="/my-tickets">
+             <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10 gap-2">
+               <ClipboardList className="w-4 h-4" /> My Tickets
+             </Button>
+           </Link>
+           <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10 gap-2" onClick={handleStaffLoginClick}>
+             <ShieldCheck className="w-4 h-4" /> Staff Login
+           </Button>
+           {user && (
+             <Button variant="ghost" size="sm" className="text-white/60 hover:text-white hover:bg-white/10" onClick={() => base44.auth.logout('/')}>
+               Switch Account
+             </Button>
+           )}
+         </div>
       </header>
 
       <div className="flex-1 flex items-center justify-center p-4">
