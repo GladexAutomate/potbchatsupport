@@ -104,25 +104,25 @@ export default function SubmitInternalTicket() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col">
-      <header className="flex items-center gap-3 px-6 py-4">
-        <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
-          <ShieldCheck className="w-5 h-5 text-white" />
-        </div>
-        <div>
-          <span className="font-sora font-bold text-white text-lg">LakbayHub</span>
-          <span className="text-white/40 text-sm ml-2">Internal Tickets</span>
-        </div>
-        <div className="ml-auto text-white/50 text-sm">{user?.full_name}</div>
-      </header>
+      <header className="flex items-center gap-2 sm:gap-3 px-3 sm:px-6 py-3 sm:py-4">
+         <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
+           <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
+         </div>
+         <div className="min-w-0">
+           <span className="font-sora font-bold text-white text-base sm:text-lg block truncate">LakbayHub</span>
+           <span className="text-white/40 text-xs sm:text-sm">Internal Tickets</span>
+         </div>
+         <div className="ml-auto text-white/50 text-xs sm:text-sm truncate">{user?.full_name}</div>
+       </header>
 
-      <div className="flex-1 flex items-center justify-center p-4">
-        <AnimatePresence mode="wait">
-          {view === 'form' && (
-            <motion.div key="form" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
-              className="w-full max-w-xl">
-              <h2 className="font-sora font-semibold text-white text-xl mb-4">Submit Internal Ticket</h2>
-              <Card className="bg-white/5 border-white/10 backdrop-blur">
-                <CardContent className="p-6 space-y-4">
+       <div className="flex-1 flex items-center justify-center p-3 sm:p-4 md:p-6">
+         <AnimatePresence mode="wait">
+           {view === 'form' && (
+             <motion.div key="form" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+               className="w-full max-w-xs sm:max-w-md md:max-w-xl">
+               <h2 className="font-sora font-semibold text-white text-lg sm:text-xl mb-4">Submit Internal Ticket</h2>
+               <Card className="bg-white/5 border-white/10 backdrop-blur">
+                 <CardContent className="p-4 sm:p-6 space-y-4">
                   <div className="space-y-1.5">
                     <Label className="text-white/70 text-xs">From Department *</Label>
                     {isTLOrAdmin ? (
@@ -223,17 +223,17 @@ export default function SubmitInternalTicket() {
 
           {view === 'success' && (
             <motion.div key="success" initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }}
-              className="w-full max-w-md text-center">
-              <div className="w-20 h-20 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-6">
-                <CheckCircle className="w-10 h-10 text-green-400" />
+              className="w-full max-w-xs sm:max-w-md text-center px-4">
+              <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-green-500/20 flex items-center justify-center mx-auto mb-4 sm:mb-6">
+                <CheckCircle className="w-8 h-8 sm:w-10 sm:h-10 text-green-400" />
               </div>
-              <h2 className="font-sora text-2xl font-bold text-white mb-2">Ticket Submitted!</h2>
-              <p className="text-white/50 mb-4">Your internal ticket has been created successfully.</p>
-              <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-6">
+              <h2 className="font-sora text-xl sm:text-2xl font-bold text-white mb-2">Ticket Submitted!</h2>
+              <p className="text-white/50 mb-4 text-sm sm:text-base">Your internal ticket has been created successfully.</p>
+              <div className="bg-white/5 border border-white/10 rounded-xl p-4 mb-4 sm:mb-6">
                 <p className="text-white/40 text-xs mb-1">Ticket Reference</p>
-                <p className="font-mono text-primary font-semibold text-lg">{ticketNum}</p>
+                <p className="font-mono text-primary font-semibold text-base sm:text-lg">{ticketNum}</p>
               </div>
-              <div className="flex gap-3 justify-center">
+              <div className="flex flex-col sm:flex-row gap-2 sm:gap-3 justify-center">
                 <Button variant="outline" onClick={() => navigate('/dashboard')} className="border-white/20 text-white hover:bg-white/10">
                   Back to Dashboard
                 </Button>

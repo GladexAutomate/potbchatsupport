@@ -91,17 +91,17 @@ export default function CreateTicketModal({ onTicketCreated }) {
       </Button>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Create New Ticket</DialogTitle>
-            <DialogDescription>Manually create a support ticket for internal tracking</DialogDescription>
-          </DialogHeader>
-          {error && (
-            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-600">
-              {error}
-            </div>
-          )}
-          <div className="space-y-4">
+         <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+           <DialogHeader>
+             <DialogTitle>Create New Ticket</DialogTitle>
+             <DialogDescription>Manually create a support ticket for internal tracking</DialogDescription>
+           </DialogHeader>
+           {error && (
+             <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-600">
+               {error}
+             </div>
+           )}
+           <div className="space-y-4 py-2">
             <div>
               <label className="text-xs font-semibold text-foreground mb-1.5 block">Customer Name *</label>
               <Input
