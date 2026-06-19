@@ -29,6 +29,7 @@ export default function GroupChat() {
   const [mentionQuery, setMentionQuery] = useState('');
   const [notifiedMessageIds, setNotifiedMessageIds] = useState(new Set());
   const [mentionNotification, setMentionNotification] = useState(null);
+  const mentionTimerRef = useRef(null);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const inputRef = useRef(null);
@@ -80,12 +81,6 @@ export default function GroupChat() {
                     timestamp: Date.now(),
                   });
                   
-                  toast({
-                    title: `🔔 ${event.data.sender_name} mentioned you!`,
-                    description: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
-                    duration: 6000,
-                  });
-                  
                   if ('Notification' in window && Notification.permission === 'granted') {
                     new Notification(`🔔 ${event.data.sender_name} mentioned you in Group Chat`, {
                       body: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
@@ -100,7 +95,15 @@ export default function GroupChat() {
                     audio.play().catch(() => {});
                   } catch (e) {}
                   
-                  setTimeout(() => setMentionNotification(null), 5000);
+                  // Show notification repeatedly every 5 seconds until dismissed
+                  clearInterval(mentionTimerRef.current);
+                  mentionTimerRef.current = setInterval(() => {
+                    setMentionNotification({
+                      sender: event.data.sender_name,
+                      message: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
+                      timestamp: Date.now(),
+                    });
+                  }, 5000);
                 }
               }
             }
@@ -112,8 +115,8 @@ export default function GroupChat() {
       }, 500);
     });
     
-    return () => { clearTimeout(loadTimer); unsub(); };
-  }, [user?.full_name, user?.email, toast, notifiedMessageIds]);
+    return () => { clearTimeout(loadTimer); unsub(); clearInterval(mentionTimerRef.current); };
+  }, [user?.full_name, user?.email, notifiedMessageIds]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -261,7 +264,10 @@ export default function GroupChat() {
                 <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{mentionNotification.message}</p>
               </div>
               <button
-                onClick={() => setMentionNotification(null)}
+                onClick={() => {
+                  clearInterval(mentionTimerRef.current);
+                  setMentionNotification(null);
+                }}
                 className="text-muted-foreground hover:text-foreground flex-shrink-0"
               >
                 <X className="w-4 h-4" />
