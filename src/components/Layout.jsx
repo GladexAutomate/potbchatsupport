@@ -101,7 +101,7 @@ export default function Layout() {
   const hasPageAccess = (pageKey) => {
     if (isSuperAdmin) return true;
     const perm = permissions.find(p => p.resource_name === pageKey);
-    return !perm || perm.has_access !== false;
+    return perm?.has_access === true;
   };
 
   // Map user roles to their internal ticket pages
