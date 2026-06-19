@@ -4,8 +4,7 @@ import { db } from '@/lib/db';
 import { useAuth } from '@/lib/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-
-import { Send, Loader2, Paperclip, X, FileText, Pin, Search, Users, MessageSquare, Bell, AlertCircle } from 'lucide-react';
+import { Send, Loader2, Paperclip, X, FileText, Pin, Search, Users, MessageSquare, AlertCircle } from 'lucide-react';
 import GroupChatMessageBubble from '@/components/groupchat/GroupChatMessage';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDateRelative } from '@/lib/timezone';
@@ -38,64 +37,14 @@ export default function GroupChat() {
 
   useEffect(() => {
     let loadTimer;
-    const loadAndNotify = async () => {
+    
+    // Initial load of messages only
+    const initialLoad = async () => {
       const msgs = await db.GroupChatMessage.list('created_date', 200);
       setMessages(msgs || []);
-      
-      // Check for new mentions and notify only once per message
-      if (msgs && user?.full_name) {
-        msgs.forEach(msg => {
-          const isNewMessage = !notifiedMessageIds.has(msg.id);
-          const hasMentions = msg.mentions?.length > 0;
-          const isNotFromMe = msg.sender_email !== user?.email;
-          
-          if (isNewMessage && hasMentions && isNotFromMe) {
-            const isMentioned = msg.mentions.some(m => 
-              m.toLowerCase().includes(user.full_name.toLowerCase()) || 
-              m.toLowerCase().includes(user.email.toLowerCase())
-            );
-            if (isMentioned) {
-              setNotifiedMessageIds(prev => new Set([...prev, msg.id]));
-              
-              // Set mention notification for prominent display
-              setMentionNotification({
-                sender: msg.sender_name,
-                message: msg.message?.slice(0, 100) || '📎 Sent an attachment',
-                timestamp: Date.now(),
-              });
-              
-              // Toast notification
-              toast({
-                title: `🔔 ${msg.sender_name} mentioned you!`,
-                description: msg.message?.slice(0, 100) || '📎 Sent an attachment',
-                duration: 6000,
-              });
-              
-              // Browser notification (desktop alert)
-              if ('Notification' in window && Notification.permission === 'granted') {
-                new Notification(`🔔 ${msg.sender_name} mentioned you in Group Chat`, {
-                  body: msg.message?.slice(0, 100) || '📎 Sent an attachment',
-                  icon: '/favicon.ico',
-                  tag: 'group-chat-mention',
-                  requireInteraction: true,
-                });
-              }
-              
-              // Play notification sound
-              try {
-                const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBj==');
-                audio.play().catch(() => {});
-              } catch (e) {}
-              
-              // Auto-dismiss after 5 seconds
-              setTimeout(() => setMentionNotification(null), 5000);
-            }
-          }
-        });
-      }
     };
 
-    loadAndNotify();
+    initialLoad();
     db.User.list().then(d => setAllStaff(d || []));
     
     // Request notification permission on first load
@@ -103,13 +52,68 @@ export default function GroupChat() {
       Notification.requestPermission();
     }
     
-    // Real-time subscription with debounce to avoid rate limiting
-    const unsub = db.GroupChatMessage.subscribe(() => {
+    // Real-time subscription - append new messages only, don't reload entire list
+    const unsub = db.GroupChatMessage.subscribe((event) => {
       clearTimeout(loadTimer);
-      loadTimer = setTimeout(() => loadAndNotify(), 3000);
+      loadTimer = setTimeout(() => {
+        setMessages(prev => {
+          const msgIds = new Set(prev.map(m => m.id));
+          if (event.data && !msgIds.has(event.data.id)) {
+            const newMessages = [...prev, event.data].sort((a, b) => 
+              new Date(a.created_date) - new Date(b.created_date)
+            );
+            
+            // Check for mentions in new message
+            if (user?.full_name && event.data.sender_email !== user?.email) {
+              const hasMentions = event.data.mentions?.length > 0;
+              if (hasMentions) {
+                const isMentioned = event.data.mentions.some(m => 
+                  m.toLowerCase().includes(user.full_name.toLowerCase()) || 
+                  m.toLowerCase().includes(user.email.toLowerCase())
+                );
+                if (isMentioned && !notifiedMessageIds.has(event.data.id)) {
+                  setNotifiedMessageIds(prev => new Set([...prev, event.data.id]));
+                  
+                  setMentionNotification({
+                    sender: event.data.sender_name,
+                    message: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
+                    timestamp: Date.now(),
+                  });
+                  
+                  toast({
+                    title: `🔔 ${event.data.sender_name} mentioned you!`,
+                    description: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
+                    duration: 6000,
+                  });
+                  
+                  if ('Notification' in window && Notification.permission === 'granted') {
+                    new Notification(`🔔 ${event.data.sender_name} mentioned you in Group Chat`, {
+                      body: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
+                      icon: '/favicon.ico',
+                      tag: 'group-chat-mention',
+                      requireInteraction: true,
+                    });
+                  }
+                  
+                  try {
+                    const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBg==');
+                    audio.play().catch(() => {});
+                  } catch (e) {}
+                  
+                  setTimeout(() => setMentionNotification(null), 5000);
+                }
+              }
+            }
+            
+            return newMessages;
+          }
+          return prev;
+        });
+      }, 500);
     });
+    
     return () => { clearTimeout(loadTimer); unsub(); };
-  }, [user?.full_name, user?.email, toast]);
+  }, [user?.full_name, user?.email, toast, notifiedMessageIds]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -128,7 +132,7 @@ export default function GroupChat() {
           })
         )).catch(() => {});
       }
-    }, 4000); // Increased debounce to 4 seconds to batch updates and prevent rate limiting
+    }, 5000);
 
     return () => clearTimeout(readTimer);
   }, [messages, user]);
@@ -257,22 +261,6 @@ export default function GroupChat() {
                 <X className="w-4 h-4" />
               </button>
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Mention notification banner */}
-      <AnimatePresence>
-        {mentionNotification && (
-          <motion.div
-            initial={{ y: -100, opacity: 0 }}
-            animate={{ y: 0, opacity: 1 }}
-            exit={{ y: -100, opacity: 0 }}
-            className="absolute top-0 left-0 right-0 z-50 px-4 py-3 bg-gradient-to-r from-blue-500 to-cyan-500 text-white font-semibold text-center shadow-lg animate-pulse"
-          >
-            🔔 {mentionNotification.sender} mentioned you!
-            <br />
-            <span className="text-sm font-normal opacity-90">{mentionNotification.message}</span>
           </motion.div>
         )}
       </AnimatePresence>
