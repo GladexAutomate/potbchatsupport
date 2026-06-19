@@ -32,6 +32,7 @@ import AccountingInternalTickets from './pages/InternalTickets/Accounting';
 import SignUpsInternalTickets from './pages/InternalTickets/SignUps';
 import OnBoardingInternalTickets from './pages/InternalTickets/OnBoarding';
 import CorpTrainingInternalTickets from './pages/InternalTickets/CorpTraining';
+import AdminInternalTickets from './pages/InternalTickets/Admin';
 import InternalEscalations from './pages/InternalEscalations';
 import SLASettings from './pages/SLASettings';
 
@@ -100,6 +101,7 @@ const AuthenticatedApp = () => {
         <Route path="/internal-tickets-signups" element={<SignUpsInternalTickets />} />
         <Route path="/internal-tickets-onboarding" element={<OnBoardingInternalTickets />} />
         <Route path="/internal-tickets-corptraining" element={<CorpTrainingInternalTickets />} />
+        <Route path="/internal-tickets-admin" element={<AdminInternalTickets />} />
         <Route path="/escalations" element={<InternalEscalations />} />
         <Route path="/sla-settings" element={<SLASettings />} />
       </Route>
