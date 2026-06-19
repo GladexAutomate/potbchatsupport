@@ -73,7 +73,7 @@ Deno.serve(async (req) => {
         toUpdate.push({
           id: existing.id,
           ...payload,
-          current_role: existing.current_role ?? null,
+          POTBChatsupportrole: existing.POTBChatsupportrole ?? null,
           is_blocked: existing.is_blocked ?? false,
           portal_access_granted: existing.portal_access_granted ?? false,
         });
@@ -101,10 +101,10 @@ Deno.serve(async (req) => {
       if (hasChange) {
         // Re-read preserved fields fresh from existing record to guarantee they are not lost
         const existingRec = existingByEmail[data.email?.toLowerCase()];
-        const { current_role: _cr, is_blocked: _ib, portal_access_granted: _pa, ...supabaseFields } = data;
+        const { POTBChatsupportrole: _cr, is_blocked: _ib, portal_access_granted: _pa, ...supabaseFields } = data;
         await base44.asServiceRole.entities.EmployeeAccount.update(id, {
           ...supabaseFields,
-          current_role: existingRec.current_role ?? null,
+          POTBChatsupportrole: existingRec.POTBChatsupportrole ?? null,
           is_blocked: existingRec.is_blocked ?? false,
           portal_access_granted: existingRec.portal_access_granted ?? false,
         });

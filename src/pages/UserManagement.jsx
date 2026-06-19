@@ -81,7 +81,8 @@ export default function UserManagement() {
 
   const loadData = async () => {
     setLoading(true);
-    const empData = await db.EmployeeAccount.list('-created_date', 500);
+    const env = getAppEnv() === 'preview' ? 'test' : 'prod';
+    const empData = await db.EmployeeAccount.filter({ env }, '-created_date', 500);
     setEmployees(empData || []);
     setLoading(false);
   };
