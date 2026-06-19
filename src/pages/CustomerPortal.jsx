@@ -34,10 +34,16 @@ export default function CustomerPortal() {
       if (u) {
         setUser(u);
         setForm(f => ({ ...f, customer_name: u.full_name || '' }));
-        // Check if this email is a staff employee
+        // Check if this email is a registered staff employee with portal access
         const employees = await db.EmployeeAccount.filter({ email: u.email }).catch(() => []);
-        if (employees?.length > 0) {
-          setEmployeeRecord(employees[0]);
+        const staffDir = await db.StaffDirectory.filter({ email: u.email }).catch(() => []);
+        const validEmployee = employees?.[0];
+        const validStaff = staffDir?.[0];
+        
+        if (validEmployee && validEmployee.portal_access_granted && !validEmployee.is_blocked) {
+          setEmployeeRecord(validEmployee);
+        } else if (validStaff && validStaff.portal_access_granted && !validStaff.is_blocked) {
+          setEmployeeRecord(validStaff);
         }
       }
     }).catch(() => {});
@@ -126,7 +132,7 @@ export default function CustomerPortal() {
               <ClipboardList className="w-4 h-4" /> My Tickets
             </Button>
           </Link>
-          {user && (
+          {employeeRecord && (
             <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10 gap-2" onClick={handleStaffLoginClick}>
               <ShieldCheck className="w-4 h-4" /> Staff Login
             </Button>
