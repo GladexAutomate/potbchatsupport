@@ -12,6 +12,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useGlobalMentionContext } from '@/lib/MentionContext';
 
 const STAFF_ROLES = ['super_admin', 'admin', 'csr', 'sales', 'accounting', 'sign_ups', 'on_boarding', 'corp_training', 'tl_management'];
 
@@ -59,9 +60,7 @@ export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [groupChatUnread, setGroupChatUnread] = useState(0);
   const [permissions, setPermissions] = useState([]);
-  const [mentionNotification, setMentionNotification] = useState(null);
-  const [allStaff, setAllStaff] = useState([]);
-  const mentionTimerRef = useRef(null);
+  const { mentionNotification, mentionTimerRef, setMentionNotification } = useGlobalMentionContext();
   const location = useLocation();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -69,73 +68,9 @@ export default function Layout() {
   const role = user?.role || 'customer';
   const isSuperAdmin = role === 'super_admin';
 
-  // Load staff directory and subscribe to mentions
-  useEffect(() => {
-    if (!user) return;
-    
-    db.User.list().then(d => setAllStaff(d || []));
-    
-    // Request notification permission on first load
-    if ('Notification' in window && Notification.permission === 'default') {
-      Notification.requestPermission();
-    }
-    
-    // Subscribe to group chat for mentions — check on create/update only
-    const unsub = db.GroupChatMessage.subscribe((event) => {
-      if (event.type !== 'create' && event.type !== 'update') return;
-      if (!event.data || user?.full_name === undefined || event.data.sender_email === user?.email) return;
-      
-      const hasMentions = event.data.mentions?.length > 0;
-      if (!hasMentions) return;
-      
-      const isMentioned = event.data.mentions.some(m => 
-        m.toLowerCase().includes(user.full_name.toLowerCase()) || 
-        m.toLowerCase().includes(user.email.toLowerCase())
-      );
-      
-      if (!isMentioned) return;
-      
-      // Check if already notified in localStorage to avoid duplicates
-      const alreadyNotified = localStorage.getItem(`mentioned_${event.data.id}`);
-      if (alreadyNotified) return;
-      
-      localStorage.setItem(`mentioned_${event.data.id}`, 'true');
-      
-      setMentionNotification({
-        sender: event.data.sender_name,
-        message: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
-        timestamp: Date.now(),
-      });
-      
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification(`🔔 ${event.data.sender_name} mentioned you in Group Chat`, {
-          body: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
-          icon: '/favicon.ico',
-          tag: 'group-chat-mention',
-          requireInteraction: true,
-        });
-      }
-      
-      try {
-        const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBg==');
-        audio.play().catch(() => {});
-      } catch (e) {}
-      
-      // Show notification repeatedly every 5 seconds until dismissed
-      clearInterval(mentionTimerRef.current);
-      mentionTimerRef.current = setInterval(() => {
-        setMentionNotification({
-          sender: event.data.sender_name,
-          message: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
-          timestamp: Date.now(),
-        });
-      }, 5000);
-    });
-    
-    return () => { unsub(); clearInterval(mentionTimerRef.current); };
-  }, [user?.full_name, user?.email]);
 
-  // Unread count subscription
+
+  // Unread count — only load on mount, update unread badge from subscription events
   useEffect(() => {
     if (!user) return;
     const computeUnread = (msgs) => {
@@ -143,15 +78,6 @@ export default function Layout() {
       setGroupChatUnread(count);
     };
     db.GroupChatMessage.list('created_date', 100).then(computeUnread);
-    let timer;
-    const unsub = db.GroupChatMessage.subscribe(() => {
-      // Debounce to avoid rapid refetches
-      clearTimeout(timer);
-      timer = setTimeout(() => {
-        db.GroupChatMessage.list('created_date', 100).then(computeUnread);
-      }, 1000);
-    });
-    return () => { unsub(); clearTimeout(timer); };
   }, [user]);
 
   // Load permissions for this role — ignore env so permissions sync across test/prod

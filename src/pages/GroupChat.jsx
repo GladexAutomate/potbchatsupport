@@ -9,9 +9,11 @@ import GroupChatMessageBubble from '@/components/groupchat/GroupChatMessage';
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDateRelative } from '@/lib/timezone';
 import { toZonedTime } from 'date-fns-tz';
+import { useGlobalMentionContext } from '@/lib/MentionContext';
 
 export default function GroupChat() {
   const { user } = useAuth();
+  const { setMentionNotification, mentionTimerRef } = useGlobalMentionContext();
   const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
@@ -43,8 +45,15 @@ export default function GroupChat() {
     initialLoad();
     db.User.list().then(d => setAllStaff(d || []));
     
-    // Real-time subscription - append new messages only, don't reload entire list
+    // Request notification permission
+    if ('Notification' in window && Notification.permission === 'default') {
+      Notification.requestPermission();
+    }
+    
+    // Real-time subscription - append new messages and check mentions
     const unsub = db.GroupChatMessage.subscribe((event) => {
+      if (event.type !== 'create') return;
+      
       clearTimeout(loadTimer);
       loadTimer = setTimeout(() => {
         setMessages(prev => {
@@ -53,6 +62,48 @@ export default function GroupChat() {
             const newMessages = [...prev, event.data].sort((a, b) => 
               new Date(a.created_date) - new Date(b.created_date)
             );
+            
+            // Check for mentions
+            if (user?.full_name && event.data.sender_email !== user?.email && event.data.mentions?.length > 0) {
+              const isMentioned = event.data.mentions.some(m => 
+                m.toLowerCase().includes(user.full_name.toLowerCase()) || 
+                m.toLowerCase().includes(user.email.toLowerCase())
+              );
+              
+              if (isMentioned && !localStorage.getItem(`mentioned_${event.data.id}`)) {
+                localStorage.setItem(`mentioned_${event.data.id}`, 'true');
+                
+                setMentionNotification({
+                  sender: event.data.sender_name,
+                  message: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
+                  timestamp: Date.now(),
+                });
+                
+                if ('Notification' in window && Notification.permission === 'granted') {
+                  new Notification(`🔔 ${event.data.sender_name} mentioned you in Group Chat`, {
+                    body: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
+                    icon: '/favicon.ico',
+                    tag: 'group-chat-mention',
+                    requireInteraction: true,
+                  });
+                }
+                
+                try {
+                  const audio = new Audio('data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAAB9AAACABAAZGF0YQoGAACBhYqFbF1fdJivrJBhNjVgodDbq2EcBg==');
+                  audio.play().catch(() => {});
+                } catch (e) {}
+                
+                clearInterval(mentionTimerRef.current);
+                mentionTimerRef.current = setInterval(() => {
+                  setMentionNotification({
+                    sender: event.data.sender_name,
+                    message: event.data.message?.slice(0, 100) || '📎 Sent an attachment',
+                    timestamp: Date.now(),
+                  });
+                }, 5000);
+              }
+            }
+            
             return newMessages;
           }
           return prev;
@@ -61,7 +112,7 @@ export default function GroupChat() {
     });
     
     return () => { clearTimeout(loadTimer); unsub(); };
-  }, []);
+  }, [user?.full_name, user?.email, setMentionNotification, mentionTimerRef]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
