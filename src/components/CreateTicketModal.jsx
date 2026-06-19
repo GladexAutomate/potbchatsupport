@@ -23,6 +23,7 @@ const CATEGORY_SUBCATEGORIES = {
 export default function CreateTicketModal({ onTicketCreated }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
   const [csrList, setCsrList] = useState([]);
   const [formData, setFormData] = useState({
     customer_name: '',
@@ -51,26 +52,32 @@ export default function CreateTicketModal({ onTicketCreated }) {
 
   const handleCreate = async () => {
     if (!formData.customer_name.trim() || !formData.customer_email.trim() || !formData.subject.trim() || !formData.description.trim()) {
-      alert('Please fill in all required fields');
+      setError('Please fill in all required fields');
       return;
     }
+    setError('');
     setLoading(true);
-    const newTicket = await db.Ticket.create(formData);
-    setLoading(false);
-    setOpen(false);
-    setFormData({
-      customer_name: '',
-      customer_email: '',
-      subject: '',
-      description: '',
-      category: '',
-      subcategory: '',
-      priority: 'Medium',
-      department: '',
-      assigned_to: '',
-      source: 'Internal Staff'
-    });
-    if (onTicketCreated) onTicketCreated(newTicket);
+    try {
+      const newTicket = await db.Ticket.create(formData);
+      setLoading(false);
+      setOpen(false);
+      setFormData({
+        customer_name: '',
+        customer_email: '',
+        subject: '',
+        description: '',
+        category: '',
+        subcategory: '',
+        priority: 'Medium',
+        department: '',
+        assigned_to: '',
+        source: 'Internal Staff'
+      });
+      if (onTicketCreated) onTicketCreated(newTicket);
+    } catch (err) {
+      setLoading(false);
+      setError(err.message || 'Failed to create ticket. Please try again.');
+    }
   };
 
   return (
@@ -89,6 +96,11 @@ export default function CreateTicketModal({ onTicketCreated }) {
             <DialogTitle>Create New Ticket</DialogTitle>
             <DialogDescription>Manually create a support ticket for internal tracking</DialogDescription>
           </DialogHeader>
+          {error && (
+            <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/30 text-sm text-red-600">
+              {error}
+            </div>
+          )}
           <div className="space-y-4">
             <div>
               <label className="text-xs font-semibold text-foreground mb-1.5 block">Customer Name *</label>
