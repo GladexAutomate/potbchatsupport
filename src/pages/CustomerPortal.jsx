@@ -34,15 +34,17 @@ export default function CustomerPortal() {
       if (u) {
         setUser(u);
         setForm(f => ({ ...f, customer_name: u.full_name || '' }));
-        // Check if this email is a registered staff employee with portal access
-        const employees = await db.EmployeeAccount.filter({ email: u.email }).catch(() => []);
-        const staffDir = await db.StaffDirectory.filter({ email: u.email }).catch(() => []);
-        const validEmployee = employees?.[0];
-        const validStaff = staffDir?.[0];
-        
-        if (validEmployee && validEmployee.portal_access_granted && !validEmployee.is_blocked) {
+        // Check if this email is a registered staff employee (case-insensitive)
+        const emailLower = u.email?.toLowerCase();
+        const allEmployees = await db.EmployeeAccount.list().catch(() => []);
+        const allStaff = await db.StaffDirectory.list().catch(() => []);
+
+        const validEmployee = allEmployees?.find(e => e.email?.toLowerCase() === emailLower && !e.is_blocked);
+        const validStaff = allStaff?.find(e => e.email?.toLowerCase() === emailLower && !e.is_blocked);
+
+        if (validEmployee) {
           setEmployeeRecord(validEmployee);
-        } else if (validStaff && validStaff.portal_access_granted && !validStaff.is_blocked) {
+        } else if (validStaff) {
           setEmployeeRecord(validStaff);
         }
       }
@@ -132,9 +134,11 @@ export default function CustomerPortal() {
                <ClipboardList className="w-4 h-4" /> My Tickets
              </Button>
            </Link>
-           <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10 gap-2" onClick={handleStaffLoginClick}>
-             <ShieldCheck className="w-4 h-4" /> Staff Login
-           </Button>
+           {employeeRecord && (
+             <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10 gap-2" onClick={handleStaffLoginClick}>
+               <ShieldCheck className="w-4 h-4" /> Staff Login
+             </Button>
+           )}
            {user && (
              <Button variant="ghost" size="sm" className="text-white/60 hover:text-white hover:bg-white/10" onClick={() => base44.auth.logout('/')}>
                Switch Account
