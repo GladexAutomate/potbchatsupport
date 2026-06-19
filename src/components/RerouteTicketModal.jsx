@@ -128,6 +128,22 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
 
     await Promise.all(promises);
 
+    // If escalated, call the backend function directly to endorse to group chat
+    if (escalated && isCSR) {
+      try {
+        await base44.functions.invoke('autoEndorseEscalatedTicket', { 
+          ticket: { 
+            ...ticket, 
+            escalated: true,
+            department 
+          } 
+        });
+      } catch (e) {
+        console.error('Failed to auto-endorse:', e);
+        // Don't block — escalation already saved
+      }
+    }
+
     setSaving(false);
     onSaved?.();
     onClose();
