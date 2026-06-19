@@ -78,13 +78,14 @@ export default function Layout() {
     return () => unsub();
   }, [user]);
 
-  // Load permissions for this role
+  // Load permissions for this role — ignore env so permissions sync across test/prod
    useEffect(() => {
      if (!user || isSuperAdmin) return;
      const loadPerms = async () => {
-       const perms = await db.Permission.filter({ role, resource_type: 'page' }, null, 100);
-       console.log(`Loaded ${perms?.length || 0} permissions for role ${role}:`, perms?.map(p => ({ name: p.resource_name, access: p.has_access })));
-       setPermissions(perms || []);
+       // Load ALL permissions for this role regardless of env — users/permissions should be global
+       const allPerms = await db.Permission.list(null, 500);
+       const rolePerms = (allPerms || []).filter(p => p.role === role && p.resource_type === 'page');
+       setPermissions(rolePerms || []);
      };
      loadPerms().catch(e => {
        console.error('Failed to load permissions:', e);
@@ -108,11 +109,7 @@ export default function Layout() {
 
   const hasPageAccess = (pageKey) => {
      if (isSuperAdmin) return true;
-     // Debug: log what we're checking
      const perm = permissions.find(p => p.resource_name === pageKey);
-     if (!perm && pageKey.startsWith('internal')) {
-       console.warn(`No permission found for ${pageKey}. Available:`, permissions.map(p => p.resource_name));
-     }
      return perm?.has_access === true;
    };
 
