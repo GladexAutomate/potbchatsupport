@@ -40,6 +40,8 @@ export default function EndorseToGroupChatModal({ ticket, onClose }) {
         priority: ticket.priority,
         department: ticket.department || '',
         customer_name: ticket.customer_name,
+        is_vip: ticket.is_vip || false,
+        escalated: ticket.escalated || false,
       },
       read_by: [user?.email || ''],
       reactions: {},

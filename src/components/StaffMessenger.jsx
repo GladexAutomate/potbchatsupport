@@ -308,6 +308,8 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
         priority: selectedTicket.priority || 'Critical',
         department: selectedTicket.department || '',
         customer_name: selectedTicket.customer_name,
+        is_vip: selectedTicket.is_vip || isVIP(selectedTicket),
+        escalated: selectedTicket.escalated || false,
       },
     });
     setRenotifying(false);
