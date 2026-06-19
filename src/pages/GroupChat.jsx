@@ -34,7 +34,10 @@ export default function GroupChat() {
   useEffect(() => {
     loadMessages();
     db.User.list().then(d => setAllStaff(d || []));
-    const unsub = db.GroupChatMessage.subscribe(() => loadMessages());
+    // Real-time subscription for instant message updates
+    const unsub = db.GroupChatMessage.subscribe(() => {
+      loadMessages();
+    });
     return () => unsub();
   }, []);
 

@@ -138,13 +138,15 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
     setUnread(counts);
   }, [allMessages, tickets, lastSeenMap]);
 
-  // Load messages for selected ticket
+  // Load messages for selected ticket with real-time updates
   useEffect(() => {
     if (!selectedTicket) return;
     loadMessages(selectedTicket.id);
     setLastSeenMap(prev => ({ ...prev, [selectedTicket.id]: new Date().toISOString() }));
+
+    // Subscribe to all message updates, instantly reload if it's our ticket
     const unsub = db.TicketMessage.subscribe(event => {
-      if (event.data?.ticket_id === selectedTicket.id) {
+      if (event.data?.ticket_id === selectedTicket.id || !selectedTicket.id) {
         loadMessages(selectedTicket.id);
         setLastSeenMap(prev => ({ ...prev, [selectedTicket.id]: new Date().toISOString() }));
       }

@@ -57,11 +57,9 @@ export default function InternalTicketsBase({ userDepartment }) {
     loadData();
     loadSLAPolicies();
     
-    // Subscribe to real-time updates
+    // Subscribe to real-time updates - reload on any change
     const unsubscribe = db.InternalTicket.subscribe((event) => {
-      if (event.type === 'create') {
-        loadData();
-      }
+      loadData();
     });
     return unsubscribe;
   }, []);
