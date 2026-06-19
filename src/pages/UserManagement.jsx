@@ -127,15 +127,15 @@ export default function UserManagement() {
 
   const handleOpenRoleEdit = (emp) => {
     const suggested = suggestRole(emp.job_title);
-    setRoleEditItem({ ...emp, _selectedRole: emp.current_role || suggested || 'csr', _suggested: suggested });
+    setRoleEditItem({ ...emp, _selectedRole: emp.POTBChatsupportrole || suggested || 'csr', _suggested: suggested });
   };
 
   const handleSaveRole = async () => {
     if (!roleEditItem || !roleEditItem._selectedRole) return;
     setRoleSaving(true);
     // Always save the custom role to EmployeeAccount — this is the source of truth
-    await db.EmployeeAccount.update(roleEditItem.id, { current_role: roleEditItem._selectedRole });
-    setEmployees(prev => prev.map(e => e.id === roleEditItem.id ? { ...e, current_role: roleEditItem._selectedRole } : e));
+    await db.EmployeeAccount.update(roleEditItem.id, { POTBChatsupportrole: roleEditItem._selectedRole });
+    setEmployees(prev => prev.map(e => e.id === roleEditItem.id ? { ...e, POTBChatsupportrole: roleEditItem._selectedRole } : e));
     // Force re-login so the user's session picks up the new role
     try {
       await base44.functions.invoke('logoutUserByEmail', { target_email: roleEditItem.email });
@@ -168,14 +168,14 @@ export default function UserManagement() {
         });
 
     const rows = exportable.map(e => ({
-      'Full Name': e.full_name || '',
-      'Email': e.email || '',
-      'Employee Code': e.employee_code || '',
-      'Password': e.generated_password || '',
-      'Job Title': e.job_title || '',
-      'Status': e.is_blocked ? 'Blocked' : (e.status || ''),
-      'App Role': ROLE_LABEL[e.current_role] || e.current_role || '',
-    }));
+       'Full Name': e.full_name || '',
+       'Email': e.email || '',
+       'Employee Code': e.employee_code || '',
+       'Password': e.generated_password || '',
+       'Job Title': e.job_title || '',
+       'Status': e.is_blocked ? 'Blocked' : (e.status || ''),
+       'App Role': ROLE_LABEL[e.POTBChatsupportrole] || e.POTBChatsupportrole || '',
+     }));
 
     const headers = Object.keys(rows[0] || {});
     const csv = [headers.join(','), ...rows.map(r => headers.map(h => `"${(r[h] || '').replace(/"/g, '""')}"`).join(','))].join('\n');
@@ -205,8 +205,8 @@ export default function UserManagement() {
     for (const emp of filteredEmployees) {
       if (emp.is_blocked || (emp.email?.toLowerCase() === 'automate@gladextours.com')) continue;
       const suggested = suggestRole(emp.job_title);
-      if (suggested && !emp.current_role) {
-        updates.push(db.EmployeeAccount.update(emp.id, { current_role: suggested }));
+      if (suggested && !emp.POTBChatsupportrole) {
+        updates.push(db.EmployeeAccount.update(emp.id, { POTBChatsupportrole: suggested }));
       }
     }
     await Promise.all(updates);
@@ -356,9 +356,9 @@ export default function UserManagement() {
                       <span className="text-xs text-muted-foreground truncate">{emp.job_title || '—'}</span>
                       {/* App Role */}
                       <span>
-                        {emp.current_role ? (
-                          <span className={`text-xs border rounded px-1.5 py-0.5 ${ROLE_COLOR[emp.current_role] || 'bg-muted text-muted-foreground border-border'}`}>
-                            {ROLE_LABEL[emp.current_role] || emp.current_role}
+                        {emp.POTBChatsupportrole ? (
+                          <span className={`text-xs border rounded px-1.5 py-0.5 ${ROLE_COLOR[emp.POTBChatsupportrole] || 'bg-muted text-muted-foreground border-border'}`}>
+                            {ROLE_LABEL[emp.POTBChatsupportrole] || emp.POTBChatsupportrole}
                           </span>
                         ) : (
                           <span className="text-xs text-muted-foreground">—</span>

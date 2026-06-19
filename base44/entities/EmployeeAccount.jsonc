@@ -46,7 +46,7 @@
       "type": "boolean",
       "default": false
     },
-    "current_role": {
+    "POTBChatsupportrole": {
       "type": "string"
     }
   },
