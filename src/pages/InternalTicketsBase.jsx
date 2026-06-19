@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, ChevronLeft, Plus, CheckCircle2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
@@ -32,21 +33,22 @@ const PRIORITY_COLOR = {
 const departmentList = ['Sales', 'IT', 'Accounting', 'Sign-Ups', 'On-Boarding', 'Corp/Training', 'Admin', 'TL/Management'];
 
 export default function InternalTicketsBase({ userDepartment }) {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-  const [tickets, setTickets] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [selectedTicket, setSelectedTicket] = useState(null);
-  const [messages, setMessages] = useState([]);
-  const [newMessage, setNewMessage] = useState('');
-  const [sending, setSending] = useState(false);
-  const [attachments, setAttachments] = useState([]);
-  const [uploading, setUploading] = useState(false);
-  const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState('All');
-  const [slaPolicies, setSlaPolicies] = useState([]);
-  const fileInputRef = useRef(null);
-  const messagesEndRef = useRef(null);
+   const { user } = useAuth();
+   const navigate = useNavigate();
+   const [tickets, setTickets] = useState([]);
+   const [loading, setLoading] = useState(true);
+   const [selectedTicket, setSelectedTicket] = useState(null);
+   const [messages, setMessages] = useState([]);
+   const [newMessage, setNewMessage] = useState('');
+   const [sending, setSending] = useState(false);
+   const [attachments, setAttachments] = useState([]);
+   const [uploading, setUploading] = useState(false);
+   const [search, setSearch] = useState('');
+   const [statusFilter, setStatusFilter] = useState('All');
+   const [slaPolicies, setSlaPolicies] = useState([]);
+   const [viewMode, setViewMode] = useState('assigned');
+   const fileInputRef = useRef(null);
+   const messagesEndRef = useRef(null);
 
   // Check role-based access — all staff roles can view their department's internal tickets
   const hasAccess = user && ['super_admin', 'admin', 'tl_management', 'csr', 'sales', 'accounting', 'sign_ups', 'on_boarding', 'corp_training', 'it'].includes(user.role);
@@ -205,6 +207,15 @@ export default function InternalTicketsBase({ userDepartment }) {
               <Plus className="w-3.5 h-3.5" /> Create
             </Button>
           </div>
+
+          {/* View Mode Toggle */}
+          <Tabs value={viewMode} onValueChange={setViewMode} className="mb-3 w-full">
+            <TabsList className="grid w-full grid-cols-2 h-8">
+              <TabsTrigger value="assigned" className="text-xs">Assigned to me</TabsTrigger>
+              <TabsTrigger value="created" className="text-xs">Created by me</TabsTrigger>
+            </TabsList>
+          </Tabs>
+
           <div className="relative mb-2">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-8 text-sm" />
@@ -223,64 +234,73 @@ export default function InternalTicketsBase({ userDepartment }) {
         <div className="flex-1 overflow-y-auto">
           {loading ? (
             <div className="p-8 text-center text-muted-foreground text-sm">Loading...</div>
-          ) : createdTickets.length === 0 && assignedTickets.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground text-sm">No tickets found</div>
+          ) : viewMode === 'assigned' && assignedTickets.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground text-sm">No assigned tickets</div>
+          ) : viewMode === 'created' && createdTickets.length === 0 ? (
+            <div className="p-8 text-center text-muted-foreground text-sm">No created tickets</div>
           ) : (
             <>
-              {createdTickets.length > 0 && (
+              {viewMode === 'created' ? (
                 <>
-                  <div className="px-4 py-2 bg-muted/50 border-b border-border/30">
-                    <span className="text-xs font-semibold text-muted-foreground">Created by {userDepartment}</span>
-                  </div>
-                  {createdTickets.map(t => {
-                    const slaStatus = getTicketSLAStatus(t);
-                    return (
-                      <button
-                        key={t.id}
-                        onClick={() => handleSelectTicket(t)}
-                        className={`w-full text-left px-4 py-3 border-b border-border/30 hover:bg-muted/50 transition-colors ${
-                          selectedTicket?.id === t.id ? 'bg-primary/10' : ''
-                        } ${slaStatus.isBreached ? 'bg-red-500/5' : ''}`}
-                      >
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <div className={`font-mono text-xs ${slaStatus.isBreached ? 'text-red-500 font-semibold' : 'text-muted-foreground'}`}>
-                            {slaStatus.isBreached && '🚨 '}{t.ticket_number}
-                          </div>
-                          <Badge className={`text-xs border ${STATUS_COLOR[t.status]}`}>{t.status}</Badge>
-                        </div>
-                        <p className="text-sm font-medium text-foreground truncate">{t.subject}</p>
-                        <p className="text-xs text-muted-foreground mt-1">→ {t.to_department}</p>
-                      </button>
-                    );
-                  })}
+                  {createdTickets.length > 0 && (
+                    <>
+                      <div className="px-4 py-2 bg-muted/50 border-b border-border/30">
+                        <span className="text-xs font-semibold text-muted-foreground">Created by {userDepartment}</span>
+                      </div>
+                      {createdTickets.map(t => {
+                        const slaStatus = getTicketSLAStatus(t);
+                        return (
+                          <button
+                            key={t.id}
+                            onClick={() => handleSelectTicket(t)}
+                            className={`w-full text-left px-4 py-3 border-b border-border/30 hover:bg-muted/50 transition-colors ${
+                              selectedTicket?.id === t.id ? 'bg-primary/10' : ''
+                            } ${slaStatus.isBreached ? 'bg-red-500/5' : ''}`}
+                          >
+                            <div className="flex items-start justify-between gap-2 mb-1">
+                              <div className={`font-mono text-xs ${slaStatus.isBreached ? 'text-red-500 font-semibold' : 'text-muted-foreground'}`}>
+                                {slaStatus.isBreached && '🚨 '}{t.ticket_number}
+                              </div>
+                              <Badge className={`text-xs border ${STATUS_COLOR[t.status]}`}>{t.status}</Badge>
+                            </div>
+                            <p className="text-sm font-medium text-foreground truncate">{t.subject}</p>
+                            <p className="text-xs text-muted-foreground mt-1">→ {t.to_department}</p>
+                          </button>
+                        );
+                      })}
+                    </>
+                  )}
                 </>
-              )}
-              {assignedTickets.length > 0 && (
+              ) : (
                 <>
-                  <div className="px-4 py-2 bg-muted/50 border-b border-border/30">
-                    <span className="text-xs font-semibold text-muted-foreground">Assigned to {userDepartment}</span>
-                  </div>
-                  {assignedTickets.map(t => {
-                    const slaStatus = getTicketSLAStatus(t);
-                    return (
-                      <button
-                        key={t.id}
-                        onClick={() => handleSelectTicket(t)}
-                        className={`w-full text-left px-4 py-3 border-b border-border/30 hover:bg-muted/50 transition-colors ${
-                          selectedTicket?.id === t.id ? 'bg-primary/10' : ''
-                        } ${slaStatus.isBreached ? 'bg-red-500/5' : ''}`}
-                      >
-                        <div className="flex items-start justify-between gap-2 mb-1">
-                          <div className={`font-mono text-xs ${slaStatus.isBreached ? 'text-red-500 font-semibold' : 'text-muted-foreground'}`}>
-                            {slaStatus.isBreached && '🚨 '}{t.ticket_number}
-                          </div>
-                          <Badge className={`text-xs border ${STATUS_COLOR[t.status]}`}>{t.status}</Badge>
-                        </div>
-                        <p className="text-sm font-medium text-foreground truncate">{t.subject}</p>
-                        <p className="text-xs text-muted-foreground mt-1">← from {t.from_department}</p>
-                      </button>
-                    );
-                  })}
+                  {assignedTickets.length > 0 && (
+                    <>
+                      <div className="px-4 py-2 bg-muted/50 border-b border-border/30">
+                        <span className="text-xs font-semibold text-muted-foreground">Assigned to {userDepartment}</span>
+                      </div>
+                      {assignedTickets.map(t => {
+                        const slaStatus = getTicketSLAStatus(t);
+                        return (
+                          <button
+                            key={t.id}
+                            onClick={() => handleSelectTicket(t)}
+                            className={`w-full text-left px-4 py-3 border-b border-border/30 hover:bg-muted/50 transition-colors ${
+                              selectedTicket?.id === t.id ? 'bg-primary/10' : ''
+                            } ${slaStatus.isBreached ? 'bg-red-500/5' : ''}`}
+                          >
+                            <div className="flex items-start justify-between gap-2 mb-1">
+                              <div className={`font-mono text-xs ${slaStatus.isBreached ? 'text-red-500 font-semibold' : 'text-muted-foreground'}`}>
+                                {slaStatus.isBreached && '🚨 '}{t.ticket_number}
+                              </div>
+                              <Badge className={`text-xs border ${STATUS_COLOR[t.status]}`}>{t.status}</Badge>
+                            </div>
+                            <p className="text-sm font-medium text-foreground truncate">{t.subject}</p>
+                            <p className="text-xs text-muted-foreground mt-1">← from {t.from_department}</p>
+                          </button>
+                        );
+                      })}
+                    </>
+                  )}
                 </>
               )}
             </>
