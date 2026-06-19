@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { ArrowRightLeft, Loader2 } from 'lucide-react';
+import { useToast } from '@/components/ui/use-toast';
 
 const CSR_ROLES = ['admin', 'csr'];
 const ALL_DEPARTMENTS = ['Sales', 'IT', 'Accounting', 'Sign-Ups', 'On-Boarding', 'Corp/Training', 'Admin', 'TL/Management'];
@@ -30,6 +31,7 @@ const DEPT_NOTES = {
 
 export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
   const { user } = useAuth();
+  const { toast } = useToast();
   const isCSR = CSR_ROLES.includes(user?.role);
   // Non-CSR can only route back to L1/CSR — clear dept and set back to Open
   const availableDepartments = isCSR ? ALL_DEPARTMENTS : [];
@@ -66,71 +68,85 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
 
   const handleSave = async () => {
     setSaving(true);
-    const nowTs = new Date().toISOString();
+    try {
+      const nowTs = new Date().toISOString();
 
-    if (isCSR) {
-      const currentDept = ticket.department || 'CSR';
-      const updatedLog = stopAndStartSLA(ticket.dept_sla_log, currentDept, department);
-      await db.Ticket.update(ticket.id, { department, priority, status, escalated, dept_sla_log: updatedLog });
-    } else {
-      // Non-CSR: route back to L1/CSR
-      const currentDept = ticket.department || 'CSR';
-      const updatedLog = stopAndStartSLA(ticket.dept_sla_log, currentDept, 'CSR');
-      await db.Ticket.update(ticket.id, { department: null, status: 'Open', escalated: false, dept_sla_log: updatedLog });
+      if (isCSR) {
+        const currentDept = ticket.department || 'CSR';
+        const updatedLog = stopAndStartSLA(ticket.dept_sla_log, currentDept, department);
+        await db.Ticket.update(ticket.id, { department, priority, status, escalated, dept_sla_log: updatedLog });
+      } else {
+        // Non-CSR: route back to L1/CSR
+        const currentDept = ticket.department || 'CSR';
+        const updatedLog = stopAndStartSLA(ticket.dept_sla_log, currentDept, 'CSR');
+        await db.Ticket.update(ticket.id, { department: null, status: 'Open', escalated: false, dept_sla_log: updatedLog });
+      }
+
+      const routeMsg = isCSR
+        ? `🔀 Ticket rerouted to ${department} dept | Priority: ${priority} | ${escalated ? '⬆ Escalated' : 'Not escalated'}`
+        : `🔀 Ticket returned to L1/CSR queue`;
+
+      const historyDesc = isCSR
+        ? `Rerouted to ${department}${note.trim() ? ` — ${note.trim()}` : ''}`
+        : `Returned to L1/CSR queue${note.trim() ? ` — ${note.trim()}` : ''}`;
+
+      const promises = [
+        db.TicketMessage.create({
+          ticket_id: ticket.id,
+          sender_email: 'system',
+          sender_name: 'System',
+          sender_role: 'staff',
+          message: note.trim() ? `${routeMsg}\nNote: ${note.trim()}` : routeMsg,
+          is_internal: true,
+          attachments: [],
+        }),
+        db.TicketHistory.create({
+          ticket_id: ticket.id,
+          event_type: 'rerouted',
+          description: historyDesc,
+          actor: user?.full_name || user?.email || 'Staff',
+          old_value: ticket.department || 'L1/CSR',
+          new_value: isCSR ? department : 'L1/CSR',
+        }),
+      ];
+
+      // If marked as escalated, create an internal escalation ticket
+      if (escalated && isCSR) {
+        promises.push(
+          base44.asServiceRole.entities.InternalTicket.create({
+            env: ticket.env || 'test',
+            ticket_number: ticket.ticket_number || `INT-${Date.now()}`,
+            from_department: ticket.department || 'CSR',
+            to_department: 'TL/Management',
+            subject: ticket.subject,
+            description: `Escalated ticket: ${ticket.description}${note.trim() ? `\n\nEscalation note: ${note.trim()}` : ''}`,
+            created_by_email: user?.email || 'system',
+            created_by_name: user?.full_name || 'System',
+            status: 'Open',
+            priority: priority,
+            escalated: true,
+          })
+        );
+      }
+
+      await Promise.all(promises);
+
+      toast({
+        title: 'Success',
+        description: escalated ? 'Ticket escalated and notified' : 'Ticket rerouted successfully',
+      });
+
+      setSaving(false);
+      onSaved?.();
+      onClose();
+    } catch (error) {
+      setSaving(false);
+      toast({
+        title: 'Error',
+        description: error.message || 'Failed to reroute ticket',
+        variant: 'destructive',
+      });
     }
-
-    const routeMsg = isCSR
-      ? `🔀 Ticket rerouted to ${department} dept | Priority: ${priority} | ${escalated ? '⬆ Escalated' : 'Not escalated'}`
-      : `🔀 Ticket returned to L1/CSR queue`;
-
-    const historyDesc = isCSR
-      ? `Rerouted to ${department}${note.trim() ? ` — ${note.trim()}` : ''}`
-      : `Returned to L1/CSR queue${note.trim() ? ` — ${note.trim()}` : ''}`;
-
-    const promises = [
-      db.TicketMessage.create({
-        ticket_id: ticket.id,
-        sender_email: 'system',
-        sender_name: 'System',
-        sender_role: 'staff',
-        message: note.trim() ? `${routeMsg}\nNote: ${note.trim()}` : routeMsg,
-        is_internal: true,
-        attachments: [],
-      }),
-      db.TicketHistory.create({
-        ticket_id: ticket.id,
-        event_type: 'rerouted',
-        description: historyDesc,
-        actor: user?.full_name || user?.email || 'Staff',
-        old_value: ticket.department || 'L1/CSR',
-        new_value: isCSR ? department : 'L1/CSR',
-      }),
-    ];
-
-    // If marked as escalated, create an internal escalation ticket
-    if (escalated && isCSR) {
-      promises.push(
-        base44.asServiceRole.entities.InternalTicket.create({
-          env: ticket.env || 'test',
-          ticket_number: ticket.ticket_number || `INT-${Date.now()}`,
-          from_department: ticket.department || 'CSR',
-          to_department: 'TL/Management',
-          subject: ticket.subject,
-          description: `Escalated ticket: ${ticket.description}${note.trim() ? `\n\nEscalation note: ${note.trim()}` : ''}`,
-          created_by_email: user?.email || 'system',
-          created_by_name: user?.full_name || 'System',
-          status: 'Open',
-          priority: priority,
-          escalated: true,
-        })
-      );
-    }
-
-    await Promise.all(promises);
-
-    setSaving(false);
-    onSaved?.();
-    onClose();
   };
 
   return (
