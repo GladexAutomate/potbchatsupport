@@ -46,8 +46,8 @@ export default function InternalTicketsBase({ userDepartment }) {
   const fileInputRef = useRef(null);
   const messagesEndRef = useRef(null);
 
-  // Check role-based access
-  const hasAccess = user && ['super_admin', 'tl_management'].includes(user.role);
+  // Check role-based access — all staff roles can view their department's internal tickets
+  const hasAccess = user && ['super_admin', 'admin', 'tl_management', 'csr', 'sales', 'accounting', 'sign_ups', 'on_boarding', 'corp_training', 'it'].includes(user.role);
 
   useEffect(() => {
     loadData();
