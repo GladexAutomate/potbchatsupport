@@ -28,11 +28,21 @@ function makeEntityProxy(entityName) {
   const entity = base44.entities[entityName];
 
   return {
-    // list — fetches all, then filters client-side by env
+    // list — paginates through all pages, then filters client-side by env
     async list(sort, limit) {
-      const data = await entity.list(sort, limit || 500);
       const env = getEnv();
-      return (data || []).filter(r => r.env === env);
+      const pageSize = 100;
+      const maxRecords = limit || 2000;
+      let all = [];
+      let skip = 0;
+      while (all.length < maxRecords) {
+        const page = await entity.list(sort, pageSize, skip);
+        if (!page || page.length === 0) break;
+        all = all.concat(page);
+        if (page.length < pageSize) break;
+        skip += pageSize;
+      }
+      return all.filter(r => r.env === env);
     },
 
     // filter — merges env into the query filter
