@@ -27,6 +27,7 @@ import GroupChat from './pages/GroupChat';
 import VIPTickets from './pages/VIPTickets';
 import EmailLogin from './pages/EmailLogin';
 import CSRInternalTickets from './pages/InternalTickets/CSR';
+import SalesInternalTickets from './pages/InternalTickets/Sales';
 import ITInternalTickets from './pages/InternalTickets/IT';
 import AccountingInternalTickets from './pages/InternalTickets/Accounting';
 import SignUpsInternalTickets from './pages/InternalTickets/SignUps';
@@ -95,7 +96,7 @@ const AuthenticatedApp = () => {
         <Route path="/group-chat" element={<GroupChat />} />
         <Route path="/vip-tickets" element={<VIPTickets />} />
         <Route path="/internal-tickets-csr" element={<CSRInternalTickets />} />
-        <Route path="/internal-tickets-sales" element={<CSRInternalTickets />} />
+        <Route path="/internal-tickets-sales" element={<SalesInternalTickets />} />
         <Route path="/internal-tickets-it" element={<ITInternalTickets />} />
         <Route path="/internal-tickets-accounting" element={<AccountingInternalTickets />} />
         <Route path="/internal-tickets-signups" element={<SignUpsInternalTickets />} />
