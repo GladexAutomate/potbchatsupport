@@ -109,6 +109,10 @@ export default function Layout() {
 
   const hasPageAccess = (pageKey) => {
      if (isSuperAdmin) return true;
+     // Parent categories (like 'settings', 'customer-operations') don't have explicit permissions
+     // They're always visible if at least one child has access
+     const parentKeys = ['customer-operations', 'internal-operations', 'analytics', 'administration', 'settings'];
+     if (parentKeys.includes(pageKey)) return true;
      const perm = permissions.find(p => p.resource_name === pageKey);
      return perm?.has_access === true;
    };
