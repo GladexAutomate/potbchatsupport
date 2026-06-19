@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { Pin, Reply, ExternalLink, FileText, SmilePlus } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { useNavigate } from 'react-router-dom';
@@ -26,7 +27,18 @@ const STATUS_COLOR = {
 export default function GroupChatMessageBubble({ msg, currentUser, isMe, onReply, onPinToggle, allMessages }) {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showActions, setShowActions] = useState(false);
+  const [staffMap, setStaffMap] = useState({});
   const navigate = useNavigate();
+
+  useEffect(() => {
+    db.User.list().then(staff => {
+      const map = {};
+      (staff || []).forEach(s => {
+        map[s.email?.toLowerCase()] = s.full_name;
+      });
+      setStaffMap(map);
+    });
+  }, []);
 
   const repliedMsg = msg.reply_to_id ? allMessages.find(m => m.id === msg.reply_to_id) : null;
 
@@ -172,7 +184,7 @@ export default function GroupChatMessageBubble({ msg, currentUser, isMe, onReply
                 <button
                   key={emoji}
                   onClick={() => handleReact(emoji)}
-                  title={users.join(', ')}
+                  title={users.map(email => staffMap[email.toLowerCase()] || email).join(', ')}
                   className={`flex items-center gap-0.5 text-xs px-1.5 py-0.5 rounded-full border transition-colors
                     ${users.includes(currentUser.email) ? 'bg-primary/10 border-primary/30 text-primary' : 'bg-muted border-border/50 hover:bg-muted/80'}`}
                 >
