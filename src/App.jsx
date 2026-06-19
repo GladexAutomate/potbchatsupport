@@ -94,6 +94,7 @@ const AuthenticatedApp = () => {
         <Route path="/staff-ratings" element={<StaffRatings />} />
         <Route path="/group-chat" element={<GroupChat />} />
         <Route path="/vip-tickets" element={<VIPTickets />} />
+        <Route path="/internal-tickets-csr" element={<CSRInternalTickets />} />
         <Route path="/internal-tickets-sales" element={<CSRInternalTickets />} />
         <Route path="/internal-tickets-it" element={<ITInternalTickets />} />
         <Route path="/internal-tickets-accounting" element={<AccountingInternalTickets />} />
