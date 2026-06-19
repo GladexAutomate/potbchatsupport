@@ -323,31 +323,65 @@ export default function InternalTicketsBase({ userDepartment }) {
               </div>
 
               {selectedTicket.notes && (
-                <div>
-                    <p className="text-xs text-muted-foreground mb-2">Internal Notes</p>
-                    <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
-                      <p className="text-xs text-amber-900 dark:text-amber-200 whitespace-pre-wrap font-mono">{convertOldTimestampFormat(selectedTicket.notes)}</p>
-                    </div>
-                  </div>
-                )}
+                 <div>
+                     <p className="text-xs text-muted-foreground mb-2">Internal Notes</p>
+                     <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
+                       <p className="text-xs text-amber-900 dark:text-amber-200 whitespace-pre-wrap font-mono">{convertOldTimestampFormat(selectedTicket.notes)}</p>
+                     </div>
+                   </div>
+                 )}
+
+              {selectedTicket.attachments && selectedTicket.attachments.length > 0 && (
+                 <div>
+                   <p className="text-xs text-muted-foreground mb-2">Attachments</p>
+                   <div className="grid grid-cols-2 gap-3">
+                     {selectedTicket.attachments.map((url, i) => {
+                       const isImage = /\.(png|jpg|jpeg|gif|webp)(\?|$)/i.test(url);
+                       return isImage ? (
+                         <div key={i} className="rounded-lg border border-border overflow-hidden bg-muted">
+                           <img src={url} alt={`Attachment ${i + 1}`} className="w-full h-auto max-h-40 object-cover" />
+                         </div>
+                       ) : (
+                         <a key={i} href={url} target="_blank" rel="noopener noreferrer" 
+                           className="flex items-center gap-2 p-2 rounded-lg border border-border hover:bg-muted bg-card">
+                           <FileText className="w-4 h-4 text-primary flex-shrink-0" />
+                           <span className="text-xs truncate">File {i + 1}</span>
+                         </a>
+                       );
+                     })}
+                   </div>
+                 </div>
+               )}
 
               <div ref={messagesEndRef} />
             </div>
 
             {/* Attachment preview */}
-            {attachments.length > 0 && (
-              <div className="px-4 pb-2 pt-2 flex gap-2 flex-wrap border-t bg-card">
-                {attachments.map((att, i) => (
-                  <div key={i} className="flex items-center gap-1.5 bg-muted rounded-lg px-2.5 py-1.5">
-                    <FileText className="w-3 h-3 text-primary" />
-                    <span className="text-xs max-w-[100px] truncate">{att.name}</span>
-                    <button onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}>
-                      <X className="w-3 h-3 text-muted-foreground hover:text-foreground" />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
+             {attachments.length > 0 && (
+               <div className="px-4 pb-2 pt-2 border-t bg-card">
+                 <div className="flex gap-2 flex-wrap">
+                   {attachments.map((att, i) => {
+                     const isImage = /\.(png|jpg|jpeg|gif|webp)(\?|$)/i.test(att.url);
+                     return (
+                       <div key={i} className="relative group">
+                         {isImage ? (
+                           <img src={att.url} alt={att.name} className="h-12 w-12 object-cover rounded-lg border border-border" />
+                         ) : (
+                           <div className="h-12 w-12 rounded-lg border border-border bg-muted flex items-center justify-center">
+                             <FileText className="w-5 h-5 text-primary" />
+                           </div>
+                         )}
+                         <button onClick={() => setAttachments(prev => prev.filter((_, idx) => idx !== i))}
+                           className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-destructive text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                           <X className="w-3 h-3" />
+                         </button>
+                         <div className="text-xs truncate max-w-[80px] mt-1">{att.name}</div>
+                       </div>
+                     );
+                   })}
+                 </div>
+               </div>
+             )}
 
             {/* Input */}
             <div className="p-4 pt-2 flex items-end gap-2 bg-card border-t border-border/50">
