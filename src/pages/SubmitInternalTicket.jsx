@@ -85,26 +85,31 @@ export default function SubmitInternalTicket() {
   const handleSubmitTicket = async () => {
     if (!form.from_department || !form.to_department || !form.subject || !form.description) return;
     setSubmitting(true);
-    const num = generateTicketNumber();
-    const now = new Date().toISOString();
-    
-    await db.InternalTicket.create({
-      ticket_number: num,
-      from_department: form.from_department,
-      to_department: form.to_department,
-      subject: form.subject,
-      description: form.description,
-      created_by_email: user?.email || '',
-      created_by_name: user?.full_name || '',
-      attachments: attachments.map(a => a.url),
-      status: 'Open',
-      priority: 'Medium',
-      escalated: false,
-    });
-    
-    setTicketNum(num);
-    setSubmitting(false);
-    setView('success');
+    try {
+      const num = generateTicketNumber();
+      
+      await db.InternalTicket.create({
+        ticket_number: num,
+        from_department: form.from_department,
+        to_department: form.to_department,
+        subject: form.subject,
+        description: form.description,
+        created_by_email: user?.email || '',
+        created_by_name: user?.full_name || '',
+        attachments: attachments.map(a => a.url),
+        status: 'Open',
+        priority: 'Medium',
+        escalated: false,
+      });
+      
+      setTicketNum(num);
+      setView('success');
+    } catch (err) {
+      console.error('Error creating ticket:', err);
+      alert('Failed to submit ticket. Please try again.');
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   return (
