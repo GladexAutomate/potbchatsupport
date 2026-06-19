@@ -1,5 +1,6 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
 
 const getAppParams = () => {
@@ -172,12 +173,12 @@ export const AuthProvider = ({ children }) => {
 
       // Overlay the custom role from EmployeeAccount or StaffDirectory (source of truth for app roles)
       try {
-        const empRecords = await base44.entities.EmployeeAccount.filter({ email: currentUser.email });
+        const empRecords = await db.EmployeeAccount.filter({ email: currentUser.email });
         if (empRecords && empRecords.length > 0 && empRecords[0].current_role) {
           currentUser.role = empRecords[0].current_role;
         } else {
           // Fall back to StaffDirectory if not in EmployeeAccount
-          const staffRecords = await base44.entities.StaffDirectory.filter({ email: currentUser.email });
+          const staffRecords = await db.StaffDirectory.filter({ email: currentUser.email });
           if (staffRecords && staffRecords.length > 0 && staffRecords[0].current_role) {
             currentUser.role = staffRecords[0].current_role;
           }
