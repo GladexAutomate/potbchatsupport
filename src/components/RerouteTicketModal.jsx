@@ -38,9 +38,9 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
    // Non-CSR can only route back to L1/CSR — clear dept and set back to Open
    const availableDepartments = isCSR ? ALL_DEPARTMENTS : [];
 
-  const [department, setDepartment] = useState(isCSR ? (ticket?.department || '') : '');
+  const [department, setDepartment] = useState((isCSR || canEscalate) ? (ticket?.department || '') : '');
   const [priority, setPriority] = useState(ticket?.priority || 'Medium');
-  const [status, setStatus] = useState(isCSR ? (ticket?.status || 'Open') : 'Open');
+  const [status, setStatus] = useState((isCSR || canEscalate) ? (ticket?.status || 'Open') : 'Open');
   const [escalated, setEscalated] = useState(ticket?.escalated || false);
   const [note, setNote] = useState('');
   const [saving, setSaving] = useState(false);
@@ -73,22 +73,22 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
     try {
       const nowTs = new Date().toISOString();
 
-      if (isCSR) {
+      if (isCSR || canEscalate) {
         const currentDept = ticket.department || 'CSR';
         const updatedLog = stopAndStartSLA(ticket.dept_sla_log, currentDept, department);
         await db.Ticket.update(ticket.id, { department, priority, status, escalated, dept_sla_log: updatedLog });
       } else {
-        // Non-CSR: route back to L1/CSR (TL/Management can still escalate)
+        // Non-escalate roles: route back to L1/CSR
         const currentDept = ticket.department || 'CSR';
         const updatedLog = stopAndStartSLA(ticket.dept_sla_log, currentDept, 'CSR');
-        await db.Ticket.update(ticket.id, { department: null, status: 'Open', escalated: canEscalate ? escalated : false, dept_sla_log: updatedLog });
+        await db.Ticket.update(ticket.id, { department: null, status: 'Open', escalated: false, dept_sla_log: updatedLog });
       }
 
-      const routeMsg = isCSR
+      const routeMsg = (isCSR || canEscalate)
         ? `🔀 Ticket rerouted to ${department} dept | Priority: ${priority} | ${escalated ? '⬆ Escalated' : 'Not escalated'}`
-        : `🔀 Ticket returned to L1/CSR queue${escalated ? ' | ⬆ Escalated' : ''}`;
+        : `🔀 Ticket returned to L1/CSR queue`;
 
-      const historyDesc = isCSR
+      const historyDesc = (isCSR || canEscalate)
         ? `Rerouted to ${department}${note.trim() ? ` — ${note.trim()}` : ''}`
         : `Returned to L1/CSR queue${note.trim() ? ` — ${note.trim()}` : ''}`;
 
@@ -108,7 +108,7 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
           description: historyDesc,
           actor: user?.full_name || user?.email || 'Staff',
           old_value: ticket.department || 'L1/CSR',
-          new_value: isCSR ? department : 'L1/CSR',
+          new_value: (isCSR || canEscalate) ? department : 'L1/CSR',
         }),
       ];
 
@@ -158,75 +158,62 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
         </DialogHeader>
 
         <div className="space-y-4 py-2">
-           {!isCSR && (
+           {!isCSR && !canEscalate && (
              <div className="p-3 rounded-lg border border-blue-500/30 bg-blue-500/5 text-sm text-blue-600">
                This will return the ticket to the <strong>L1/CSR queue</strong> and mark it as <strong>Open</strong>.
              </div>
            )}
 
-           {isCSR && canEscalate && (
-            <>
-              <div className="space-y-1.5">
-                <Label className="text-xs">Route to Department</Label>
-                <Select value={department} onValueChange={setDepartment}>
-                  <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
-                  <SelectContent>
-                    {ALL_DEPARTMENTS.map(d => (
-                      <SelectItem key={d} value={d}>
-                        <div>
-                          <p className="font-medium">{d}</p>
-                          <p className="text-xs text-muted-foreground">{DEPT_NOTES[d]}</p>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+           {(isCSR || canEscalate) && (
+             <>
+               <div className="space-y-1.5">
+                 <Label className="text-xs">Route to Department</Label>
+                 <Select value={department} onValueChange={setDepartment}>
+                   <SelectTrigger><SelectValue placeholder="Select department" /></SelectTrigger>
+                   <SelectContent>
+                     {ALL_DEPARTMENTS.map(d => (
+                       <SelectItem key={d} value={d}>
+                         <div>
+                           <p className="font-medium">{d}</p>
+                           <p className="text-xs text-muted-foreground">{DEPT_NOTES[d]}</p>
+                         </div>
+                       </SelectItem>
+                     ))}
+                   </SelectContent>
+                 </Select>
+               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Priority</Label>
-                  <Select value={priority} onValueChange={setPriority}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-1.5">
-                  <Label className="text-xs">Status</Label>
-                  <Select value={status} onValueChange={setStatus}>
-                    <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      {STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
+               <div className="grid grid-cols-2 gap-3">
+                 <div className="space-y-1.5">
+                   <Label className="text-xs">Priority</Label>
+                   <Select value={priority} onValueChange={setPriority}>
+                     <SelectTrigger><SelectValue /></SelectTrigger>
+                     <SelectContent>
+                       {PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+                     </SelectContent>
+                   </Select>
+                 </div>
+                 <div className="space-y-1.5">
+                   <Label className="text-xs">Status</Label>
+                   <Select value={status} onValueChange={setStatus}>
+                     <SelectTrigger><SelectValue /></SelectTrigger>
+                     <SelectContent>
+                       {STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                     </SelectContent>
+                   </Select>
+                 </div>
+               </div>
 
-              <div className="flex items-center gap-3 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
-                <input type="checkbox" id="escalate" checked={escalated} onChange={e => setEscalated(e.target.checked)}
-                  className="w-4 h-4 accent-amber-500" />
-                <label htmlFor="escalate" className="text-sm font-medium text-amber-600 cursor-pointer">
-                  ⬆ Mark as Escalated
-                  <p className="text-xs text-muted-foreground font-normal">Route to TL/Management for critical or VIP issues</p>
-                </label>
-              </div>
-            </>
-            )}
-
-            {!isCSR && canEscalate && (
-            <>
-              <div className="flex items-center gap-3 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
-                <input type="checkbox" id="escalate" checked={escalated} onChange={e => setEscalated(e.target.checked)}
-                  className="w-4 h-4 accent-amber-500" />
-                <label htmlFor="escalate" className="text-sm font-medium text-amber-600 cursor-pointer">
-                  ⬆ Mark as Escalated
-                  <p className="text-xs text-muted-foreground font-normal">Escalate to management for critical or VIP issues</p>
-                </label>
-              </div>
-            </>
-            )}
+               <div className="flex items-center gap-3 p-3 rounded-lg border border-amber-500/30 bg-amber-500/5">
+                 <input type="checkbox" id="escalate" checked={escalated} onChange={e => setEscalated(e.target.checked)}
+                   className="w-4 h-4 accent-amber-500" />
+                 <label htmlFor="escalate" className="text-sm font-medium text-amber-600 cursor-pointer">
+                   ⬆ Mark as Escalated
+                   <p className="text-xs text-muted-foreground font-normal">Route to TL/Management for critical or VIP issues</p>
+                 </label>
+               </div>
+             </>
+           )}
 
             <div className="space-y-1.5">
             <Label className="text-xs">Routing Note (optional)</Label>
@@ -241,9 +228,9 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
 
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancel</Button>
-          <Button onClick={handleSave} disabled={saving || (isCSR && !department)} className="gap-2">
+          <Button onClick={handleSave} disabled={saving || ((isCSR || canEscalate) && !department)} className="gap-2">
             {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRightLeft className="w-4 h-4" />}
-            {isCSR ? 'Reroute Ticket' : 'Return to L1/CSR'}
+            {isCSR || canEscalate ? 'Reroute Ticket' : 'Return to L1/CSR'}
           </Button>
         </DialogFooter>
       </DialogContent>
