@@ -127,6 +127,7 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
       toast({
         title: 'Success',
         description: escalated ? 'Ticket escalated and notified' : 'Ticket rerouted successfully',
+        duration: 2000,
       });
 
       setSaving(false);
