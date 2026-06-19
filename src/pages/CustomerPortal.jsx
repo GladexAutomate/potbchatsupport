@@ -131,6 +131,11 @@ export default function CustomerPortal() {
               <ShieldCheck className="w-4 h-4" /> Staff Login
             </Button>
           )}
+          {user && (
+            <Button variant="ghost" size="sm" className="text-white/60 hover:text-white hover:bg-white/10" onClick={() => base44.auth.logout('/')}>
+              Switch Account
+            </Button>
+          )}
         </div>
       </header>
 
