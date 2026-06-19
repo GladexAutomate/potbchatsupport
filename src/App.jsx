@@ -59,7 +59,8 @@ const AuthenticatedApp = () => {
 
   // Show login page if not authenticated and loading is complete
   if (authChecked && !isAuthenticated) {
-    return <EmailLogin />;
+    navigateToLogin();
+    return null;
   }
 
   // Additional safety: if still loading, don't show any routes yet
