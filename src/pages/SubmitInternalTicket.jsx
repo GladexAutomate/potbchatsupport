@@ -31,39 +31,23 @@ export default function SubmitInternalTicket() {
   const isTLOrAdmin = authUser && ['super_admin', 'tl_management'].includes(authUser.role);
 
   useEffect(() => {
-    const checkAuth = async () => {
-      try {
-        const u = await base44.auth.me();
-        if (u) {
-          setUser(u);
-          console.log('User object received:', u);
-          console.log('User role:', u.role);
-          // Map role to department - handle various role formats
-          const role = u.role?.toLowerCase().trim();
-          console.log('Normalized role:', role);
-          const deptMap = {
-            'csr': 'CSR', 'sales': 'Sales', 'it': 'IT', 'accounting': 'Accounting',
-            'sign_ups': 'Sign-Ups', 'on_boarding': 'On-Boarding', 'corp_training': 'Corp/Training',
-            'admin': 'Admin', 'tl_management': 'TL/Management', 'tlmanagement': 'TL/Management',
-            'sign-ups': 'Sign-Ups', 'on-boarding': 'On-Boarding', 'corp-training': 'Corp/Training'
-          };
-          const dept = deptMap[role];
-          console.log('Mapped department:', dept);
-          if (dept && departmentList.includes(dept)) {
-            setForm(f => ({ ...f, from_department: dept }));
-            setFormInitialized(true);
-          } else {
-            // If role doesn't map, still initialize form but leave from_department empty for TL/Admin
-            setFormInitialized(true);
-          }
-        }
-      } catch (err) {
-        console.error('Auth check failed:', err);
-        navigate('/');
-      }
-    };
-    checkAuth();
-  }, [navigate]);
+     if (authUser) {
+       setUser(authUser);
+       // Map role to department - handle various role formats
+       const role = authUser.role?.toLowerCase().trim();
+       const deptMap = {
+         'csr': 'CSR', 'sales': 'Sales', 'it': 'IT', 'accounting': 'Accounting',
+         'sign_ups': 'Sign-Ups', 'on_boarding': 'On-Boarding', 'corp_training': 'Corp/Training',
+         'admin': 'Admin', 'tl_management': 'TL/Management', 'tlmanagement': 'TL/Management',
+         'sign-ups': 'Sign-Ups', 'on-boarding': 'On-Boarding', 'corp-training': 'Corp/Training'
+       };
+       const dept = deptMap[role];
+       if (dept && departmentList.includes(dept)) {
+         setForm(f => ({ ...f, from_department: dept }));
+       }
+       setFormInitialized(true);
+     }
+   }, [authUser]);
 
   const generateTicketNumber = () => {
     const now = new Date();
