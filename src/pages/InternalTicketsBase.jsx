@@ -6,10 +6,11 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, ChevronLeft } from 'lucide-react';
+import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, User, ChevronLeft, Plus } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const STATUS_COLOR = {
   'Open': 'bg-blue-500/10 text-blue-400 border-blue-500/20',
@@ -30,6 +31,7 @@ const departmentList = ['Sales', 'IT', 'Accounting', 'Sign-Ups', 'On-Boarding', 
 
 export default function InternalTicketsBase({ userDepartment }) {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState(null);
@@ -163,7 +165,12 @@ export default function InternalTicketsBase({ userDepartment }) {
       <div className={`flex flex-col border-r border-border/50 bg-card ${selectedTicket ? 'hidden md:flex' : 'flex'} w-full md:w-80 lg:w-96 flex-shrink-0`}>
         {/* Header */}
         <div className="p-4 border-b border-border/50">
-          <h2 className="font-sora font-bold text-lg mb-3">Internal Tickets</h2>
+          <div className="flex items-center justify-between gap-2 mb-3">
+            <h2 className="font-sora font-bold text-lg">Internal Tickets</h2>
+            <Button size="sm" className="gap-1.5 h-8 text-xs" onClick={() => navigate('/submit-internal-ticket')}>
+              <Plus className="w-3.5 h-3.5" /> Create
+            </Button>
+          </div>
           <div className="relative mb-2">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
             <Input placeholder="Search..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9 h-8 text-sm" />
