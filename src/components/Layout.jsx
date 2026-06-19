@@ -60,7 +60,6 @@ export default function Layout() {
   const [groupChatUnread, setGroupChatUnread] = useState(0);
   const [permissions, setPermissions] = useState([]);
   const [mentionNotification, setMentionNotification] = useState(null);
-  const [notifiedMessageIds, setNotifiedMessageIds] = useState(new Set());
   const [allStaff, setAllStaff] = useState([]);
   const mentionTimerRef = useRef(null);
   const location = useLocation();
@@ -94,9 +93,13 @@ export default function Layout() {
         m.toLowerCase().includes(user.email.toLowerCase())
       );
       
-      if (!isMentioned || notifiedMessageIds.has(event.data.id)) return;
+      if (!isMentioned) return;
       
-      setNotifiedMessageIds(prev => new Set([...prev, event.data.id]));
+      // Check if already notified in localStorage to avoid duplicates
+      const alreadyNotified = localStorage.getItem(`mentioned_${event.data.id}`);
+      if (alreadyNotified) return;
+      
+      localStorage.setItem(`mentioned_${event.data.id}`, 'true');
       
       setMentionNotification({
         sender: event.data.sender_name,
@@ -130,7 +133,7 @@ export default function Layout() {
     });
     
     return () => { unsub(); clearInterval(mentionTimerRef.current); };
-  }, [user?.full_name, user?.email, notifiedMessageIds]);
+  }, [user?.full_name, user?.email]);
 
   // Unread count subscription
   useEffect(() => {
@@ -140,10 +143,15 @@ export default function Layout() {
       setGroupChatUnread(count);
     };
     db.GroupChatMessage.list('created_date', 100).then(computeUnread);
+    let timer;
     const unsub = db.GroupChatMessage.subscribe(() => {
-      db.GroupChatMessage.list('created_date', 100).then(computeUnread);
+      // Debounce to avoid rapid refetches
+      clearTimeout(timer);
+      timer = setTimeout(() => {
+        db.GroupChatMessage.list('created_date', 100).then(computeUnread);
+      }, 1000);
     });
-    return () => unsub();
+    return () => { unsub(); clearTimeout(timer); };
   }, [user]);
 
   // Load permissions for this role — ignore env so permissions sync across test/prod
