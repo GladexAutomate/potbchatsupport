@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { db } from '@/lib/db';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import StaffMessenger from '@/components/StaffMessenger';
@@ -10,18 +11,32 @@ export default function InternalEscalations() {
 
   useEffect(() => {
     if (!user) return;
-    const load = () => {
-      base44.entities.InternalTicket.filter({ escalated: true }).then(data => {
-        setEscalations(data ? data.sort((a, b) => new Date(b.created_date) - new Date(a.created_date)) : []);
+    const load = async () => {
+      try {
+        // Load both escalated internal tickets and escalated regular tickets
+        const [internalTickets, escalatedTickets] = await Promise.all([
+          base44.entities.InternalTicket.filter({ escalated: true }),
+          db.Ticket.filter({ escalated: true })
+        ]);
+        
+        const combined = [...(internalTickets || []), ...(escalatedTickets || [])];
+        const sorted = combined.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
+        setEscalations(sorted);
         setLoading(false);
-      }).catch(err => {
+      } catch (err) {
         console.error('Error loading escalations:', err);
         setLoading(false);
-      });
+      }
     };
     load();
-    const unsub = base44.entities.InternalTicket.subscribe(load);
-    return () => unsub();
+    
+    // Subscribe to both entities
+    const unsub1 = base44.entities.InternalTicket.subscribe(load);
+    const unsub2 = db.Ticket.subscribe(load);
+    return () => {
+      unsub1?.();
+      unsub2?.();
+    };
   }, [user]);
 
   return (
