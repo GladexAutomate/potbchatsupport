@@ -81,8 +81,7 @@ export default function Layout() {
   // Load permissions for this role
   useEffect(() => {
     if (!user || isSuperAdmin) return;
-    const env = getAppEnv() === 'preview' ? 'test' : 'prod';
-    db.Permission.filter({ env, role, resource_type: 'page' }).then(setPermissions).catch(() => {});
+    db.Permission.filter({ role, resource_type: 'page' }).then(setPermissions).catch(() => {});
   }, [user, role]);
 
   // Clear badge when on group chat page
