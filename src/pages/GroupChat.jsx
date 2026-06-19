@@ -86,7 +86,7 @@ export default function GroupChat() {
     // Real-time subscription with debounce to avoid rate limiting
     const unsub = db.GroupChatMessage.subscribe(() => {
       clearTimeout(loadTimer);
-      loadTimer = setTimeout(() => loadAndNotify(), 500);
+      loadTimer = setTimeout(() => loadAndNotify(), 1500);
     });
     return () => { clearTimeout(loadTimer); unsub(); };
   }, [user?.full_name, user?.email, toast]);
