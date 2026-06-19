@@ -31,9 +31,10 @@ export default function Tickets() {
     if (!user) return [];
     const role = user.role;
     const currentEnv = getAppEnv();
+    const targetEnv = currentEnv === 'preview' ? 'test' : 'prod';
     
     // Filter by environment first
-    const envFiltered = allTickets.filter(t => (t.env || 'test') === currentEnv);
+    const envFiltered = allTickets.filter(t => (t.env || 'test') === targetEnv);
     
     // L1 (CSR) and TL/Management see all tickets (in current env)
     if (['super_admin', 'admin', 'csr', 'tl_management'].includes(role)) return envFiltered;
