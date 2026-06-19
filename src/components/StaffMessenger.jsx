@@ -113,7 +113,7 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
         db.TicketMessage.list('-created_date', 500).then(msgs => {
           setAllMessages(msgs || []);
         });
-      }, 500); // Debounce rapid updates
+      }, 1000); // Increased debounce to 1s to prevent rate limiting
     });
     return () => { clearTimeout(loadTimer); unsub(); };
   }, []);
