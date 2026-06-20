@@ -19,19 +19,27 @@ function StarDisplay({ rating, size = 'sm' }) {
 
 export default function StaffRatings() {
   const [ratings, setRatings] = useState([]);
+  const [tickets, setTickets] = useState({});
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('Weekly');
 
   useEffect(() => {
     Promise.all([
       db.StaffRating.list('-rated_at', 500),
-      db.EmployeeAccount.list('', 500)
-    ]).then(([ratingData, empData]) => {
+      db.EmployeeAccount.list('', 500),
+      db.Ticket.list('-created_date', 500)
+    ]).then(([ratingData, empData, ticketData]) => {
       const potbEmails = new Set((empData || [])
         .filter(e => e.employee_code?.toUpperCase().startsWith('POTB'))
         .map(e => e.email?.toLowerCase())
       );
       setRatings((ratingData || []).filter(r => potbEmails.has(r.staff_email?.toLowerCase())));
+      // Create ticket map for quick lookup
+      const ticketMap = {};
+      (ticketData || []).forEach(t => {
+        ticketMap[t.id] = t;
+      });
+      setTickets(ticketMap);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
@@ -189,13 +197,23 @@ export default function StaffRatings() {
                 {/* All recent ratings */}
                 {staff.remarks.length > 0 && (
                   <div className="mt-3 space-y-1.5">
-                    {filteredRatings.filter(r => r.staff_email === staff.email).slice(0, 10).map((r, i) => (
-                      <div key={i} className="flex items-start gap-2 bg-muted/40 rounded-lg px-3 py-2">
-                        <StarDisplay rating={r.rating} />
-                        {r.remarks && <p className="text-xs text-muted-foreground flex-1">"{r.remarks}"</p>}
-                        <span className="text-xs text-muted-foreground/50 shrink-0">{format(new Date(r.rated_at), 'MMM d')}</span>
-                      </div>
-                    ))}
+                    {filteredRatings.filter(r => r.staff_email === staff.email).slice(0, 10).map((r, i) => {
+                      const ticket = tickets[r.ticket_id];
+                      return (
+                        <div key={i} className="flex items-start gap-2 bg-muted/40 rounded-lg px-3 py-2">
+                          <StarDisplay rating={r.rating} />
+                          <div className="flex-1 min-w-0">
+                            {ticket && (
+                              <a href={`/my-tickets?ticket=${r.ticket_id}`} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary hover:underline">
+                                #{ticket.ticket_number}
+                              </a>
+                            )}
+                            {r.remarks && <p className="text-xs text-muted-foreground">"{r.remarks}"</p>}
+                          </div>
+                          <span className="text-xs text-muted-foreground/50 shrink-0">{format(new Date(r.rated_at), 'MMM d')}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>
