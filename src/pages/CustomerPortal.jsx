@@ -43,10 +43,11 @@ export default function CustomerPortal() {
           const allStaff = await db.StaffDirectory.list().catch(() => []);
 
           console.log('[CP] EmployeeAccount records:', allEmployees?.length);
-          if (allEmployees?.length > 0) {
-            console.log('[CP] First 5 EmployeeAccount emails:', allEmployees?.slice(0, 5).map(e => ({ raw: e.email, lower: e.email?.toLowerCase()?.trim(), blocked: e.is_blocked })));
-          }
+          console.log('[CP] ALL EmployeeAccount emails:', allEmployees?.map(e => e.email));
           console.log('[CP] StaffDirectory records:', allStaff?.length);
+          if (allStaff?.length > 0) {
+            console.log('[CP] ALL StaffDirectory emails:', allStaff?.map(e => e.email));
+          }
 
           const validEmployee = allEmployees?.find(e => {
             const empEmail = e.email?.toLowerCase()?.trim();
