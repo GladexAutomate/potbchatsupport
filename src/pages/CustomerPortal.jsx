@@ -70,7 +70,12 @@ export default function CustomerPortal() {
             console.log('[CP] Found staff record:', validStaff.email);
             setEmployeeRecord(validStaff);
           } else {
-            console.log('[CP] No match found. User role:', u.role, 'Will show button if role is not user/customer:', (u.role && u.role !== 'user' && u.role !== 'customer'));
+            const hasStaffRole = u.role && u.role !== 'user' && u.role !== 'customer';
+            console.log('[CP] No email match. Role check:', { 
+              role: u.role, 
+              isStaffRole: hasStaffRole, 
+              willShowButton: (validEmployee || validStaff || hasStaffRole)
+            });
           }
         } catch (err) {
           console.error('[CP] Error looking up staff:', err);
