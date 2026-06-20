@@ -13,18 +13,17 @@ Deno.serve(async (req) => {
     }
     if (!isAuthorized) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
-    const body = await req.json().catch(() => ({}));
-    const targetEnv = body.env === 'published' ? 'prod' : 'test';
+    const targetEnv = 'test';
 
     // Get all active employees from EmployeeAccount
     const employees = await base44.asServiceRole.entities.EmployeeAccount.filter(
       { status: 'active', env: targetEnv },
       'email',
-      1000
+      2000
     );
 
     // Get existing StaffDirectory records
-    const staffDirRecords = await base44.asServiceRole.entities.StaffDirectory.list('-created_date', 1000);
+    const staffDirRecords = await base44.asServiceRole.entities.StaffDirectory.list('-created_date', 2000);
     const staffByEmail = {};
     for (const s of staffDirRecords) {
       if (s.env !== targetEnv) continue;
@@ -46,7 +45,7 @@ Deno.serve(async (req) => {
       const email = emp.email?.toLowerCase();
       if (!email) continue;
 
-      // Step 1: Invite to Base44 if not already a user
+      // Step 1: Invite to Base44 if not already a user (1s delay between invites)
       let userId = usersByEmail[email];
       if (!userId) {
         try {
@@ -57,8 +56,9 @@ Deno.serve(async (req) => {
           userId = newUsers.find(u => u.email?.toLowerCase() === email)?.id;
         } catch (inviteErr) {
           console.log(`Skip invite ${email}:`, inviteErr.message);
-          continue;
         }
+        // Delay 1s to avoid rate limit
+        await new Promise(resolve => setTimeout(resolve, 1000));
       }
 
       // Step 2: Sync to StaffDirectory
