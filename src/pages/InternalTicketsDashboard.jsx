@@ -65,8 +65,11 @@ export default function InternalTicketsDashboard() {
   const messagesEndRef = useRef(null);
 
   const userDepartment = ROLE_TO_DEPARTMENT[user?.role] ?? null;
-  const isSuperAdmin = user?.role === 'super_admin' || user?.role === 'tl_management';
+  const isTLorSuperAdmin = user?.role === 'super_admin' || user?.role === 'tl_management';
+  // Roles that see only their own personal tickets (by email), not department-wide
+  const isPersonalView = !isTLorSuperAdmin && user?.role !== 'admin';
 
+  const isSuperAdmin = isTLorSuperAdmin; // alias for compatibility
   const hasAccess = user && Object.keys(ROLE_TO_DEPARTMENT).includes(user.role);
 
   useEffect(() => {
@@ -85,11 +88,19 @@ export default function InternalTicketsDashboard() {
     try {
       let allTickets = [];
 
-      if (isSuperAdmin) {
-        // Super admins / TL Management see everything
+      if (isTLorSuperAdmin) {
+        // TL/Management and super admins see everything
         allTickets = await db.InternalTicket.list('-created_date', 500);
+      } else if (isPersonalView && user?.email) {
+        // CSR, Sales, IT, Accounting, Sign-Ups, On-Boarding, Corp/Training: only their own tickets
+        const [byEmail, assignedToEmail] = await Promise.all([
+          db.InternalTicket.filter({ created_by_email: user.email }),
+          db.InternalTicket.filter({ assigned_to_email: user.email }),
+        ]);
+        const merged = [...(byEmail || []), ...(assignedToEmail || [])];
+        allTickets = Array.from(new Map(merged.map(t => [t.id, t])).values());
       } else if (userDepartment) {
-        // Regular staff: see tickets where their dept is sender OR receiver
+        // Admin role: see all tickets in their department
         const [created, assigned] = await Promise.all([
           db.InternalTicket.filter({ from_department: userDepartment }),
           db.InternalTicket.filter({ to_department: userDepartment }),
@@ -189,9 +200,14 @@ export default function InternalTicketsDashboard() {
       || t.from_department === deptFilter
       || t.to_department === deptFilter;
 
-    // View mode filter (only relevant for non-super-admin)
+    // View mode filter
     let matchView = true;
-    if (!isSuperAdmin && userDepartment) {
+    if (isPersonalView && user?.email) {
+      // Personal roles: filter by individual email
+      if (viewMode === 'assigned') matchView = t.assigned_to_email === user.email;
+      else matchView = t.created_by_email === user.email;
+    } else if (!isTLorSuperAdmin && userDepartment) {
+      // Admin role: filter by department
       if (viewMode === 'assigned') matchView = t.to_department === userDepartment;
       else matchView = t.from_department === userDepartment;
     }
@@ -224,8 +240,8 @@ export default function InternalTicketsDashboard() {
             </Button>
           </div>
 
-          {/* View mode tabs — only for non-super-admin */}
-          {!isSuperAdmin && (
+          {/* View mode tabs — only for non-TL/Management */}
+          {!isTLorSuperAdmin && (
             <Tabs value={viewMode} onValueChange={setViewMode} className="mb-3 w-full">
               <TabsList className="grid w-full grid-cols-2 h-8">
                 <TabsTrigger value="assigned" className="text-xs">Assigned to me</TabsTrigger>
@@ -249,7 +265,7 @@ export default function InternalTicketsDashboard() {
               </SelectContent>
             </Select>
 
-            {isSuperAdmin && (
+            {isTLorSuperAdmin && (
               <Select value={deptFilter} onValueChange={setDeptFilter}>
                 <SelectTrigger className="h-8 text-xs flex-1"><SelectValue placeholder="Dept" /></SelectTrigger>
                 <SelectContent>
