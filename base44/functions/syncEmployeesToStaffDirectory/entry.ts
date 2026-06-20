@@ -15,9 +15,9 @@ Deno.serve(async (req) => {
 
     const targetEnv = 'test';
 
-    // Get all active employees from EmployeeAccount
+    // Get all employees (active + inactive) from EmployeeAccount
     const employees = await base44.asServiceRole.entities.EmployeeAccount.filter(
-      { status: 'active', env: targetEnv },
+      { env: targetEnv },
       'email',
       2000
     );
@@ -75,20 +75,23 @@ Deno.serve(async (req) => {
         current_role: emp.POTBChatsupportrole || null,
       };
 
+      // Block if status is inactive
+      const shouldBlock = emp.status === 'inactive';
+
       if (staffRecord) {
-        // Update (preserve is_blocked, portal_access_granted)
+        // Update (block if inactive, otherwise preserve is_blocked)
         await base44.asServiceRole.entities.StaffDirectory.update(staffRecord.id, {
           ...payload,
-          is_blocked: staffRecord.is_blocked ?? false,
+          is_blocked: shouldBlock ? true : (staffRecord.is_blocked ?? false),
           portal_access_granted: staffRecord.portal_access_granted ?? false,
         });
         updated++;
       } else {
-        // Create
+        // Create (block if inactive)
         await base44.asServiceRole.entities.StaffDirectory.create({
           ...payload,
-          is_blocked: false,
-          portal_access_granted: true,
+          is_blocked: shouldBlock,
+          portal_access_granted: !shouldBlock,
           is_potb: false,
         });
         created++;
