@@ -27,7 +27,7 @@ export default function InternalEscalations() {
     
     const unsub = db.Ticket.subscribe(() => {
       clearTimeout(loadTimer);
-      loadTimer = setTimeout(load, 500);
+      loadTimer = setTimeout(load, 1500);
     });
     return () => { clearTimeout(loadTimer); unsub(); };
   }, [user]);

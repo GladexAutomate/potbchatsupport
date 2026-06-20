@@ -5,16 +5,6 @@ import StaffMessenger from '@/components/StaffMessenger';
 import { Crown } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
-const CSR_ROLES = ['super_admin', 'admin', 'csr', 'tl_management'];
-const ROLE_TO_DEPT = {
-  it: 'IT',
-  sales: 'Sales',
-  accounting: 'Accounting',
-  sign_ups: 'Sign-Ups',
-  on_boarding: 'On-Boarding',
-  corp_training: 'Corp/Training',
-  tl_management: 'TL/Management',
-};
 
 export default function VIPTickets() {
   const { user } = useAuth();

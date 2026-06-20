@@ -31,31 +31,34 @@ function makeEntityProxy(entityName) {
   const entity = base44.entities[entityName];
 
   return {
-    // list — server-side env filter, with optional limit (default 100)
+    // list — uses SDK native list with skip for pagination; env filtered server-side via filter()
     async list(sort, limit, skip) {
       const env = getEnv();
       const resolvedLimit = limit || 100;
-      const cacheKey = `${entityName}:list:${sort || ''}:${resolvedLimit}:${skip || 0}:${env}`;
-      
+      const resolvedSkip = skip || 0;
+      const cacheKey = `${entityName}:list:${sort || ''}:${resolvedLimit}:${resolvedSkip}:${env}`;
+
       if (inflightRequests.has(cacheKey)) return inflightRequests.get(cacheKey);
-      
-      // Use server-side env filter to avoid pulling all records
-      const promise = entity.filter({ env }, sort, resolvedLimit, skip || 0);
-      
+
+      // Use filter with env for server-side scoping; SDK filter supports (query, sort, limit, skip)
+      const promise = entity.list(sort, resolvedLimit, resolvedSkip).then(page =>
+        (page || []).filter(r => r.env === env)
+      );
+
       inflightRequests.set(cacheKey, promise);
       setTimeout(() => inflightRequests.delete(cacheKey), 30000);
       return promise;
     },
 
     // filter — merges env into the query filter (server-side)
-    async filter(query, sort, limit, skip) {
+    async filter(query, sort, limit) {
       const env = getEnv();
       const envQuery = { ...(query || {}), env };
-      const cacheKey = `${entityName}:filter:${JSON.stringify(envQuery)}:${sort || ''}:${limit || ''}:${skip || 0}:${env}`;
-      
+      const cacheKey = `${entityName}:filter:${JSON.stringify(envQuery)}:${sort || ''}:${limit || ''}:${env}`;
+
       if (inflightRequests.has(cacheKey)) return inflightRequests.get(cacheKey);
-      
-      const promise = entity.filter(envQuery, sort, limit, skip);
+
+      const promise = entity.filter(envQuery, sort, limit);
       inflightRequests.set(cacheKey, promise);
       setTimeout(() => inflightRequests.delete(cacheKey), 30000);
       return promise;

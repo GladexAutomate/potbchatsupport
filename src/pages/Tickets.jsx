@@ -4,9 +4,6 @@ import { useAuth } from '@/lib/AuthContext';
 import StaffMessenger from '@/components/StaffMessenger';
 import { useLocation } from 'react-router-dom';
 
-// Roles that can see ALL tickets
-const CSR_ROLES = ['super_admin', 'admin', 'csr', 'tl_management'];
-
 // Map role to department name as stored on the ticket
 const ROLE_TO_DEPT = {
   it: 'IT',
