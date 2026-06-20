@@ -59,18 +59,28 @@ export default function SubmitTicket() {
     const num = generateTicketNumber();
     const deadline = new Date(Date.now() + 24 * 3600000);
     const now = new Date().toISOString();
+
+    // Check if customer email is in VIP list
+    const email = user?.email || '';
+    let isVIP = false;
+    if (email) {
+      const vips = await db.VIPCustomer.list('created_date', 500);
+      isVIP = (vips || []).some(v => v.email?.toLowerCase() === email.toLowerCase());
+    }
+
     await db.Ticket.create({
       customer_name: form.customer_name,
-      customer_email: user?.email || '',
+      customer_email: email,
       subject: form.subject,
       description: form.description,
       attachments: attachments.map(a => a.url),
       ticket_number: num,
       status: 'Open',
-      priority: 'Medium',
+      priority: isVIP ? 'Critical' : 'Medium',
       source: 'Customer Portal',
       sla_deadline: deadline.toISOString(),
       escalated: false,
+      is_vip: isVIP,
       dept_sla_log: [{ department: 'CSR', started_at: now, grade: 'Active' }],
     });
     setTicketNum(num);

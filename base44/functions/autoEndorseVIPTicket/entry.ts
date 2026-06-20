@@ -3,13 +3,20 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
-    const { ticket } = await req.json();
+    const payload = await req.json();
+
+    // Entity automation payload: { event, data }
+    const ticket = payload.data || payload.ticket;
 
     if (!ticket) {
-      return Response.json({ error: 'Missing ticket data' }, { status: 400 });
+      return Response.json({ ok: true, skipped: 'no ticket data' });
     }
 
-    // Create group chat endorsement message
+    // Only endorse if this is actually a VIP ticket
+    if (!ticket.is_vip) {
+      return Response.json({ ok: true, skipped: 'not a VIP ticket' });
+    }
+
     await base44.asServiceRole.entities.GroupChatMessage.create({
       env: ticket.env || 'test',
       sender_email: 'system@potb.com',
@@ -21,7 +28,7 @@ Deno.serve(async (req) => {
         ticket_number: ticket.ticket_number || '',
         subject: ticket.subject,
         status: ticket.status || 'Open',
-        priority: ticket.priority || 'Medium',
+        priority: ticket.priority || 'Critical',
         department: ticket.department || '',
         customer_name: ticket.customer_name,
         customer_email: ticket.customer_email || '',
