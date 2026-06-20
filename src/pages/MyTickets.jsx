@@ -42,6 +42,7 @@ export default function MyTickets() {
   const [showRatingModal, setShowRatingModal] = useState(false);
   const [ratingTicket, setRatingTicket] = useState(null);
   const [ratedTicketIds, setRatedTicketIds] = useState(new Set());
+  const [showResolveConfirm, setShowResolveConfirm] = useState(false);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
 
@@ -148,29 +149,33 @@ export default function MyTickets() {
 
   const isImageUrl = (url) => /\.(png|jpg|jpeg|gif|webp)(\?|$)/i.test(url);
 
+  const handleResolutionConfirm = async () => {
+    // Proceed with resolution after confirmation
+    setShowResolveConfirm(false);
+    const log = [...(selectedTicket.dept_sla_log || [])];
+    const activeIdx = log.findIndex(e => e.grade === 'Active');
+    if (activeIdx !== -1) {
+      const active = log[activeIdx];
+      const elapsed = Math.round((Date.now() - new Date(active.started_at).getTime()) / 60000);
+      log[activeIdx] = { ...active, stopped_at: new Date().toISOString(), elapsed_minutes: elapsed, grade: 'Met' };
+    }
+    await db.TicketMessage.create({
+      ticket_id: selectedTicket.id,
+      sender_email: user.email,
+      sender_name: user.full_name || user.email,
+      sender_role: 'customer',
+      message: '✅ Yes, my concern has been resolved. Thank you!',
+      attachments: [],
+    });
+    // Show rating modal without closing ticket yet
+    setRatingTicket({ ...selectedTicket, _pendingSLALog: log });
+    setShowRatingModal(true);
+  };
+
   const handleResolutionResponse = async (resolved) => {
     if (resolved) {
-      // Show rating modal first — ticket will close after rating is submitted
-      const log = [...(selectedTicket.dept_sla_log || [])];
-      const activeIdx = log.findIndex(e => e.grade === 'Active');
-      if (activeIdx !== -1) {
-        const active = log[activeIdx];
-        const elapsed = Math.round((Date.now() - new Date(active.started_at).getTime()) / 60000);
-        log[activeIdx] = { ...active, stopped_at: new Date().toISOString(), elapsed_minutes: elapsed, grade: 'Met' };
-      }
-      // Store SLA log for later when rating is complete
-      setSelectedTicket(prev => ({ ...prev, _pendingSLALog: log }));
-      await db.TicketMessage.create({
-        ticket_id: selectedTicket.id,
-        sender_email: user.email,
-        sender_name: user.full_name || user.email,
-        sender_role: 'customer',
-        message: '✅ Yes, my concern has been resolved. Thank you!',
-        attachments: [],
-      });
-      // Show rating modal without closing ticket yet
-      setRatingTicket({ ...selectedTicket, _pendingSLALog: log });
-      setShowRatingModal(true);
+      // Show confirmation first
+      setShowResolveConfirm(true);
     } else {
       // Reopen ticket
       await db.Ticket.update(selectedTicket.id, { status: 'In Progress', resolution_requested_at: null });
@@ -203,6 +208,24 @@ export default function MyTickets() {
   return (
     <>
     {lightboxUrl && <ImageLightbox url={lightboxUrl} onClose={() => setLightboxUrl(null)} />}
+    {showResolveConfirm && (
+      <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="bg-card rounded-2xl shadow-2xl p-6 w-full max-w-sm border border-border/50"
+        >
+          <div className="text-center space-y-4">
+            <p className="font-poppins font-semibold text-lg">Are you sure?</p>
+            <p className="text-muted-foreground text-sm">Your concern has been resolved?</p>
+            <div className="flex gap-2 justify-center">
+              <Button variant="outline" onClick={() => setShowResolveConfirm(false)}>No, Continue Chat</Button>
+              <Button onClick={handleResolutionConfirm} className="bg-green-500 hover:bg-green-600">Yes, I'm Sure</Button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    )}
     {showRatingModal && ratingTicket && (
       <RatingModal
         ticket={ratingTicket}
