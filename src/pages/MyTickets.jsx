@@ -67,11 +67,11 @@ export default function MyTickets() {
     loadMessages(selectedTicket.id);
     // Subscribe to ticket changes (e.g. auto-close triggers rating modal)
     const unsubTicket = db.Ticket.subscribe(event => {
-      if (event.data?.id === selectedTicket.id && event.data?.status === 'Closed') {
+      if (event.data?.id === selectedTicket.id) {
         setSelectedTicket(event.data);
         setTickets(prev => prev.map(t => t.id === event.data.id ? event.data : t));
-        // Show rating modal only if not yet rated
-        if (!ratedTicketIds.has(event.data.id)) {
+        // Show rating modal only if closed and not yet rated
+        if (event.data?.status === 'Closed' && !ratedTicketIds.has(event.data.id)) {
           setRatingTicket(event.data);
           setShowRatingModal(true);
         }
