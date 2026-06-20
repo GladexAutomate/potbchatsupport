@@ -16,22 +16,34 @@ export default function RatingModal({ ticket, onClose, onRated }) {
    const handleSubmit = async () => {
      if (!rating) return;
      setSubmitting(true);
-     await db.StaffRating.create({
-       ticket_id: ticket.id,
-       staff_email: ticket.resolution_requested_by || ticket.assigned_to || '',
-       staff_name: staffName,
-       rating,
-       remarks: remarks.trim(),
-       rated_at: new Date().toISOString(),
-     });
-     // Close the ticket after rating is submitted
-     if (ticket._pendingSLALog) {
-       await db.Ticket.update(ticket.id, { status: 'Closed', resolved_at: new Date().toISOString(), dept_sla_log: ticket._pendingSLALog });
+     try {
+       // Check if rating already exists for this ticket (safeguard)
+       const existing = await db.StaffRating.filter({ ticket_id: ticket.id }, '', 1);
+       if (existing.length > 0) {
+         setSubmitting(false);
+         onClose();
+         return;
+       }
+       await db.StaffRating.create({
+         ticket_id: ticket.id,
+         staff_email: ticket.resolution_requested_by || ticket.assigned_to || '',
+         staff_name: staffName,
+         rating,
+         remarks: remarks.trim(),
+         rated_at: new Date().toISOString(),
+       });
+       // Close the ticket after rating is submitted
+       if (ticket._pendingSLALog) {
+         await db.Ticket.update(ticket.id, { status: 'Closed', resolved_at: new Date().toISOString(), dept_sla_log: ticket._pendingSLALog });
+       }
+       setDone(true);
+       setSubmitting(false);
+       if (onRated) onRated(ticket.id);
+       setTimeout(() => onClose(), 2000);
+     } catch (error) {
+       setSubmitting(false);
+       console.error('Rating submission error:', error);
      }
-     setDone(true);
-     setSubmitting(false);
-     if (onRated) onRated(ticket.id);
-     setTimeout(() => onClose(), 2000);
    };
 
   return (

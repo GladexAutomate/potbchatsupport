@@ -167,9 +167,18 @@ export default function MyTickets() {
       message: '✅ Yes, my concern has been resolved. Thank you!',
       attachments: [],
     });
-    // Show rating modal without closing ticket yet
-    setRatingTicket({ ...selectedTicket, _pendingSLALog: log });
-    setShowRatingModal(true);
+    // Check if ticket already has a rating
+    const existingRating = await db.StaffRating.filter({ ticket_id: selectedTicket.id }, '', 1);
+    if (existingRating.length === 0) {
+      // Show rating modal only if no rating exists yet
+      setRatingTicket({ ...selectedTicket, _pendingSLALog: log });
+      setShowRatingModal(true);
+    } else {
+      // Ticket already rated, just close it
+      await db.Ticket.update(selectedTicket.id, { status: 'Closed', resolved_at: new Date().toISOString(), dept_sla_log: log });
+      setSelectedTicket(prev => ({ ...prev, status: 'Closed' }));
+      setTickets(prev => prev.map(t => t.id === selectedTicket.id ? { ...t, status: 'Closed' } : t));
+    }
   };
 
   const handleResolutionResponse = async (resolved) => {
