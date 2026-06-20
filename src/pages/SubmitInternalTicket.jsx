@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { CheckCircle, Loader2, ShieldCheck, Upload, X, FileText } from 'lucide-react';
+import { CheckCircle, Loader2, ShieldCheck, Upload, X, FileText, ArrowLeft } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
@@ -105,6 +105,10 @@ export default function SubmitInternalTicket() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col">
       <header className="flex items-center gap-2 sm:gap-3 px-3 sm:px-6 py-3 sm:py-4">
+         <Button variant="ghost" size="icon" onClick={() => navigate('/dashboard')} 
+           className="text-white/50 hover:text-white hover:bg-white/10 flex-shrink-0">
+           <ArrowLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+         </Button>
          <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
            <ShieldCheck className="w-4 h-4 sm:w-5 sm:h-5 text-white" />
          </div>
