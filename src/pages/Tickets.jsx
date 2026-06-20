@@ -31,21 +31,23 @@ export default function Tickets() {
 
     let data = [];
     if (isL1) {
-      // L1: fetch all non-VIP tickets server-side, limit 200 active
-      data = await db.Ticket.filter({ is_vip: false }, '-created_date', 200);
+      // L1: fetch all tickets, filter VIP client-side (SDK doesn't support boolean false filters)
+      data = await db.Ticket.filter({}, '-created_date', 200);
     } else {
       // L2: fetch only tickets assigned to this user
-      data = await db.Ticket.filter({ assigned_to: user.email, is_vip: false }, '-created_date', 100);
+      data = await db.Ticket.filter({ assigned_to: user.email }, '-created_date', 100);
     }
 
     // For L2, also check dept history client-side (small result set)
-    let result = data || [];
+    let result = (data || []).filter(t => !t.is_vip);
     if (!isL1) {
       const dept = ROLE_TO_DEPT[role];
-      const extra = await db.Ticket.filter({ is_vip: false }, '-created_date', 200);
+      const extra = await db.Ticket.filter({}, '-created_date', 200);
       const deptTickets = (extra || []).filter(t =>
-        t.created_by_id === user.id ||
-        (dept && (t.dept_sla_log || []).some(log => log.department === dept))
+        !t.is_vip && (
+          t.created_by_id === user.id ||
+          (dept && (t.dept_sla_log || []).some(log => log.department === dept))
+        )
       );
       const ids = new Set(result.map(t => t.id));
       deptTickets.forEach(t => { if (!ids.has(t.id)) result.push(t); });
