@@ -30,7 +30,7 @@ const navItems = [
 
   // Internal Operations
   { label: 'Internal Operations', href: '#internal-ops', icon: Send, pageKey: 'internal-operations', children: [
-    { label: 'Internal Tickets', href: '/internal-tickets', icon: Send, pageKey: 'internal-tickets' },
+    { label: 'Internal Tickets', href: '/internal-tickets', icon: Send, pageKey: 'internal-tickets', internalBadge: true },
   ]},
   
   // Analytics & Performance
@@ -62,6 +62,7 @@ export default function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [groupChatUnread, setGroupChatUnread] = useState(0);
   const [ticketUnread, setTicketUnread] = useState(0);
+  const [internalTicketUnread, setInternalTicketUnread] = useState(0);
   const [permissions, setPermissions] = useState([]);
   const [mentionNotification, setMentionNotification] = useState(null);
   const mentionTimerRef = useRef(null);
@@ -126,6 +127,9 @@ export default function Layout() {
     if (location.pathname === '/tickets' || location.pathname === '/vip-tickets') {
       setTicketUnread(0);
     }
+    if (location.pathname === '/internal-tickets') {
+      setInternalTicketUnread(0);
+    }
   }, [location.pathname]);
 
   // Track unread ticket messages for tickets assigned to this user
@@ -176,6 +180,51 @@ export default function Layout() {
     });
     return () => unsub();
   }, [user, location.pathname]);
+
+  // Track new internal tickets assigned to this user's department
+  useEffect(() => {
+    if (!user) return;
+    const ROLE_TO_DEPT = {
+      csr: 'CSR', sales: 'Sales', it: 'IT', accounting: 'Accounting',
+      sign_ups: 'Sign-Ups', on_boarding: 'On-Boarding', corp_training: 'Corp/Training',
+      admin: 'Admin', tl_management: 'TL/Management',
+    };
+    const userDept = ROLE_TO_DEPT[role] ?? null;
+    const SEEN_KEY = `internal_ticket_seen_${user.email}`;
+    const getLastSeen = () => parseInt(localStorage.getItem(SEEN_KEY) || '0', 10);
+    const setLastSeen = (ts) => localStorage.setItem(SEEN_KEY, String(ts));
+
+    if (location.pathname === '/internal-tickets') {
+      setLastSeen(Date.now());
+      return;
+    }
+
+    const computeUnread = async () => {
+      const lastSeen = getLastSeen();
+      const recent = await db.InternalTicket.filter({}, '-created_date', 50);
+      const newTickets = (recent || []).filter(t => {
+        const ts = new Date(t.created_date).getTime();
+        if (ts <= lastSeen) return false;
+        if (t.created_by_email === user.email) return false; // own tickets
+        // super_admin/tl_management see all; others check dept
+        if (role === 'super_admin' || role === 'tl_management') return true;
+        return userDept && t.to_department === userDept;
+      });
+      if (newTickets.length > 0) setInternalTicketUnread(newTickets.length);
+    };
+
+    computeUnread();
+    const unsub = db.InternalTicket.subscribe((event) => {
+      if (event.type !== 'create') return;
+      if (location.pathname === '/internal-tickets') { setLastSeen(Date.now()); return; }
+      if (event.data?.created_by_email === user.email) return;
+      const toDept = event.data?.to_department;
+      const isRelevant = role === 'super_admin' || role === 'tl_management'
+        || (userDept && toDept === userDept);
+      if (isRelevant) setInternalTicketUnread(prev => prev + 1);
+    });
+    return () => unsub();
+  }, [user, role, location.pathname]);
 
   // Only staff roles can access the staff portal — redirect everyone else
   useEffect(() => {
@@ -277,7 +326,8 @@ export default function Layout() {
                       const childActive = location.pathname === child.href;
                       const unreadBadge = child.badge && groupChatUnread > 0 ? groupChatUnread : 0;
                       const tktBadge = child.ticketBadge && ticketUnread > 0 ? ticketUnread : 0;
-                      const anyBadge = unreadBadge || tktBadge;
+                      const intBadge = child.internalBadge && internalTicketUnread > 0 ? internalTicketUnread : 0;
+                      const anyBadge = unreadBadge || tktBadge || intBadge;
                       return (
                         <Link
                           key={child.href}
@@ -288,7 +338,7 @@ export default function Layout() {
                             childActive
                               ? "bg-primary text-white shadow-lg shadow-primary/30"
                               : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-white",
-                            tktBadge > 0 && !childActive && "shadow-[0_0_8px_2px_rgba(239,68,68,0.4)]"
+                            (tktBadge > 0 || intBadge > 0) && !childActive && "shadow-[0_0_8px_2px_rgba(239,68,68,0.4)]"
                           )}
                         >
                           <div className="relative flex-shrink-0">
