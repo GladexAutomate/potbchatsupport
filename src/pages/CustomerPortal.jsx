@@ -39,28 +39,10 @@ export default function CustomerPortal() {
         console.log('[CP] Logged in user:', { email: u.email, role: u.role, emailLower });
 
         try {
-          // Check both EmployeeAccount and StaffDirectory
-          const allEmployees = await base44.asServiceRole.entities.EmployeeAccount.list();
-          const allStaff = await base44.asServiceRole.entities.StaffDirectory.list();
-          
-          console.log('[CP] EmployeeAccount records:', allEmployees?.length, '| StaffDirectory records:', allStaff?.length);
-
-          const validEmployee = allEmployees?.find(e => {
-            const empEmail = e.email?.toLowerCase()?.trim();
-            return empEmail === emailLower && !e.is_blocked;
-          });
-
-          const validStaff = allStaff?.find(e => {
-            const staffEmail = e.email?.toLowerCase()?.trim();
-            return staffEmail === emailLower && !e.is_blocked;
-          });
-
-          if (validEmployee) {
-            console.log('[CP] Found in EmployeeAccount:', validEmployee.email);
-            setEmployeeRecord(validEmployee);
-          } else if (validStaff) {
-            console.log('[CP] Found in StaffDirectory:', validStaff.email);
-            setEmployeeRecord(validStaff);
+          const res = await base44.functions.invoke('getStaffStatus', {});
+          if (res.data?.employee) {
+            console.log('[CP] Found employee record:', res.data.employee.email, 'from', res.data.source);
+            setEmployeeRecord(res.data.employee);
           } else {
             console.log('[CP] No employee/staff record found');
           }
