@@ -131,13 +131,22 @@ export default function GroupChatMessageBubble({ msg, currentUser, isMe, onReply
             )}
             <button
               onClick={async () => {
-                // Use ticket_ref.is_vip as primary signal (reliable, set at endorsement time)
-                // Fall back to live fetch only if not set in ticket_ref
                 let isVip = msg.ticket_ref.is_vip;
+                // For old endorsements without is_vip, check VIPCustomer list by email or name
                 if (isVip === undefined || isVip === null) {
                   try {
-                    const ticket = await base44.entities.Ticket.get(msg.ticket_ref.ticket_id);
-                    isVip = ticket?.is_vip;
+                    const vips = await base44.entities.VIPCustomer.list();
+                    const email = msg.ticket_ref.customer_email?.toLowerCase();
+                    const name = msg.ticket_ref.customer_name?.toLowerCase();
+                    isVip = (vips || []).some(v =>
+                      (email && v.email?.toLowerCase() === email) ||
+                      (name && v.name?.toLowerCase() === name)
+                    );
+                    // Also try live ticket fetch as secondary fallback
+                    if (!isVip) {
+                      const ticket = await base44.entities.Ticket.get(msg.ticket_ref.ticket_id);
+                      isVip = ticket?.is_vip === true;
+                    }
                   } catch (e) {}
                 }
                 const route = isVip ? '/vip-tickets' : '/tickets';
