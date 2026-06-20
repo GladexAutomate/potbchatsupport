@@ -195,7 +195,7 @@ export default function StaffRatings() {
                   </div>
                 </div>
                 {/* All recent ratings */}
-                {staff.remarks.length > 0 && (
+                {filteredRatings.filter(r => r.staff_email === staff.email).length > 0 && (
                   <div className="mt-3 space-y-1.5">
                     {filteredRatings.filter(r => r.staff_email === staff.email).slice(0, 10).map((r, i) => {
                       const ticket = tickets[r.ticket_id];
