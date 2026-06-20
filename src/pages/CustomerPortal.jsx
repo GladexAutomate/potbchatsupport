@@ -39,25 +39,30 @@ export default function CustomerPortal() {
         console.log('[CP] Logged in user:', { email: u.email, role: u.role, emailLower });
 
         try {
-          // Query StaffDirectory directly with no env filter (use base44 directly, not db proxy)
+          // Check both EmployeeAccount and StaffDirectory
+          const allEmployees = await base44.asServiceRole.entities.EmployeeAccount.list();
           const allStaff = await base44.asServiceRole.entities.StaffDirectory.list();
           
-          console.log('[CP] StaffDirectory records:', allStaff?.length);
-          console.log('[CP] ALL StaffDirectory emails:', allStaff?.map(e => e.email));
+          console.log('[CP] EmployeeAccount records:', allEmployees?.length, '| StaffDirectory records:', allStaff?.length);
+
+          const validEmployee = allEmployees?.find(e => {
+            const empEmail = e.email?.toLowerCase()?.trim();
+            return empEmail === emailLower && !e.is_blocked;
+          });
 
           const validStaff = allStaff?.find(e => {
             const staffEmail = e.email?.toLowerCase()?.trim();
-            const match = staffEmail === emailLower && !e.is_blocked;
-            console.log('[CP] Checking:', { staffEmail, emailLower, blocked: e.is_blocked, match });
-            return match;
+            return staffEmail === emailLower && !e.is_blocked;
           });
 
-          if (validStaff) {
-            console.log('[CP] Found staff record:', validStaff.email);
+          if (validEmployee) {
+            console.log('[CP] Found in EmployeeAccount:', validEmployee.email);
+            setEmployeeRecord(validEmployee);
+          } else if (validStaff) {
+            console.log('[CP] Found in StaffDirectory:', validStaff.email);
             setEmployeeRecord(validStaff);
           } else {
-            const hasStaffRole = u.role && u.role !== 'user' && u.role !== 'customer';
-            console.log('[CP] No match. Role:', u.role, 'Will show button:', hasStaffRole);
+            console.log('[CP] No employee/staff record found');
           }
         } catch (err) {
           console.error('[CP] Error looking up staff:', err);
