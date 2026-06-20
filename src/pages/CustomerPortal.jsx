@@ -36,36 +36,40 @@ export default function CustomerPortal() {
         setForm(f => ({ ...f, customer_name: u.full_name || '' }));
         // Check if this email is a registered staff employee (case-insensitive)
         const emailLower = u.email?.toLowerCase()?.trim();
-        console.log('Looking for staff with email:', emailLower);
+        console.log('[CP] Logged in user:', { email: u.email, role: u.role, emailLower });
 
         try {
           const allEmployees = await db.EmployeeAccount.list().catch(() => []);
           const allStaff = await db.StaffDirectory.list().catch(() => []);
 
-          console.log('EmployeeAccount records found:', allEmployees?.length);
-          console.log('StaffDirectory records found:', allStaff?.length);
+          console.log('[CP] EmployeeAccount records:', allEmployees?.length, allEmployees?.map(e => ({ email: e.email, blocked: e.is_blocked })));
+          console.log('[CP] StaffDirectory records:', allStaff?.length, allStaff?.map(e => ({ email: e.email, blocked: e.is_blocked })));
 
           const validEmployee = allEmployees?.find(e => {
             const empEmail = e.email?.toLowerCase()?.trim();
-            return empEmail === emailLower && !e.is_blocked;
+            const match = empEmail === emailLower && !e.is_blocked;
+            if (!match) console.log('[CP] Employee check:', { empEmail, emailLower, blocked: e.is_blocked, match });
+            return match;
           });
 
           const validStaff = allStaff?.find(e => {
             const staffEmail = e.email?.toLowerCase()?.trim();
-            return staffEmail === emailLower && !e.is_blocked;
+            const match = staffEmail === emailLower && !e.is_blocked;
+            if (!match) console.log('[CP] Staff check:', { staffEmail, emailLower, blocked: e.is_blocked, match });
+            return match;
           });
 
           if (validEmployee) {
-            console.log('Found employee:', validEmployee);
+            console.log('[CP] Found employee record:', validEmployee.email);
             setEmployeeRecord(validEmployee);
           } else if (validStaff) {
-            console.log('Found staff:', validStaff);
+            console.log('[CP] Found staff record:', validStaff.email);
             setEmployeeRecord(validStaff);
           } else {
-            console.log('No staff record found for:', emailLower);
+            console.log('[CP] No match found. User role:', u.role, 'Will show button if role is not user/customer:', (u.role && u.role !== 'user' && u.role !== 'customer'));
           }
         } catch (err) {
-          console.error('Error looking up staff:', err);
+          console.error('[CP] Error looking up staff:', err);
         }
       }
     }).catch(() => {});
