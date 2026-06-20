@@ -268,6 +268,21 @@ export default function Layout() {
   const [internalOpsExpanded, setInternalOpsExpanded] = useState(internalOpsOpen);
   const [analyticsExpanded, setAnalyticsExpanded] = useState(analyticsOpen);
   const [adminExpanded, setAdminExpanded] = useState(adminOpen);
+  const navScrollRef = useRef(null);
+
+  const handleCategoryToggle = (setter, currentState) => {
+    // Preserve scroll position when toggling
+    if (navScrollRef.current) {
+      const scrollPos = navScrollRef.current.scrollTop;
+      setter(v => !v);
+      // Restore scroll after state updates
+      setTimeout(() => {
+        if (navScrollRef.current) navScrollRef.current.scrollTop = scrollPos;
+      }, 0);
+    } else {
+      setter(v => !v);
+    }
+  };
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
@@ -283,7 +298,7 @@ export default function Layout() {
         )}
       </div>
 
-      <nav className="flex-1 py-4 px-2 space-y-1 overflow-y-auto overflow-x-hidden">
+      <nav ref={navScrollRef} className="flex-1 py-4 px-2 space-y-1 overflow-x-hidden overflow-y-auto">
         {filtered.map((item) => {
           const active = location.pathname === item.href;
           if (item.children) {
@@ -297,13 +312,13 @@ export default function Layout() {
             return (
               <div key={item.href}>
                 <button
-                  onClick={() => {
-                    if (item.pageKey === 'settings') setSettingsExpanded(v => !v);
-                    if (item.pageKey === 'customer-operations') setCustomerOpsExpanded(v => !v);
-                    if (item.pageKey === 'internal-operations') setInternalOpsExpanded(v => !v);
-                    if (item.pageKey === 'analytics') setAnalyticsExpanded(v => !v);
-                    if (item.pageKey === 'administration') setAdminExpanded(v => !v);
-                  }}
+                   onClick={() => {
+                     if (item.pageKey === 'settings') handleCategoryToggle(setSettingsExpanded);
+                     if (item.pageKey === 'customer-operations') handleCategoryToggle(setCustomerOpsExpanded);
+                     if (item.pageKey === 'internal-operations') handleCategoryToggle(setInternalOpsExpanded);
+                     if (item.pageKey === 'analytics') handleCategoryToggle(setAnalyticsExpanded);
+                     if (item.pageKey === 'administration') handleCategoryToggle(setAdminExpanded);
+                   }}
                   className={cn(
                     "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium",
                     isCollapsed && "justify-center px-2",

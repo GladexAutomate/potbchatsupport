@@ -157,7 +157,7 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
     <>
       {showCenterToast && <CenterToast message={toastMessage} duration={2000} onComplete={() => setShowCenterToast(false)} />}
       <Dialog open onOpenChange={onClose}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md mx-4 sm:max-w-lg px-4 sm:px-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <ArrowRightLeft className="w-4 h-4 text-primary" />
