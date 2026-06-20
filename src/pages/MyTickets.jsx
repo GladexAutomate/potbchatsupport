@@ -317,10 +317,7 @@ export default function MyTickets() {
                 <AnimatePresence>
                   {messages.map((msg, idx) => {
                     const isMe = msg.sender_role === 'customer';
-                    const isResolutionRequest = msg.message_type === 'resolution_request';
-                    const isLastResolutionRequest = isResolutionRequest &&
-                      idx === messages.map(m => m.message_type).lastIndexOf('resolution_request') &&
-                      selectedTicket.status === 'Pending Resolution';
+                    const isResolutionRequest = msg.message_type === 'resolution_request' && selectedTicket.status === 'Pending Resolution';
 
                     return (
                       <motion.div key={msg.id} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}
@@ -353,7 +350,7 @@ export default function MyTickets() {
                             )}
                           </div>
                           {/* YES / NO buttons for resolution request */}
-                          {isLastResolutionRequest && (
+                           {isResolutionRequest && (
                             <div className="flex gap-2 mt-2 ml-1">
                               <button
                                 onClick={() => handleResolutionResponse(true)}
