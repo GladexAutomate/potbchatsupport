@@ -59,7 +59,7 @@ export default function VIPTickets() {
     let loadTimer;
 
     const loadVIPTickets = () => {
-      db.Ticket.list('-created_date', 200).then(data => {
+      db.Ticket.list('-created_date', 500).then(data => {
         const filtered = filterTicketsForUser(data || []);
         // Match tickets that are flagged is_vip OR whose customer email is in the VIPCustomer list
         const vipOnly = filtered.filter(t =>

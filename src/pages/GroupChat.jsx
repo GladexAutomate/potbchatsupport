@@ -25,6 +25,10 @@ export default function GroupChat() {
   const [showPinned, setShowPinned] = useState(false);
   const [mentionSuggestions, setMentionSuggestions] = useState([]);
   const [mentionQuery, setMentionQuery] = useState('');
+  const [msgOffset, setMsgOffset] = useState(0);
+  const [hasMoreMsgs, setHasMoreMsgs] = useState(false);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const MSG_PAGE = 100;
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const inputRef = useRef(null);
@@ -35,10 +39,13 @@ export default function GroupChat() {
   useEffect(() => {
     let loadTimer;
     
-    // Initial load of messages only
+    // Initial load — latest 100 messages
     const initialLoad = async () => {
-      const msgs = await db.GroupChatMessage.list('created_date', 200);
-      setMessages(msgs || []);
+      const msgs = await db.GroupChatMessage.list('-created_date', MSG_PAGE);
+      const sorted = (msgs || []).reverse();
+      setMessages(sorted);
+      setHasMoreMsgs((msgs || []).length === MSG_PAGE);
+      setMsgOffset(MSG_PAGE);
     };
 
     initialLoad();
@@ -102,18 +109,18 @@ export default function GroupChat() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
-  // Mark messages as read with longer debounce to prevent rate limit
+  // Mark messages as read — only last 50 unread, batched sequentially to avoid rate limiting
   useEffect(() => {
     if (!user || messages.length === 0) return;
     
-    const readTimer = setTimeout(() => {
-      const unreadMessages = messages.filter(msg => !msg.read_by?.includes(user.email));
-      if (unreadMessages.length > 0) {
-        Promise.all(unreadMessages.map(msg => 
-          db.GroupChatMessage.update(msg.id, { 
-            read_by: [...(msg.read_by || []), user.email] 
-          })
-        )).catch(() => {});
+    const readTimer = setTimeout(async () => {
+      const unreadMessages = messages
+        .filter(msg => !msg.read_by?.includes(user.email))
+        .slice(-50); // Only mark the most recent 50 unread at a time
+      for (const msg of unreadMessages) {
+        await db.GroupChatMessage.update(msg.id, { 
+          read_by: [...(msg.read_by || []), user.email] 
+        }).catch(() => {});
       }
     }, 5000);
 
@@ -121,8 +128,21 @@ export default function GroupChat() {
   }, [messages, user]);
 
   const loadMessages = async () => {
-    const msgs = await db.GroupChatMessage.list('created_date', 200);
-    setMessages(msgs || []);
+    const msgs = await db.GroupChatMessage.list('-created_date', MSG_PAGE);
+    const sorted = (msgs || []).reverse();
+    setMessages(sorted);
+    setHasMoreMsgs((msgs || []).length === MSG_PAGE);
+    setMsgOffset(MSG_PAGE);
+  };
+
+  const loadMoreMessages = async () => {
+    setLoadingMore(true);
+    const older = await db.GroupChatMessage.list('-created_date', MSG_PAGE, msgOffset);
+    const sorted = (older || []).reverse();
+    setMessages(prev => [...sorted, ...prev]);
+    setHasMoreMsgs((older || []).length === MSG_PAGE);
+    setMsgOffset(prev => prev + MSG_PAGE);
+    setLoadingMore(false);
   };
 
   const handleSend = async () => {
@@ -295,6 +315,18 @@ export default function GroupChat() {
 
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-1 bg-muted/5">
+        {hasMoreMsgs && !showPinned && !searchQuery && (
+          <div className="flex justify-center py-2">
+            <button
+              onClick={loadMoreMessages}
+              disabled={loadingMore}
+              className="text-xs text-primary hover:underline flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-primary/20 hover:bg-primary/5 transition-colors"
+            >
+              {loadingMore ? <Loader2 className="w-3 h-3 animate-spin" /> : null}
+              {loadingMore ? 'Loading...' : 'Load older messages'}
+            </button>
+          </div>
+        )}
         {displayMessages.length === 0 && (
           <div className="flex flex-col items-center justify-center h-full text-muted-foreground">
             <MessageSquare className="w-12 h-12 mb-3 opacity-20" />

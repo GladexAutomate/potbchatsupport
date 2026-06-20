@@ -101,19 +101,19 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Load all messages once for unread badge computation with debounce
+  // Load recent messages for unread badge computation — capped to avoid memory pressure
   useEffect(() => {
     let loadTimer;
-    db.TicketMessage.list('-created_date', 500).then(msgs => {
+    db.TicketMessage.list('-created_date', 300).then(msgs => {
       setAllMessages(msgs || []);
     });
     const unsub = db.TicketMessage.subscribe(() => {
       clearTimeout(loadTimer);
       loadTimer = setTimeout(() => {
-        db.TicketMessage.list('-created_date', 500).then(msgs => {
+        db.TicketMessage.list('-created_date', 300).then(msgs => {
           setAllMessages(msgs || []);
         });
-      }, 1000); // Increased debounce to 1s to prevent rate limiting
+      }, 2000); // 2s debounce to prevent rate limiting at scale
     });
     return () => { clearTimeout(loadTimer); unsub(); };
   }, []);
