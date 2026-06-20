@@ -201,17 +201,17 @@ export default function StaffRatings() {
                       const ticket = tickets[r.ticket_id];
                       return (
                         <div key={i} className="flex items-start gap-2 bg-muted/40 rounded-lg px-3 py-2">
-                          <StarDisplay rating={r.rating} />
-                          <div className="flex-1 min-w-0">
-                            {ticket && (
-                              <a href={`/my-tickets?ticket=${r.ticket_id}`} target="_blank" rel="noopener noreferrer" className="text-xs font-medium text-primary hover:underline">
-                                #{ticket.ticket_number}
-                              </a>
-                            )}
-                            {r.remarks && <p className="text-xs text-muted-foreground">"{r.remarks}"</p>}
-                          </div>
-                          <span className="text-xs text-muted-foreground/50 shrink-0">{format(new Date(r.rated_at), 'MMM d')}</span>
-                        </div>
+                           <StarDisplay rating={r.rating} />
+                           <div className="flex-1 min-w-0">
+                             {ticket && (
+                               <a href={`${ticket.is_vip ? '/vip-tickets' : '/tickets'}?open=${r.ticket_id}`} className="text-xs font-medium text-primary hover:underline">
+                                 #{ticket.ticket_number}
+                               </a>
+                             )}
+                             {r.remarks && <p className="text-xs text-muted-foreground">"{r.remarks}"</p>}
+                           </div>
+                           <span className="text-xs text-muted-foreground/50 shrink-0">{format(new Date(r.rated_at), 'MMM d')}</span>
+                         </div>
                       );
                     })}
                   </div>
