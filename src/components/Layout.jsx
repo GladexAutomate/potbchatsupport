@@ -22,8 +22,8 @@ const navItems = [
   
   // Customer Operations
   { label: 'Customer Operations', href: '#customer-ops', icon: FolderOpen, pageKey: 'customer-operations', children: [
-    { label: 'All Tickets', href: '/tickets', icon: Ticket, pageKey: 'tickets' },
-    { label: 'VIP Tickets', href: '/vip-tickets', icon: Crown, pageKey: 'vip-tickets' },
+    { label: 'All Tickets', href: '/tickets', icon: Ticket, pageKey: 'tickets', ticketBadge: true },
+    { label: 'VIP Tickets', href: '/vip-tickets', icon: Crown, pageKey: 'vip-tickets', ticketBadge: true },
     { label: 'Escalations', href: '/escalations', icon: Crown, pageKey: 'escalations' },
     { label: 'Group Chat', href: '/group-chat', icon: MessagesSquare, pageKey: 'group-chat', badge: true },
   ]},
@@ -61,6 +61,7 @@ export default function Layout() {
   const [hoverCollapsed, setHoverCollapsed] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [groupChatUnread, setGroupChatUnread] = useState(0);
+  const [ticketUnread, setTicketUnread] = useState(0);
   const [permissions, setPermissions] = useState([]);
   const [mentionNotification, setMentionNotification] = useState(null);
   const mentionTimerRef = useRef(null);
@@ -122,7 +123,59 @@ export default function Layout() {
     if (location.pathname === '/group-chat') {
       setGroupChatUnread(0);
     }
+    if (location.pathname === '/tickets' || location.pathname === '/vip-tickets') {
+      setTicketUnread(0);
+    }
   }, [location.pathname]);
+
+  // Track unread ticket messages for tickets assigned to this user
+  useEffect(() => {
+    if (!user) return;
+    const SEEN_KEY = `ticket_msg_seen_${user.email}`;
+    const getLastSeen = () => parseInt(localStorage.getItem(SEEN_KEY) || '0', 10);
+    const setLastSeen = (ts) => localStorage.setItem(SEEN_KEY, String(ts));
+
+    const computeUnread = async () => {
+      const lastSeen = getLastSeen();
+      // Get recent ticket messages newer than last seen
+      const recentMsgs = await db.TicketMessage.filter({}, '-created_date', 50);
+      const newMsgs = (recentMsgs || []).filter(m => {
+        if (m.sender_email === user.email) return false; // own messages
+        const msgTime = new Date(m.created_date).getTime();
+        return msgTime > lastSeen;
+      });
+      if (newMsgs.length === 0) return;
+      // Check if any belong to tickets assigned to this user
+      const ticketIds = [...new Set(newMsgs.map(m => m.ticket_id))];
+      const tickets = await Promise.all(ticketIds.map(id => db.Ticket.get(id)));
+      const relevant = tickets.filter(t => t && t.assigned_to === user.email);
+      if (relevant.length > 0 && (location.pathname !== '/tickets' && location.pathname !== '/vip-tickets')) {
+        setTicketUnread(prev => prev + newMsgs.filter(m => relevant.some(t => t.id === m.ticket_id)).length);
+      }
+    };
+
+    // Update lastSeen when on tickets pages
+    if (location.pathname === '/tickets' || location.pathname === '/vip-tickets') {
+      setLastSeen(Date.now());
+    }
+
+    computeUnread();
+    const unsub = db.TicketMessage.subscribe((event) => {
+      if (event.type !== 'create') return;
+      if (event.data?.sender_email === user.email) return;
+      if (location.pathname === '/tickets' || location.pathname === '/vip-tickets') {
+        setLastSeen(Date.now());
+        return;
+      }
+      // Check if this message belongs to an assigned ticket
+      db.Ticket.get(event.data?.ticket_id).then(ticket => {
+        if (ticket && ticket.assigned_to === user.email) {
+          setTicketUnread(prev => prev + 1);
+        }
+      }).catch(() => {});
+    });
+    return () => unsub();
+  }, [user, location.pathname]);
 
   // Only staff roles can access the staff portal — redirect everyone else
   useEffect(() => {
@@ -223,6 +276,8 @@ export default function Layout() {
                     {item.children.map(child => {
                       const childActive = location.pathname === child.href;
                       const unreadBadge = child.badge && groupChatUnread > 0 ? groupChatUnread : 0;
+                      const tktBadge = child.ticketBadge && ticketUnread > 0 ? ticketUnread : 0;
+                      const anyBadge = unreadBadge || tktBadge;
                       return (
                         <Link
                           key={child.href}
@@ -232,21 +287,22 @@ export default function Layout() {
                             "flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-sm font-medium relative",
                             childActive
                               ? "bg-primary text-white shadow-lg shadow-primary/30"
-                              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-white"
+                              : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-white",
+                            tktBadge > 0 && !childActive && "shadow-[0_0_8px_2px_rgba(239,68,68,0.4)]"
                           )}
                         >
                           <div className="relative flex-shrink-0">
                             <child.icon className="w-4 h-4" />
-                            {unreadBadge > 0 && (
+                            {anyBadge > 0 && (
                               <span className="absolute -top-1.5 -right-1.5 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                                {unreadBadge > 9 ? '9+' : unreadBadge}
+                                {anyBadge > 9 ? '9+' : anyBadge}
                               </span>
                             )}
                           </div>
                           <span className="flex-1">{child.label}</span>
-                          {unreadBadge > 0 && (
+                          {anyBadge > 0 && (
                             <span className="bg-red-500 text-white text-xs font-bold rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1 animate-pulse">
-                              {unreadBadge > 9 ? '9+' : unreadBadge}
+                              {anyBadge > 9 ? '9+' : anyBadge}
                             </span>
                           )}
                         </Link>
