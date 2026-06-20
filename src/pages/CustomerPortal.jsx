@@ -42,13 +42,16 @@ export default function CustomerPortal() {
           const allEmployees = await db.EmployeeAccount.list().catch(() => []);
           const allStaff = await db.StaffDirectory.list().catch(() => []);
 
-          console.log('[CP] EmployeeAccount records:', allEmployees?.length, allEmployees?.map(e => ({ email: e.email, blocked: e.is_blocked })));
-          console.log('[CP] StaffDirectory records:', allStaff?.length, allStaff?.map(e => ({ email: e.email, blocked: e.is_blocked })));
+          console.log('[CP] EmployeeAccount records:', allEmployees?.length);
+          if (allEmployees?.length > 0) {
+            console.log('[CP] First 5 EmployeeAccount emails:', allEmployees?.slice(0, 5).map(e => ({ raw: e.email, lower: e.email?.toLowerCase()?.trim(), blocked: e.is_blocked })));
+          }
+          console.log('[CP] StaffDirectory records:', allStaff?.length);
 
           const validEmployee = allEmployees?.find(e => {
             const empEmail = e.email?.toLowerCase()?.trim();
             const match = empEmail === emailLower && !e.is_blocked;
-            if (!match) console.log('[CP] Employee check:', { empEmail, emailLower, blocked: e.is_blocked, match });
+            if (empEmail === emailLower) console.log('[CP] EMAIL MATCH FOUND:', { empEmail, blocked: e.is_blocked, will_use: match });
             return match;
           });
 
