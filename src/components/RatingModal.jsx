@@ -5,30 +5,34 @@ import { Star, Send, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function RatingModal({ ticket, onClose, onRated }) {
-  const [rating, setRating] = useState(0);
-  const [hovered, setHovered] = useState(0);
-  const [remarks, setRemarks] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [done, setDone] = useState(false);
+   const [rating, setRating] = useState(0);
+   const [hovered, setHovered] = useState(0);
+   const [remarks, setRemarks] = useState('');
+   const [submitting, setSubmitting] = useState(false);
+   const [done, setDone] = useState(false);
 
-  const staffName = ticket.resolution_requested_by_name || ticket.assigned_to || 'Support Team';
+   const staffName = ticket.resolution_requested_by_name || ticket.assigned_to || 'Support Team';
 
-  const handleSubmit = async () => {
-    if (!rating) return;
-    setSubmitting(true);
-    await db.StaffRating.create({
-      ticket_id: ticket.id,
-      staff_email: ticket.resolution_requested_by || ticket.assigned_to || '',
-      staff_name: staffName,
-      rating,
-      remarks: remarks.trim(),
-      rated_at: new Date().toISOString(),
-    });
-    setDone(true);
-    setSubmitting(false);
-    if (onRated) onRated(ticket.id);
-    setTimeout(() => onClose(), 2000);
-  };
+   const handleSubmit = async () => {
+     if (!rating) return;
+     setSubmitting(true);
+     await db.StaffRating.create({
+       ticket_id: ticket.id,
+       staff_email: ticket.resolution_requested_by || ticket.assigned_to || '',
+       staff_name: staffName,
+       rating,
+       remarks: remarks.trim(),
+       rated_at: new Date().toISOString(),
+     });
+     // Close the ticket after rating is submitted
+     if (ticket._pendingSLALog) {
+       await db.Ticket.update(ticket.id, { status: 'Closed', resolved_at: new Date().toISOString(), dept_sla_log: ticket._pendingSLALog });
+     }
+     setDone(true);
+     setSubmitting(false);
+     if (onRated) onRated(ticket.id);
+     setTimeout(() => onClose(), 2000);
+   };
 
   return (
     <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50 px-4">

@@ -150,7 +150,7 @@ export default function MyTickets() {
 
   const handleResolutionResponse = async (resolved) => {
     if (resolved) {
-      // Close ticket and show rating
+      // Show rating modal first — ticket will close after rating is submitted
       const log = [...(selectedTicket.dept_sla_log || [])];
       const activeIdx = log.findIndex(e => e.grade === 'Active');
       if (activeIdx !== -1) {
@@ -158,8 +158,8 @@ export default function MyTickets() {
         const elapsed = Math.round((Date.now() - new Date(active.started_at).getTime()) / 60000);
         log[activeIdx] = { ...active, stopped_at: new Date().toISOString(), elapsed_minutes: elapsed, grade: 'Met' };
       }
-      const updatedTicket = { ...selectedTicket, status: 'Closed', resolved_at: new Date().toISOString(), dept_sla_log: log };
-      await db.Ticket.update(selectedTicket.id, { status: 'Closed', resolved_at: new Date().toISOString(), dept_sla_log: log });
+      // Store SLA log for later when rating is complete
+      setSelectedTicket(prev => ({ ...prev, _pendingSLALog: log }));
       await db.TicketMessage.create({
         ticket_id: selectedTicket.id,
         sender_email: user.email,
@@ -168,12 +168,9 @@ export default function MyTickets() {
         message: '✅ Yes, my concern has been resolved. Thank you!',
         attachments: [],
       });
-      setSelectedTicket(updatedTicket);
-      setTickets(prev => prev.map(t => t.id === selectedTicket.id ? updatedTicket : t));
-      if (!ratedTicketIds.has(updatedTicket.id)) {
-        setRatingTicket(updatedTicket);
-        setShowRatingModal(true);
-      }
+      // Show rating modal without closing ticket yet
+      setRatingTicket({ ...selectedTicket, _pendingSLALog: log });
+      setShowRatingModal(true);
     } else {
       // Reopen ticket
       await db.Ticket.update(selectedTicket.id, { status: 'In Progress', resolution_requested_at: null });
