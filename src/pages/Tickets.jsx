@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/db';
 import { useAuth } from '@/lib/AuthContext';
-import { getAppEnv } from '@/lib/appEnv';
 import StaffMessenger from '@/components/StaffMessenger';
 import { useLocation } from 'react-router-dom';
 
@@ -27,27 +26,36 @@ export default function Tickets() {
   const [loading, setLoading] = useState(true);
   const autoOpenId = new URLSearchParams(location.search).get('open');
 
-  const filterTicketsForUser = (allTickets) => {
-    if (!user) return [];
+  // Server-side filter: only fetch what this user needs
+  const loadTickets = async () => {
+    if (!user) return;
     const role = user.role;
-    const currentEnv = getAppEnv();
-    const targetEnv = currentEnv === 'preview' ? 'test' : 'prod';
-    
-    // Filter by environment first
-    const envFiltered = allTickets.filter(t => (t.env || 'test') === targetEnv);
-    
-    // L1 (CSR) and TL/Management see all tickets (in current env)
-    if (['super_admin', 'admin', 'csr', 'tl_management'].includes(role)) return envFiltered;
+    const isL1 = ['super_admin', 'admin', 'csr', 'tl_management'].includes(role);
 
-    // L2 roles: only assigned to them, created by them, or in their assignment history (in current env)
-    return envFiltered.filter(t => {
-      const isAssignedToUser = t.assigned_to?.toLowerCase() === user.email?.toLowerCase();
-      const isCreatedByUser = t.created_by_id === user.id;
-      const hasAssignmentHistory = (t.dept_sla_log || []).some(log => 
-        log.department === ROLE_TO_DEPT[role]
+    let data = [];
+    if (isL1) {
+      // L1: fetch all non-VIP tickets server-side, limit 200 active
+      data = await db.Ticket.filter({ is_vip: false }, '-created_date', 200);
+    } else {
+      // L2: fetch only tickets assigned to this user
+      data = await db.Ticket.filter({ assigned_to: user.email, is_vip: false }, '-created_date', 100);
+    }
+
+    // For L2, also check dept history client-side (small result set)
+    let result = data || [];
+    if (!isL1) {
+      const dept = ROLE_TO_DEPT[role];
+      const extra = await db.Ticket.filter({ is_vip: false }, '-created_date', 200);
+      const deptTickets = (extra || []).filter(t =>
+        t.created_by_id === user.id ||
+        (dept && (t.dept_sla_log || []).some(log => log.department === dept))
       );
-      return isAssignedToUser || isCreatedByUser || hasAssignmentHistory;
-    });
+      const ids = new Set(result.map(t => t.id));
+      deptTickets.forEach(t => { if (!ids.has(t.id)) result.push(t); });
+    }
+
+    setTickets(result);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -59,23 +67,14 @@ export default function Tickets() {
   useEffect(() => {
     if (!user) return;
     let loadTimer;
-    const load = () => {
-      db.Ticket.list('-created_date', 500).then(data => {
-        const filtered = filterTicketsForUser(data || []);
-        // Exclude VIP tickets — they live on the VIP Tickets page
-        const nonVip = filtered.filter(t => t.is_vip !== true && !vipEmails.has(t.customer_email?.toLowerCase()));
-        setTickets(nonVip);
-        setLoading(false);
-      });
-    };
-    load();
-    // Real-time subscription with debounce to avoid rate limiting
+    loadTickets();
+    // Debounced subscription — 1.5s buffer to reduce re-renders under high traffic
     const unsub = db.Ticket.subscribe(() => {
       clearTimeout(loadTimer);
-      loadTimer = setTimeout(() => load(), 500);
+      loadTimer = setTimeout(() => loadTickets(), 1500);
     });
     return () => { clearTimeout(loadTimer); unsub(); };
-  }, [user, vipEmails]);
+  }, [user]);
 
   return (
     <div className="p-4 md:p-6 h-full">

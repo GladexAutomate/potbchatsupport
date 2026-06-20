@@ -52,7 +52,6 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
   const [lastSeenMap, setLastSeenMap] = useState({});
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
-  const [allMessages, setAllMessages] = useState([]);
   const [rerouteOpen, setRerouteOpen] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [priorityFilter, setPriorityFilter] = useState('All');
@@ -101,46 +100,41 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
-  // Load recent messages for unread badge computation — capped to avoid memory pressure
+  // Lightweight unread badge: per-ticket, fetch only the last 10 messages per ticket on demand
+  // Instead of loading all messages globally, we track unread via lastSeenMap timestamps
   useEffect(() => {
+    if (!tickets.length) return;
     let loadTimer;
-    db.TicketMessage.list('-created_date', 300).then(msgs => {
-      setAllMessages(msgs || []);
-    });
+
+    const computeUnread = async () => {
+      // Only check open/active tickets (skip resolved/closed — no unread needed)
+      const activeTickets = tickets.filter(t => t.status !== 'Closed' && t.status !== 'Resolved');
+      const counts = {};
+      await Promise.all(activeTickets.map(async (t) => {
+        const msgs = await db.TicketMessage.filter({ ticket_id: t.id }, '-created_date', 20);
+        const sorted = (msgs || []).sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+        const lastStaffReply = sorted.filter(m => m.sender_role === 'staff').pop();
+        const lastSeen = lastSeenMap[t.id];
+        const unreadCustomer = sorted.filter(m => {
+          if (m.sender_role !== 'customer') return false;
+          if (m.message_type === 'system_auto_close' || m.message_type === 'resolution_request') return false;
+          if (lastStaffReply && new Date(m.created_date) <= new Date(lastStaffReply.created_date)) return false;
+          if (lastSeen && new Date(m.created_date) <= new Date(lastSeen)) return false;
+          return true;
+        });
+        if (unreadCustomer.length > 0) counts[t.id] = unreadCustomer.length;
+      }));
+      setUnread(counts);
+    };
+
+    computeUnread();
+    // Re-check unread when a new ticket message arrives — debounced at 3s to avoid flooding
     const unsub = db.TicketMessage.subscribe(() => {
       clearTimeout(loadTimer);
-      loadTimer = setTimeout(() => {
-        db.TicketMessage.list('-created_date', 300).then(msgs => {
-          setAllMessages(msgs || []);
-        });
-      }, 2000); // 2s debounce to prevent rate limiting at scale
+      loadTimer = setTimeout(() => computeUnread(), 3000);
     });
     return () => { clearTimeout(loadTimer); unsub(); };
-  }, []);
-
-  // Compute unread counts: customer messages that staff hasn't replied after
-  useEffect(() => {
-    const counts = {};
-    tickets.forEach(t => {
-      const tMsgs = allMessages.filter(m => m.ticket_id === t.id);
-      if (!tMsgs.length) return;
-      const sorted = [...tMsgs].sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
-      const lastStaffReply = sorted.filter(m => m.sender_role === 'staff').pop();
-      const customerMsgsAfterStaff = sorted.filter(m => {
-        const isCustomer = m.sender_role === 'customer';
-        const isSystemMsg = m.message_type === 'system_auto_close' || m.message_type === 'resolution_request';
-        if (isSystemMsg) return false;
-        if (!lastStaffReply) return isCustomer;
-        return isCustomer && new Date(m.created_date) > new Date(lastStaffReply.created_date);
-      });
-      const lastSeen = lastSeenMap[t.id];
-      const unseenCustomer = lastSeen
-        ? customerMsgsAfterStaff.filter(m => new Date(m.created_date) > new Date(lastSeen))
-        : customerMsgsAfterStaff;
-      if (unseenCustomer.length > 0) counts[t.id] = unseenCustomer.length;
-    });
-    setUnread(counts);
-  }, [allMessages, tickets, lastSeenMap]);
+  }, [tickets, lastSeenMap]);
 
   // Load messages for selected ticket with real-time updates (debounced)
   useEffect(() => {

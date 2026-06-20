@@ -31,54 +31,33 @@ function makeEntityProxy(entityName) {
   const entity = base44.entities[entityName];
 
   return {
-    // list — paginates through all pages, then filters client-side by env
-    async list(sort, limit) {
+    // list — server-side env filter, with optional limit (default 100)
+    async list(sort, limit, skip) {
       const env = getEnv();
-      const cacheKey = `${entityName}:list:${sort || ''}:${limit || '2000'}:${env}`;
+      const resolvedLimit = limit || 100;
+      const cacheKey = `${entityName}:list:${sort || ''}:${resolvedLimit}:${skip || 0}:${env}`;
       
-      // If a request is already in flight, return the same promise
-      if (inflightRequests.has(cacheKey)) {
-        return inflightRequests.get(cacheKey);
-      }
+      if (inflightRequests.has(cacheKey)) return inflightRequests.get(cacheKey);
       
-      const promise = (async () => {
-        const pageSize = 100;
-        const maxRecords = limit || 2000;
-        let all = [];
-        let skip = 0;
-        while (all.length < maxRecords) {
-          const page = await entity.list(sort, pageSize, skip);
-          if (!page || page.length === 0) break;
-          all = all.concat(page);
-          if (page.length < pageSize) break;
-          skip += pageSize;
-        }
-        return all.filter(r => r.env === env);
-      })();
+      // Use server-side env filter to avoid pulling all records
+      const promise = entity.filter({ env }, sort, resolvedLimit, skip || 0);
       
       inflightRequests.set(cacheKey, promise);
-      
-      // Clean up after 5 seconds to allow fresh fetches
-      setTimeout(() => inflightRequests.delete(cacheKey), 5000);
-      
+      setTimeout(() => inflightRequests.delete(cacheKey), 30000);
       return promise;
     },
 
-    // filter — merges env into the query filter
-    async filter(query, sort, limit) {
+    // filter — merges env into the query filter (server-side)
+    async filter(query, sort, limit, skip) {
       const env = getEnv();
       const envQuery = { ...(query || {}), env };
-      const cacheKey = `${entityName}:filter:${JSON.stringify(envQuery)}:${sort || ''}:${limit || ''}:${env}`;
+      const cacheKey = `${entityName}:filter:${JSON.stringify(envQuery)}:${sort || ''}:${limit || ''}:${skip || 0}:${env}`;
       
-      // If a request is already in flight, return the same promise
-      if (inflightRequests.has(cacheKey)) {
-        return inflightRequests.get(cacheKey);
-      }
+      if (inflightRequests.has(cacheKey)) return inflightRequests.get(cacheKey);
       
-      const promise = entity.filter(envQuery, sort, limit);
+      const promise = entity.filter(envQuery, sort, limit, skip);
       inflightRequests.set(cacheKey, promise);
-      setTimeout(() => inflightRequests.delete(cacheKey), 5000);
-      
+      setTimeout(() => inflightRequests.delete(cacheKey), 30000);
       return promise;
     },
 

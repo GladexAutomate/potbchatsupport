@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/db';
 import { useAuth } from '@/lib/AuthContext';
-import { getAppEnv } from '@/lib/appEnv';
 import StaffMessenger from '@/components/StaffMessenger';
 import { Crown } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
@@ -25,27 +24,12 @@ export default function VIPTickets() {
   const [loading, setLoading] = useState(true);
   const autoOpenId = new URLSearchParams(location.search).get('open');
 
-  const filterTicketsForUser = (allTickets) => {
-    if (!user) return [];
-    const role = user.role;
-    const currentEnv = getAppEnv();
-    const targetEnv = currentEnv === 'preview' ? 'test' : 'prod';
-
-    // Filter by environment first
-    const envFiltered = allTickets.filter(t => (t.env || 'test') === targetEnv);
-
-    // L1 (CSR) and TL/Management see all tickets (in current env)
-    if (['super_admin', 'admin', 'csr', 'tl_management'].includes(role)) return envFiltered;
-
-    // L2 roles: only assigned to them, created by them, or in their assignment history (in current env)
-    return envFiltered.filter(t => {
-      const isAssignedToUser = t.assigned_to?.toLowerCase() === user.email?.toLowerCase();
-      const isCreatedByUser = t.created_by_id === user.id;
-      const hasAssignmentHistory = (t.dept_sla_log || []).some(log => 
-        log.department === ROLE_TO_DEPT[role]
-      );
-      return isAssignedToUser || isCreatedByUser || hasAssignmentHistory;
-    });
+  // Server-side filter: only VIP tickets
+  const loadVIPTickets = async () => {
+    if (!user) return;
+    const data = await db.Ticket.filter({ is_vip: true }, '-created_date', 200);
+    setTickets(data || []);
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -57,27 +41,14 @@ export default function VIPTickets() {
   useEffect(() => {
     if (!user) return;
     let loadTimer;
-
-    const loadVIPTickets = () => {
-      db.Ticket.list('-created_date', 500).then(data => {
-        const filtered = filterTicketsForUser(data || []);
-        // Match tickets that are flagged is_vip OR whose customer email is in the VIPCustomer list
-        const vipOnly = filtered.filter(t =>
-          t.is_vip === true || vipEmails.has(t.customer_email?.toLowerCase())
-        );
-        setTickets(vipOnly);
-        setLoading(false);
-      });
-    };
-
     loadVIPTickets();
-    // Real-time subscription with debounce to avoid rate limiting
+    // Debounced subscription — 1.5s buffer to reduce re-renders under high traffic
     const unsub = db.Ticket.subscribe(() => {
       clearTimeout(loadTimer);
-      loadTimer = setTimeout(() => loadVIPTickets(), 500);
+      loadTimer = setTimeout(() => loadVIPTickets(), 1500);
     });
     return () => { clearTimeout(loadTimer); unsub(); };
-  }, [user, vipEmails]);
+  }, [user]);
 
   return (
     <div className="p-4 md:p-6 h-full">

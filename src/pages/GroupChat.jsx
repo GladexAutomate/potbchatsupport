@@ -116,7 +116,7 @@ export default function GroupChat() {
     const readTimer = setTimeout(async () => {
       const unreadMessages = messages
         .filter(msg => !msg.read_by?.includes(user.email))
-        .slice(-50); // Only mark the most recent 50 unread at a time
+        .slice(-20); // Cap at 20 to minimize write pressure
       for (const msg of unreadMessages) {
         await db.GroupChatMessage.update(msg.id, { 
           read_by: [...(msg.read_by || []), user.email] 
