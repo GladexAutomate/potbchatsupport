@@ -186,14 +186,14 @@ export default function StaffRatings() {
                     <StarDisplay rating={Math.round(staff.avg)} />
                   </div>
                 </div>
-                {/* Recent remarks */}
+                {/* All recent ratings */}
                 {staff.remarks.length > 0 && (
                   <div className="mt-3 space-y-1.5">
-                    {staff.remarks.slice(0, 3).map((r, i) => (
+                    {filteredRatings.filter(r => r.staff_email === staff.email).slice(0, 10).map((r, i) => (
                       <div key={i} className="flex items-start gap-2 bg-muted/40 rounded-lg px-3 py-2">
                         <StarDisplay rating={r.rating} />
-                        <p className="text-xs text-muted-foreground flex-1">"{r.text}"</p>
-                        <span className="text-xs text-muted-foreground/50 shrink-0">{format(new Date(r.date), 'MMM d')}</span>
+                        {r.remarks && <p className="text-xs text-muted-foreground flex-1">"{r.remarks}"</p>}
+                        <span className="text-xs text-muted-foreground/50 shrink-0">{format(new Date(r.rated_at), 'MMM d')}</span>
                       </div>
                     ))}
                   </div>
