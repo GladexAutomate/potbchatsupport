@@ -150,7 +150,7 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
         loadTimer = setTimeout(() => {
           loadMessages(selectedTicket.id);
           setLastSeenMap(prev => ({ ...prev, [selectedTicket.id]: new Date().toISOString() }));
-        }, 300);
+        }, 100);
       }
     });
     return () => { clearTimeout(loadTimer); unsub(); };
