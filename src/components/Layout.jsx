@@ -29,7 +29,9 @@ const navItems = [
   ]},
 
   // Internal Operations
-  { label: 'Internal Operations', href: '#internal-ops', icon: Send, pageKey: 'internal-operations', children: [] }, // Children added dynamically
+  { label: 'Internal Operations', href: '#internal-ops', icon: Send, pageKey: 'internal-operations', children: [
+    { label: 'Internal Tickets', href: '/internal-tickets', icon: Send, pageKey: 'internal-tickets' },
+  ]},
   
   // Analytics & Performance
   { label: 'Analytics & Performance', href: '#analytics', icon: BarChart2, pageKey: 'analytics', children: [
@@ -139,60 +141,7 @@ export default function Layout() {
      return perm?.has_access === true;
    };
 
-  // Map user roles to their internal ticket pages
-  const departmentRoutes = {
-    'csr': '/internal-tickets-csr',
-    'sales': '/internal-tickets-sales',
-    'it': '/internal-tickets-it',
-    'accounting': '/internal-tickets-accounting',
-    'sign_ups': '/internal-tickets-signups',
-    'on_boarding': '/internal-tickets-onboarding',
-    'corp_training': '/internal-tickets-corptraining',
-  };
-
-  const departmentLabels = {
-    'sales': 'Sales',
-    'it': 'IT',
-    'accounting': 'Accounting',
-    'sign_ups': 'Sign-Ups',
-    'on_boarding': 'On-Boarding',
-    'corp_training': 'Corp/Training',
-  };
-
-  // Map internal ticket page keys to their routes
-  const internalPageKeys = {
-    'internal-tickets-csr': { label: 'CSR Tickets', route: '/internal-tickets-csr' },
-    'internal-tickets-sales': { label: 'Sales Tickets', route: '/internal-tickets-sales' },
-    'internal-tickets-it': { label: 'IT Tickets', route: '/internal-tickets-it' },
-    'internal-tickets-accounting': { label: 'Accounting Tickets', route: '/internal-tickets-accounting' },
-    'internal-tickets-signups': { label: 'Sign-Ups Tickets', route: '/internal-tickets-signups' },
-    'internal-tickets-onboarding': { label: 'On-Boarding Tickets', route: '/internal-tickets-onboarding' },
-    'internal-tickets-corptraining': { label: 'Corp/Training Tickets', route: '/internal-tickets-corptraining' },
-    'internal-tickets-admin': { label: 'Internal Tickets Admin', route: '/internal-tickets-admin' },
-  };
-
-  // Build internal tickets nav before filtering
-  const internalOperationsChildren = (() => {
-    const children = [];
-    Object.entries(internalPageKeys).forEach(([pageKey, data]) => {
-      if (hasPageAccess(pageKey)) {
-        children.push({
-          label: data.label,
-          href: data.route,
-          icon: Send,
-          pageKey: pageKey
-        });
-      }
-    });
-    return children;
-  })();
-
-  // Update navItems with built children
-  const navItemsWithChildren = navItems.map(item => 
-    item.pageKey === 'internal-operations' 
-      ? { ...item, children: internalOperationsChildren }
-      : item
-  );
+  const navItemsWithChildren = navItems;
 
   const filtered = navItemsWithChildren
     .filter(n => hasPageAccess(n.pageKey))
@@ -208,7 +157,7 @@ export default function Layout() {
 
   const settingsOpen = ['/settings', '/test-accounts', '/chatbot-config', '/replying-center', '/conversation-tags'].includes(location.pathname);
   const customerOpsOpen = ['/tickets', '/vip-tickets', '/escalations', '/group-chat'].includes(location.pathname);
-  const internalOpsOpen = ['/internal-tickets-sales', '/internal-tickets-it', '/internal-tickets-accounting', '/internal-tickets-signups', '/internal-tickets-onboarding', '/internal-tickets-corptraining'].includes(location.pathname);
+  const internalOpsOpen = location.pathname === '/internal-tickets';
   const analyticsOpen = ['/kpi', '/staff-ratings'].includes(location.pathname);
   const adminOpen = ['/users', '/customers', '/role-permissions'].includes(location.pathname);
 

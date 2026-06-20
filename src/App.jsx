@@ -26,14 +26,7 @@ import StaffRatings from './pages/StaffRatings';
 import GroupChat from './pages/GroupChat';
 import VIPTickets from './pages/VIPTickets';
 import EmailLogin from './pages/EmailLogin';
-import CSRInternalTickets from './pages/InternalTickets/CSR';
-import SalesInternalTickets from './pages/InternalTickets/Sales';
-import ITInternalTickets from './pages/InternalTickets/IT';
-import AccountingInternalTickets from './pages/InternalTickets/Accounting';
-import SignUpsInternalTickets from './pages/InternalTickets/SignUps';
-import OnBoardingInternalTickets from './pages/InternalTickets/OnBoarding';
-import CorpTrainingInternalTickets from './pages/InternalTickets/CorpTraining';
-import AdminInternalTickets from './pages/InternalTickets/Admin';
+import InternalTicketsDashboard from './pages/InternalTicketsDashboard';
 import InternalEscalations from './pages/InternalEscalations';
 import SLASettings from './pages/SLASettings';
 
@@ -97,14 +90,7 @@ const AuthenticatedApp = () => {
         <Route path="/staff-ratings" element={<StaffRatings />} />
         <Route path="/group-chat" element={<GroupChat />} />
         <Route path="/vip-tickets" element={<VIPTickets />} />
-        <Route path="/internal-tickets-csr" element={<CSRInternalTickets />} />
-        <Route path="/internal-tickets-sales" element={<SalesInternalTickets />} />
-        <Route path="/internal-tickets-it" element={<ITInternalTickets />} />
-        <Route path="/internal-tickets-accounting" element={<AccountingInternalTickets />} />
-        <Route path="/internal-tickets-signups" element={<SignUpsInternalTickets />} />
-        <Route path="/internal-tickets-onboarding" element={<OnBoardingInternalTickets />} />
-        <Route path="/internal-tickets-corptraining" element={<CorpTrainingInternalTickets />} />
-        <Route path="/internal-tickets-admin" element={<AdminInternalTickets />} />
+        <Route path="/internal-tickets" element={<InternalTicketsDashboard />} />
         <Route path="/escalations" element={<InternalEscalations />} />
         <Route path="/sla-settings" element={<SLASettings />} />
       </Route>
