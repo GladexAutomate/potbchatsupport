@@ -15,6 +15,7 @@ export default function CreateInternalTicketModal({ onTicketCreated }) {
   const [open, setOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const isTLManagement = user?.role === 'tl_management';
   const [formData, setFormData] = useState({
     from_department: '',
     to_department: '',
@@ -100,26 +101,41 @@ export default function CreateInternalTicketModal({ onTicketCreated }) {
           <div className="space-y-4 py-2">
             <div>
               <label className="text-xs font-semibold text-foreground mb-1.5 block">From Department *</label>
-              <Input
-                placeholder="Your department"
-                value={formData.from_department}
-                disabled
-                className="h-8 text-sm"
-              />
+              {isTLManagement ? (
+                <Select value={formData.from_department} onValueChange={(v) => setFormData({ ...formData, from_department: v })}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ALL_DEPARTMENTS.map(dept => (
+                      <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  placeholder="Your department"
+                  value={formData.from_department}
+                  disabled
+                  className="h-8 text-sm"
+                />
+              )}
             </div>
-            <div>
-              <label className="text-xs font-semibold text-foreground mb-1.5 block">To Department *</label>
-              <Select value={formData.to_department} onValueChange={(v) => setFormData({ ...formData, to_department: v })}>
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Select department" />
-                </SelectTrigger>
-                <SelectContent>
-                  {ALL_DEPARTMENTS.filter(d => d !== formData.from_department).map(dept => (
-                    <SelectItem key={dept} value={dept}>{dept}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {formData.from_department && (
+              <div>
+                <label className="text-xs font-semibold text-foreground mb-1.5 block">To Department *</label>
+                <Select value={formData.to_department} onValueChange={(v) => setFormData({ ...formData, to_department: v })}>
+                  <SelectTrigger className="h-8 text-xs">
+                    <SelectValue placeholder="Select department" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {ALL_DEPARTMENTS.filter(d => d !== formData.from_department).map(dept => (
+                      <SelectItem key={dept} value={dept}>{dept}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
             <div>
               <label className="text-xs font-semibold text-foreground mb-1.5 block">Subject *</label>
               <Input
