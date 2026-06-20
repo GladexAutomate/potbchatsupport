@@ -18,7 +18,7 @@ const ALL_DEPARTMENTS = ['Sales', 'IT', 'Accounting', 'Sign-Ups', 'On-Boarding',
 const CSR_BACK_DEPARTMENTS = ['General'];
 const DEPARTMENTS = ALL_DEPARTMENTS; // used conditionally below
 const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
-const STATUSES = ['Open', 'In Progress', 'Pending Department', 'Resolved'];
+const STATUSES = ['Open', 'In Progress', 'Pending Department'];
 
 const DEPT_NOTES = {
   'Sales': 'Domestic / International inquiries',
