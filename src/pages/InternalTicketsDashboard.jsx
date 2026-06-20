@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { formatDateFull, convertOldTimestampFormat } from '@/lib/timezone';
+import CreateInternalTicketModal from '@/components/CreateInternalTicketModal';
 import { toZonedTime } from 'date-fns-tz';
 import { format } from 'date-fns';
 
@@ -235,9 +236,7 @@ export default function InternalTicketsDashboard() {
         <div className="p-4 border-b border-border/50">
           <div className="flex items-center justify-between gap-2 mb-3">
             <h2 className="font-sora font-bold text-lg">Internal Tickets</h2>
-            <Button size="sm" className="gap-1.5 h-8 text-xs" onClick={() => navigate('/submit-internal-ticket')}>
-              <Plus className="w-3.5 h-3.5" /> Create
-            </Button>
+            <CreateInternalTicketModal onTicketCreated={loadData} />
           </div>
 
           {/* View mode tabs — only for non-TL/Management */}
