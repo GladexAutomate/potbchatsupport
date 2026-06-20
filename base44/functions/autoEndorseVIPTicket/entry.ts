@@ -24,6 +24,7 @@ Deno.serve(async (req) => {
         priority: ticket.priority || 'Medium',
         department: ticket.department || '',
         customer_name: ticket.customer_name,
+        is_vip: true,
       },
       reactions: {},
     });

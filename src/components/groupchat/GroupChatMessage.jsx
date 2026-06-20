@@ -131,14 +131,17 @@ export default function GroupChatMessageBubble({ msg, currentUser, isMe, onReply
             )}
             <button
               onClick={async () => {
-                try {
-                  const ticket = await base44.entities.Ticket.get(msg.ticket_ref.ticket_id);
-                  const route = ticket?.is_vip ? '/vip-tickets' : '/tickets';
-                  navigate(`${route}?open=${msg.ticket_ref.ticket_id}`, { replace: true });
-                } catch (e) {
-                  const route = msg.ticket_ref.is_vip ? '/vip-tickets' : '/tickets';
-                  navigate(`${route}?open=${msg.ticket_ref.ticket_id}`, { replace: true });
+                // Use ticket_ref.is_vip as primary signal (reliable, set at endorsement time)
+                // Fall back to live fetch only if not set in ticket_ref
+                let isVip = msg.ticket_ref.is_vip;
+                if (isVip === undefined || isVip === null) {
+                  try {
+                    const ticket = await base44.entities.Ticket.get(msg.ticket_ref.ticket_id);
+                    isVip = ticket?.is_vip;
+                  } catch (e) {}
                 }
+                const route = isVip ? '/vip-tickets' : '/tickets';
+                navigate(`${route}?open=${msg.ticket_ref.ticket_id}`, { replace: true });
               }}
               className="mt-2 flex items-center gap-1 text-xs text-primary hover:underline font-medium"
             >
