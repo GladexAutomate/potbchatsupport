@@ -18,8 +18,8 @@ Deno.serve(async (req) => {
     const isVIP = vips && vips.length > 0;
 
     if (isVIP) {
-      // 1. Auto-escalate to Critical
-      await base44.asServiceRole.entities.Ticket.update(ticket.id, { priority: 'Critical' });
+      // 1. Auto-escalate to Critical and mark as VIP
+      await base44.asServiceRole.entities.Ticket.update(ticket.id, { priority: 'Critical', is_vip: true });
 
       // 2. Post Group Chat alert as ticket_endorsement so staff can click "Open Ticket"
       await base44.asServiceRole.entities.GroupChatMessage.create({
