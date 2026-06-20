@@ -280,8 +280,10 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
     return new Date(b.created_date) - new Date(a.created_date);
   });
 
-  const vipTickets = sortedTickets.filter(t => isVIP(t));
-  const regularTickets = sortedTickets.filter(t => !isVIP(t));
+  // On the VIP page, show all tickets as VIP section. On regular tickets page,
+  // only show VIP section for tickets explicitly flagged is_vip (already filtered out server-side).
+  const vipTickets = isVIPPage ? sortedTickets.filter(t => isVIP(t)) : [];
+  const regularTickets = isVIPPage ? sortedTickets.filter(t => !isVIP(t)) : sortedTickets;
 
   const handleRenotify = async () => {
     if (!selectedTicket || renotifying) return;
