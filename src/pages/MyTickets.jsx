@@ -52,6 +52,13 @@ export default function MyTickets() {
       if (u?.email) {
         db.Ticket.filter({ customer_email: u.email }, '-created_date').then(t => {
           setTickets(t || []);
+          // Auto-open ticket from URL param
+          const params = new URLSearchParams(window.location.search);
+          const ticketId = params.get('ticket');
+          if (ticketId && t) {
+            const ticket = t.find(tk => tk.id === ticketId);
+            if (ticket) setSelectedTicket(ticket);
+          }
           setLoading(false);
         });
         db.StaffRating.list().then(ratings => {
