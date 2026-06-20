@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/db';
+import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import StaffMessenger from '@/components/StaffMessenger';
 import { useLocation } from 'react-router-dom';
@@ -38,8 +39,14 @@ export default function Tickets() {
       data = await db.Ticket.filter({ assigned_to: user.email }, '-created_date', 100);
     }
 
-    // For L2, also check dept history client-side (small result set)
-    let result = (data || []).filter(t => !t.is_vip);
+    // Load VIP emails for fallback check
+    const vipList = await base44.entities.VIPCustomer.filter({});
+    const vipEmailSet = new Set((vipList || []).map(v => v.email?.toLowerCase()));
+
+    // Filter out VIP tickets — check both is_vip flag AND email match
+    let result = (data || []).filter(t =>
+      !t.is_vip && !vipEmailSet.has(t.customer_email?.toLowerCase())
+    );
     if (!isL1) {
       const dept = ROLE_TO_DEPT[role];
       const extra = await db.Ticket.filter({}, '-created_date', 200);

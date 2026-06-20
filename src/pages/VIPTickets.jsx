@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/db';
+import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import StaffMessenger from '@/components/StaffMessenger';
 import { Crown } from 'lucide-react';
@@ -13,11 +14,17 @@ export default function VIPTickets() {
   const [loading, setLoading] = useState(true);
   const autoOpenId = new URLSearchParams(location.search).get('open');
 
-  // Fetch all tickets then filter client-side (SDK doesn't support boolean true filters reliably)
+  // Fetch all tickets + VIP emails, filter client-side using both is_vip flag and email match
   const loadVIPTickets = async () => {
     if (!user) { setLoading(false); return; }
-    const data = await db.Ticket.filter({}, '-created_date', 200);
-    setTickets((data || []).filter(t => t.is_vip === true));
+    const [data, vipList] = await Promise.all([
+      db.Ticket.filter({}, '-created_date', 200),
+      base44.entities.VIPCustomer.filter({}),
+    ]);
+    const vipEmailSet = new Set((vipList || []).map(v => v.email?.toLowerCase()));
+    setTickets((data || []).filter(t =>
+      t.is_vip === true || vipEmailSet.has(t.customer_email?.toLowerCase())
+    ));
     setLoading(false);
   };
 

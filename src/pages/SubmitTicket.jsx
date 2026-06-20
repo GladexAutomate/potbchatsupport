@@ -60,12 +60,12 @@ export default function SubmitTicket() {
     const deadline = new Date(Date.now() + 24 * 3600000);
     const now = new Date().toISOString();
 
-    // Check if customer email is in VIP list
+    // Check if customer email is in VIP list (use base44 directly to avoid env-scoping issues)
     const email = user?.email || '';
     let isVIP = false;
     if (email) {
-      const vips = await db.VIPCustomer.list('created_date', 500);
-      isVIP = (vips || []).some(v => v.email?.toLowerCase() === email.toLowerCase());
+      const vips = await base44.entities.VIPCustomer.filter({ email: email });
+      isVIP = (vips || []).length > 0;
     }
 
     await db.Ticket.create({
