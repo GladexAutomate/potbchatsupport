@@ -154,7 +154,7 @@ export default function CustomerPortal() {
                <ClipboardList className="w-4 h-4" /> My Tickets
              </Button>
            </Link>
-           {(employeeRecord || ['admin', 'super_admin', 'csr', 'it', 'sales', 'accounting', 'sign_ups', 'on_boarding', 'corp_training', 'tl_management'].includes(user?.role)) && (
+           {(employeeRecord || (user?.role && user?.role !== 'user' && user?.role !== 'customer')) && (
              <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10 gap-2" onClick={handleStaffLoginClick}>
                <ShieldCheck className="w-4 h-4" /> Staff Login
              </Button>
