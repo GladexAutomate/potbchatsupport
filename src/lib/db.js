@@ -46,7 +46,7 @@ function makeEntityProxy(entityName) {
       );
 
       inflightRequests.set(cacheKey, promise);
-      setTimeout(() => inflightRequests.delete(cacheKey), 30000);
+      promise.finally(() => setTimeout(() => inflightRequests.delete(cacheKey), 5000));
       return promise;
     },
 
@@ -60,7 +60,7 @@ function makeEntityProxy(entityName) {
 
       const promise = entity.filter(envQuery, sort, limit);
       inflightRequests.set(cacheKey, promise);
-      setTimeout(() => inflightRequests.delete(cacheKey), 30000);
+      promise.finally(() => setTimeout(() => inflightRequests.delete(cacheKey), 5000));
       return promise;
     },
 

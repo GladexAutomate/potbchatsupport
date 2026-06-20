@@ -16,7 +16,7 @@ export default function VIPTickets() {
 
   // Server-side filter: only VIP tickets
   const loadVIPTickets = async () => {
-    if (!user) return;
+    if (!user) { setLoading(false); return; }
     const data = await db.Ticket.filter({ is_vip: true }, '-created_date', 200);
     setTickets(data || []);
     setLoading(false);
@@ -29,7 +29,6 @@ export default function VIPTickets() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
     let loadTimer;
     loadVIPTickets();
     // Debounced subscription — 1.5s buffer to reduce re-renders under high traffic

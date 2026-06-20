@@ -25,7 +25,7 @@ export default function Tickets() {
 
   // Server-side filter: only fetch what this user needs
   const loadTickets = async () => {
-    if (!user) return;
+    if (!user) { setLoading(false); return; }
     const role = user.role;
     const isL1 = ['super_admin', 'admin', 'csr', 'tl_management'].includes(role);
 
@@ -62,7 +62,6 @@ export default function Tickets() {
   }, []);
 
   useEffect(() => {
-    if (!user) return;
     let loadTimer;
     loadTickets();
     // Debounced subscription — 1.5s buffer to reduce re-renders under high traffic
