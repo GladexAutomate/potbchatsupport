@@ -10,23 +10,16 @@ export default function VIPTickets() {
   const { user } = useAuth();
   const location = useLocation();
   const [tickets, setTickets] = useState([]);
-  const [vipEmails, setVipEmails] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const autoOpenId = new URLSearchParams(location.search).get('open');
 
-  // Server-side filter: only VIP tickets
+  // Fetch all tickets then filter client-side (SDK doesn't support boolean true filters reliably)
   const loadVIPTickets = async () => {
     if (!user) { setLoading(false); return; }
-    const data = await db.Ticket.filter({ is_vip: true }, '-created_date', 200);
-    setTickets(data || []);
+    const data = await db.Ticket.filter({}, '-created_date', 200);
+    setTickets((data || []).filter(t => t.is_vip === true));
     setLoading(false);
   };
-
-  useEffect(() => {
-    db.VIPCustomer.list().then(vips => {
-      setVipEmails(new Set((vips || []).map(v => v.email?.toLowerCase())));
-    }).catch(() => {});
-  }, []);
 
   useEffect(() => {
     let loadTimer;
