@@ -132,23 +132,11 @@ export default function GroupChatMessageBubble({ msg, currentUser, isMe, onReply
             <button
               onClick={async () => {
                 try {
-                  // Fetch latest ticket data to get current flags
                   const ticket = await base44.entities.Ticket.get(msg.ticket_ref.ticket_id);
-                  let route = '/tickets';
-                  if (ticket?.is_vip) {
-                    route = '/vip-tickets';
-                  } else if (ticket?.escalated) {
-                    route = '/escalations';
-                  }
+                  const route = ticket?.is_vip ? '/vip-tickets' : '/tickets';
                   navigate(`${route}?open=${msg.ticket_ref.ticket_id}`, { replace: true });
                 } catch (e) {
-                  // Fallback to message data if ticket fetch fails
-                  let route = '/tickets';
-                  if (msg.ticket_ref.is_vip) {
-                    route = '/vip-tickets';
-                  } else if (msg.ticket_ref.escalated) {
-                    route = '/escalations';
-                  }
+                  const route = msg.ticket_ref.is_vip ? '/vip-tickets' : '/tickets';
                   navigate(`${route}?open=${msg.ticket_ref.ticket_id}`, { replace: true });
                 }
               }}
