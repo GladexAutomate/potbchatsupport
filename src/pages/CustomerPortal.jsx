@@ -39,43 +39,25 @@ export default function CustomerPortal() {
         console.log('[CP] Logged in user:', { email: u.email, role: u.role, emailLower });
 
         try {
-          const allEmployees = await db.EmployeeAccount.list().catch(() => []);
-          const allStaff = await db.StaffDirectory.list().catch(() => []);
-
-          console.log('[CP] EmployeeAccount records:', allEmployees?.length);
-          console.log('[CP] ALL EmployeeAccount emails:', allEmployees?.map(e => e.email));
+          // Query StaffDirectory directly with no env filter (use base44 directly, not db proxy)
+          const allStaff = await base44.asServiceRole.entities.StaffDirectory.list();
+          
           console.log('[CP] StaffDirectory records:', allStaff?.length);
-          if (allStaff?.length > 0) {
-            console.log('[CP] ALL StaffDirectory emails:', allStaff?.map(e => e.email));
-          }
-
-          const validEmployee = allEmployees?.find(e => {
-            const empEmail = e.email?.toLowerCase()?.trim();
-            const match = empEmail === emailLower && !e.is_blocked;
-            if (empEmail === emailLower) console.log('[CP] EMAIL MATCH FOUND:', { empEmail, blocked: e.is_blocked, will_use: match });
-            return match;
-          });
+          console.log('[CP] ALL StaffDirectory emails:', allStaff?.map(e => e.email));
 
           const validStaff = allStaff?.find(e => {
             const staffEmail = e.email?.toLowerCase()?.trim();
             const match = staffEmail === emailLower && !e.is_blocked;
-            if (!match) console.log('[CP] Staff check:', { staffEmail, emailLower, blocked: e.is_blocked, match });
+            console.log('[CP] Checking:', { staffEmail, emailLower, blocked: e.is_blocked, match });
             return match;
           });
 
-          if (validEmployee) {
-            console.log('[CP] Found employee record:', validEmployee.email);
-            setEmployeeRecord(validEmployee);
-          } else if (validStaff) {
+          if (validStaff) {
             console.log('[CP] Found staff record:', validStaff.email);
             setEmployeeRecord(validStaff);
           } else {
             const hasStaffRole = u.role && u.role !== 'user' && u.role !== 'customer';
-            console.log('[CP] No email match. Role check:', { 
-              role: u.role, 
-              isStaffRole: hasStaffRole, 
-              willShowButton: (validEmployee || validStaff || hasStaffRole)
-            });
+            console.log('[CP] No match. Role:', u.role, 'Will show button:', hasStaffRole);
           }
         } catch (err) {
           console.error('[CP] Error looking up staff:', err);
