@@ -118,6 +118,14 @@ export default function UserManagement() {
     const newBlocked = !emp.is_blocked;
     await db.EmployeeAccount.update(emp.id, { is_blocked: newBlocked });
     setEmployees(prev => prev.map(e => e.id === emp.id ? { ...e, is_blocked: newBlocked } : e));
+    // Force logout the blocked user immediately so they can't stay active
+    if (newBlocked && emp.email) {
+      try {
+        await base44.functions.invoke('logoutUserByEmail', { target_email: emp.email });
+      } catch (err) {
+        console.warn('Force logout after block failed (non-critical):', err);
+      }
+    }
     setActionLoading(null);
   };
 

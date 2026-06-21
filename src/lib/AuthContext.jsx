@@ -76,6 +76,14 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener('popstate', handleUrlChange);
   }, []);
 
+  // Poll every 60s to detect if a logged-in user gets blocked mid-session
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (isAuthenticated) checkUserAuth();
+    }, 60000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated]);
+
   const checkAppState = async () => {
     try {
       setIsLoadingPublicSettings(true);
@@ -176,16 +184,38 @@ export const AuthProvider = ({ children }) => {
         const appEnv = window.location.hostname.startsWith('preview.') || window.location.hostname.includes('.dev.base44.app') ? 'test' : 'prod';
         const empRecords = await db.EmployeeAccount.filter({ email: currentUser.email, env: appEnv }, 1);
         console.log('Loaded EmployeeAccount for role:', empRecords);
-        if (empRecords && empRecords.length > 0 && empRecords[0].POTBChatsupportrole) {
-          currentUser.role = empRecords[0].POTBChatsupportrole;
-          console.log('Set role from EmployeeAccount:', currentUser.role);
+        if (empRecords && empRecords.length > 0) {
+          const emp = empRecords[0];
+
+          // If blocked — force logout immediately
+          if (emp.is_blocked) {
+            console.warn('User is blocked. Forcing logout.');
+            base44.auth.logout('/');
+            return;
+          }
+
+          if (emp.POTBChatsupportrole) {
+            currentUser.role = emp.POTBChatsupportrole;
+            console.log('Set role from EmployeeAccount:', currentUser.role);
+          }
         } else {
           // Fall back to StaffDirectory if not in EmployeeAccount
           const staffRecords = await db.StaffDirectory.filter({ email: currentUser.email, env: appEnv }, 1);
           console.log('Loaded StaffDirectory for role:', staffRecords);
-          if (staffRecords && staffRecords.length > 0 && staffRecords[0].current_role) {
-            currentUser.role = staffRecords[0].current_role;
-            console.log('Set role from StaffDirectory:', currentUser.role);
+          if (staffRecords && staffRecords.length > 0) {
+            const staff = staffRecords[0];
+
+            // If blocked in StaffDirectory too
+            if (staff.is_blocked) {
+              console.warn('User is blocked in StaffDirectory. Forcing logout.');
+              base44.auth.logout('/');
+              return;
+            }
+
+            if (staff.current_role) {
+              currentUser.role = staff.current_role;
+              console.log('Set role from StaffDirectory:', currentUser.role);
+            }
           }
         }
       } catch (e) {
