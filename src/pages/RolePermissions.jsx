@@ -93,13 +93,13 @@ export default function RolePermissions() {
 
   // Check if there are unsaved changes for the current role
   const hasUnsavedChanges = () => {
-    const allKeys = [...PAGES.map(p => `page_${selectedRole}_${p.name}`), ...FEATURES.map(f => `feature_${selectedRole}_${f.name}`)];
-    return allKeys.some(key => {
-      const [, role, ...rest] = key.split('_');
-      const resourceType = key.startsWith('page') ? 'page' : 'feature';
-      const resourceName = rest.join('_');
-      const draft = draftPermissions.find(p => p.role === role && p.resource_type === resourceType && p.resource_name === resourceName);
-      const saved = savedPermissions.find(p => p.role === role && p.resource_type === resourceType && p.resource_name === resourceName);
+    const allResources = [
+      ...PAGES.map(p => ({ resourceType: 'page', resourceName: p.name })),
+      ...FEATURES.map(f => ({ resourceType: 'feature', resourceName: f.name })),
+    ];
+    return allResources.some(resource => {
+      const draft = draftPermissions.find(p => p.role === selectedRole && p.resource_type === resource.resourceType && p.resource_name === resource.resourceName);
+      const saved = savedPermissions.find(p => p.role === selectedRole && p.resource_type === resource.resourceType && p.resource_name === resource.resourceName);
       return (draft?.has_access ?? false) !== (saved?.has_access ?? false);
     });
   };
