@@ -67,8 +67,6 @@ export default function InternalTicketsDashboard() {
 
   const userDepartment = ROLE_TO_DEPARTMENT[user?.role] ?? null;
   const isTLorSuperAdmin = user?.role === 'super_admin' || user?.role === 'tl_management';
-  // Roles that see only their own personal tickets (by email), not department-wide
-  const isPersonalView = !isTLorSuperAdmin && user?.role !== 'admin';
 
   const isSuperAdmin = isTLorSuperAdmin; // alias for compatibility
   const hasAccess = user && Object.keys(ROLE_TO_DEPARTMENT).includes(user.role);
@@ -92,21 +90,13 @@ export default function InternalTicketsDashboard() {
       if (isTLorSuperAdmin) {
         // TL/Management and super admins see everything
         allTickets = await db.InternalTicket.list('-created_date', 500);
-      } else if (isPersonalView && user?.email) {
-        // CSR, Sales, IT, Accounting, Sign-Ups, On-Boarding, Corp/Training: only their own tickets
-        const [byEmail, assignedToEmail] = await Promise.all([
-          db.InternalTicket.filter({ created_by_email: user.email }),
-          db.InternalTicket.filter({ assigned_to_email: user.email }),
-        ]);
-        const merged = [...(byEmail || []), ...(assignedToEmail || [])];
-        allTickets = Array.from(new Map(merged.map(t => [t.id, t])).values());
       } else if (userDepartment) {
-        // Admin role: see all tickets in their department
-        const [created, assigned] = await Promise.all([
+        // All other roles: see all tickets where their department is from or to
+        const [fromDept, toDept] = await Promise.all([
           db.InternalTicket.filter({ from_department: userDepartment }),
           db.InternalTicket.filter({ to_department: userDepartment }),
         ]);
-        const merged = [...(created || []), ...(assigned || [])];
+        const merged = [...(fromDept || []), ...(toDept || [])];
         allTickets = Array.from(new Map(merged.map(t => [t.id, t])).values());
       }
 
@@ -203,12 +193,8 @@ export default function InternalTicketsDashboard() {
 
     // View mode filter
     let matchView = true;
-    if (isPersonalView && user?.email) {
-      // Personal roles: filter by individual email
-      if (viewMode === 'assigned') matchView = t.assigned_to_email === user.email;
-      else matchView = t.created_by_email === user.email;
-    } else if (!isTLorSuperAdmin && userDepartment) {
-      // Admin role: filter by department
+    if (!isTLorSuperAdmin && userDepartment) {
+      // All non-TL roles: filter by department
       if (viewMode === 'assigned') matchView = t.to_department === userDepartment;
       else matchView = t.from_department === userDepartment;
     }
