@@ -197,30 +197,39 @@ export default function RolePermissions() {
       return;
     }
     setSaveError('');
-    setSaving(true);
     try {
-      const sourcePerms = draftPermissions.filter(p => p.role === copyFromRole);
-      for (const sourcePerm of sourcePerms) {
-        const existing = draftPermissions.find(p => 
-          p.role === selectedRole && p.resource_type === sourcePerm.resource_type && p.resource_name === sourcePerm.resource_name
-        );
-        if (existing) {
-          setDraftPermissions(prev => prev.map(p =>
-            p.role === selectedRole && p.resource_type === sourcePerm.resource_type && p.resource_name === sourcePerm.resource_name
-              ? { ...p, has_access: sourcePerm.has_access }
-              : p
-          ));
-        } else {
-          setDraftPermissions(prev => [...prev, {
-            id: `draft_${selectedRole}_${sourcePerm.resource_type}_${sourcePerm.resource_name}`,
-            role: selectedRole,
-            resource_type: sourcePerm.resource_type,
-            resource_name: sourcePerm.resource_name,
-            resource_label: sourcePerm.resource_label,
-            has_access: sourcePerm.has_access
-          }]);
+      // Copy all pages and features from source role to target role
+      const allResources = [
+        ...PAGES.map(p => ({ resourceType: 'page', resourceName: p.name, label: p.label })),
+        ...FEATURES.map(f => ({ resourceType: 'feature', resourceName: f.name, label: f.label })),
+      ];
+
+      setDraftPermissions(prev => {
+        let updated = [...prev];
+        for (const resource of allResources) {
+          const sourcePerm = prev.find(p => p.role === copyFromRole && p.resource_type === resource.resourceType && p.resource_name === resource.resourceName);
+          const sourceAccess = sourcePerm?.has_access ?? false;
+          const existing = updated.find(p => p.role === selectedRole && p.resource_type === resource.resourceType && p.resource_name === resource.resourceName);
+          
+          if (existing) {
+            updated = updated.map(p =>
+              p.role === selectedRole && p.resource_type === resource.resourceType && p.resource_name === resource.resourceName
+                ? { ...p, has_access: sourceAccess }
+                : p
+            );
+          } else {
+            updated.push({
+              id: `draft_${selectedRole}_${resource.resourceType}_${resource.resourceName}`,
+              role: selectedRole,
+              resource_type: resource.resourceType,
+              resource_name: resource.resourceName,
+              resource_label: resource.label,
+              has_access: sourceAccess
+            });
+          }
         }
-      }
+        return updated;
+      });
       setSaveSuccess(false);
       setSaveError('');
       setCopyMode(false);
@@ -228,8 +237,6 @@ export default function RolePermissions() {
     } catch (err) {
       console.error('Copy failed:', err);
       setSaveError('Failed to copy permissions');
-    } finally {
-      setSaving(false);
     }
   };
 
