@@ -21,15 +21,16 @@ export function useNotifications(user) {
   const [items, setItems] = useState([]); // Notifications from database
   const userDeptRef = useRef(null);
 
-  // Load all unread notifications for this user
+  // Load all notifications (read + unread) for history, but count only unread
   useEffect(() => {
     if (!user?.email) return;
     
     const loadNotifications = async () => {
       try {
-        const unread = await db.Notification.filter({ user_email: user.email, is_read: false }, '-created_date');
-        setItems(unread || []);
-        setCount((unread || []).length);
+        const all = await db.Notification.filter({ user_email: user.email }, '-created_date');
+        setItems(all || []);
+        const unreadCount = (all || []).filter(n => !n.is_read).length;
+        setCount(unreadCount);
       } catch (e) {
         console.error('[useNotifications] Failed to load:', e);
       }
@@ -40,12 +41,11 @@ export function useNotifications(user) {
     // Subscribe to new notifications
     const unsub = db.Notification.subscribe((event) => {
       if (event.data?.user_email !== user.email) return;
-      if (event.type === 'create' && !event.data?.is_read) {
+      if (event.type === 'create') {
         setItems(prev => [event.data, ...prev]);
-        setCount(c => c + 1);
+        if (!event.data?.is_read) setCount(c => c + 1);
       }
       if (event.type === 'update' && event.data?.is_read) {
-        setItems(prev => prev.filter(n => n.id !== event.data.id));
         setCount(c => Math.max(0, c - 1));
       }
     });
