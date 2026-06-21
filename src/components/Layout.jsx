@@ -10,6 +10,8 @@ import {
   MessageSquareText, Tag, Star, MessagesSquare, Crown, UserCheck, Shield, Lock, Send, FolderOpen, Clock, AlertCircle, Bell
 } from 'lucide-react';
 import { useNotifications } from '@/hooks/useNotifications';
+import { formatDistanceToNow } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -76,7 +78,33 @@ export default function Layout() {
   const [permissionsLoaded, setPermissionsLoaded] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const { count: notifCount, items: notifItems, markAllRead } = useNotifications(user);
+  const [notifPage, setNotifPage] = useState(0);
   const notifRef = useRef(null);
+  
+  const NOTIF_PER_PAGE = 10;
+  const notifToShow = notifItems.slice(0, (notifPage + 1) * NOTIF_PER_PAGE);
+  const hasMore = notifItems.length > notifToShow.length;
+  
+  const formatNotifTime = (dateStr) => {
+    if (!dateStr) return '';
+    try {
+      const date = new Date(dateStr);
+      const zonedDate = toZonedTime(date, 'Asia/Manila');
+      const now = toZonedTime(new Date(), 'Asia/Manila');
+      const diffMs = now - zonedDate;
+      const diffMins = Math.floor(diffMs / 60000);
+      const diffHours = Math.floor(diffMs / 3600000);
+      const diffDays = Math.floor(diffMs / 86400000);
+      
+      if (diffMins < 1) return 'now';
+      if (diffMins < 60) return `${diffMins}m`;
+      if (diffHours < 24) return `${diffHours}h`;
+      if (diffDays < 7) return `${diffDays}d`;
+      return zonedDate.toLocaleDateString();
+    } catch {
+      return '';
+    }
+  };
 
   const PATH_TO_PAGE_KEY = {
     '/dashboard': 'dashboard',
@@ -341,7 +369,7 @@ export default function Layout() {
               <p className="text-xs text-sidebar-foreground/60">Support Hub</p>
               <div className="relative">
                 <button
-                  onClick={() => setNotifOpen(v => !v)}
+                  onClick={() => { setNotifOpen(v => !v); if (!notifOpen) setNotifPage(0); }}
                   className="relative text-sidebar-foreground/60 hover:text-white transition-colors"
                   title="Notifications"
                 >
@@ -353,20 +381,40 @@ export default function Layout() {
                   )}
                 </button>
                 {notifOpen && (
-                  <div className="absolute left-0 top-6 z-50 w-72 bg-popover border border-border rounded-xl shadow-xl overflow-hidden">
-                    <div className="px-3 py-2 border-b border-border flex items-center justify-between">
-                      <span className="text-xs font-semibold text-foreground">Notifications</span>
-                      <button onClick={() => { setNotifOpen(false); markAllRead(); }} className="text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5" /></button>
+                  <div className="absolute left-0 top-6 z-50 w-96 bg-popover border border-border rounded-xl shadow-xl overflow-hidden flex flex-col max-h-[600px]">
+                    <div className="px-4 py-3 border-b border-border flex items-center justify-between sticky top-0 bg-popover">
+                      <span className="text-sm font-bold text-foreground">Notifications</span>
+                      <button onClick={() => { setNotifOpen(false); markAllRead(); }} className="text-muted-foreground hover:text-foreground"><X className="w-4 h-4" /></button>
                     </div>
-                    <div className="max-h-72 overflow-y-auto">
+                    <div className="overflow-y-auto flex-1 scrollbar-thin scrollbar-thumb-muted scrollbar-track-transparent">
                       {notifItems.length === 0 ? (
-                        <p className="text-xs text-muted-foreground text-center py-6">No new notifications</p>
-                      ) : [...notifItems].reverse().map((n, i) => (
-                        <div key={i} className="px-3 py-2.5 border-b border-border/50 hover:bg-muted/50">
-                          <p className="text-xs text-foreground font-medium leading-snug">{n.message}</p>
-                          <p className="text-[10px] text-muted-foreground mt-0.5">{n.time ? new Date(n.time).toLocaleTimeString() : ''}</p>
+                        <p className="text-sm text-muted-foreground text-center py-8">No new notifications</p>
+                      ) : (
+                        <div>
+                          {[...notifToShow].reverse().map((n, i) => (
+                            <div key={i} className="px-4 py-3 border-b border-border/30 hover:bg-muted/40 transition-colors cursor-pointer group">
+                              <div className="flex gap-3">
+                                <div className="w-10 h-10 rounded-full bg-primary/20 flex-shrink-0 flex items-center justify-center text-primary font-semibold text-sm">
+                                  {n.message.charAt(0).toUpperCase()}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm text-foreground leading-snug break-words">{n.message}</p>
+                                  <p className="text-xs text-muted-foreground mt-1">{formatNotifTime(n.time)}</p>
+                                </div>
+                                <div className="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0 mt-2"></div>
+                              </div>
+                            </div>
+                          ))}
+                          {hasMore && (
+                            <button
+                              onClick={() => setNotifPage(p => p + 1)}
+                              className="w-full px-4 py-2.5 text-center text-sm font-medium text-primary hover:bg-muted/50 transition-colors border-t border-border/30"
+                            >
+                              Show More
+                            </button>
+                          )}
                         </div>
-                      ))}
+                      )}
                     </div>
                   </div>
                 )}
@@ -495,7 +543,7 @@ export default function Layout() {
 
       <div className={cn("p-3 border-t border-sidebar-border", isCollapsed && "flex flex-col items-center gap-2")}>
         {isCollapsed && notifCount > 0 && (
-          <button onClick={() => setNotifOpen(v => !v)} className="relative text-sidebar-foreground hover:text-white mb-1">
+          <button onClick={() => { setNotifOpen(v => !v); if (!notifOpen) setNotifPage(0); }} className="relative text-sidebar-foreground hover:text-white mb-1">
             <Bell className="w-4 h-4 text-red-400 animate-pulse" />
             <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
               {notifCount > 9 ? '9+' : notifCount}
