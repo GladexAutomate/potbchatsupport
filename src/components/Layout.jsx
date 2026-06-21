@@ -72,6 +72,26 @@ export default function Layout() {
 
   const role = user?.role || 'customer';
   const isSuperAdmin = role === 'super_admin';
+  const [permissionsLoaded, setPermissionsLoaded] = useState(false);
+
+  const PATH_TO_PAGE_KEY = {
+    '/dashboard': 'dashboard',
+    '/tickets': 'tickets',
+    '/vip-tickets': 'vip-tickets',
+    '/escalations': 'escalations',
+    '/group-chat': 'group-chat',
+    '/kpi': 'kpi',
+    '/staff-ratings': 'staff-ratings',
+    '/users': 'users',
+    '/customers': 'customers',
+    '/role-permissions': 'manage-roles',
+    '/sla-settings': 'sla-settings',
+    '/test-accounts': 'test-accounts',
+    '/chatbot-config': 'chatbot-config',
+    '/replying-center': 'replying-center',
+    '/conversation-tags': 'conversation-tags',
+    '/internal-tickets': 'internal-tickets',
+  };
 
 
 
@@ -111,12 +131,18 @@ export default function Layout() {
         });
         console.log(`[Layout] Filtered to ${rolePerms?.length} permissions for role '${role}'`, rolePerms?.map(p => p.resource_name));
         setPermissions(rolePerms);
+        setPermissionsLoaded(true);
       } catch (e) {
         console.error('[Layout] Failed to load permissions:', e);
         setPermissions([]);
+        setPermissionsLoaded(true);
       }
     };
     loadPerms();
+
+    // Re-load when permissions change (so sidebar and guards update live)
+    const unsub = db.Permission.subscribe(() => loadPerms());
+    return () => unsub();
   }, [user, role, isSuperAdmin]);
 
   // Clear badge when on group chat page
@@ -233,15 +259,26 @@ export default function Layout() {
     }
   }, [user, role]);
 
+  // Enforce page-level permission blocking — redirect if current page is blocked
+  useEffect(() => {
+    if (!permissionsLoaded || isSuperAdmin || !user) return;
+    const pageKey = PATH_TO_PAGE_KEY[location.pathname];
+    if (pageKey && !hasPageAccess(pageKey)) {
+      // Find first accessible page to redirect to
+      const firstAccessible = Object.entries(PATH_TO_PAGE_KEY).find(([, key]) => hasPageAccess(key));
+      navigate(firstAccessible ? firstAccessible[0] : '/');
+    }
+  }, [location.pathname, permissions, permissionsLoaded]);
+
   const hasPageAccess = (pageKey) => {
-     if (isSuperAdmin) return true;
-     // Parent categories (like 'settings', 'customer-operations') don't have explicit permissions
-     // They're always visible if at least one child has access
-     const parentKeys = ['customer-operations', 'internal-operations', 'analytics', 'administration', 'settings'];
-     if (parentKeys.includes(pageKey)) return true;
-     const perm = permissions.find(p => p.resource_name === pageKey);
-     return perm?.has_access === true;
-   };
+    if (isSuperAdmin) return true;
+    // Parent categories are visible if at least one child page has access
+    const parentKeys = ['customer-operations', 'internal-operations', 'analytics', 'administration', 'settings'];
+    if (parentKeys.includes(pageKey)) return true;
+    if (!permissionsLoaded) return false;
+    const perm = permissions.find(p => p.resource_name === pageKey);
+    return perm?.has_access === true;
+  };
 
   const navItemsWithChildren = navItems;
 

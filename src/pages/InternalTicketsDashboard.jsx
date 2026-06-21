@@ -229,8 +229,8 @@ export default function InternalTicketsDashboard() {
           {!isTLorSuperAdmin && (
             <Tabs value={viewMode} onValueChange={setViewMode} className="mb-3 w-full">
               <TabsList className="grid w-full grid-cols-2 h-8">
-                <TabsTrigger value="assigned" className="text-xs">Assigned to me</TabsTrigger>
-                <TabsTrigger value="created" className="text-xs">Created by me</TabsTrigger>
+                <TabsTrigger value="assigned" className="text-xs">Received ({userDepartment})</TabsTrigger>
+                <TabsTrigger value="created" className="text-xs">Sent by {userDepartment}</TabsTrigger>
               </TabsList>
             </Tabs>
           )}

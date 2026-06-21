@@ -8,6 +8,23 @@ import { Ticket, Clock, AlertTriangle, CheckCircle, TrendingUp, ArrowRight, User
 import { useAuth } from '@/lib/AuthContext';
 import { formatDistanceToNow } from 'date-fns';
 
+function usePagePermissions(role) {
+  const [permissions, setPermissions] = useState(null);
+  useEffect(() => {
+    if (!role || role === 'super_admin') { setPermissions('all'); return; }
+    db.Permission.list(null, 500).then(data => {
+      const perms = (data || []).filter(p => p.role === role && p.resource_type === 'page');
+      setPermissions(perms);
+    });
+  }, [role]);
+  const hasAccess = (key) => {
+    if (permissions === 'all') return true;
+    if (!permissions) return false;
+    return permissions.some(p => p.resource_name === key && p.has_access === true);
+  };
+  return { hasAccess, loaded: permissions !== null };
+}
+
 const STATUS_COLOR = {
   'Open': 'bg-blue-500/10 text-blue-400 border-blue-500/20',
   'In Progress': 'bg-amber-500/10 text-amber-400 border-amber-500/20',
@@ -29,6 +46,7 @@ export default function Dashboard() {
   const [copied, setCopied] = useState(false);
   const [copiedMsg, setCopiedMsg] = useState(false);
   const { user } = useAuth();
+  const { hasAccess } = usePagePermissions(user?.role);
 
   const ticketUrl = `${window.location.origin}/submit-ticket`;
   const internalTicketUrl = `${window.location.origin}/submit-internal-ticket`;
@@ -88,7 +106,7 @@ export default function Dashboard() {
       </div>
 
       {/* Ticket Submission URLs */}
-       <div className="grid lg:grid-cols-2 gap-6 mb-6">
+       <div className={`grid ${hasAccess('internal-tickets') ? 'lg:grid-cols-2' : 'lg:grid-cols-1'} gap-6 mb-6`}>
          <Card className="border-border/50">
            <CardContent className="p-4">
              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Customer Ticket Submission URL</p>
@@ -101,17 +119,19 @@ export default function Dashboard() {
            </CardContent>
          </Card>
 
-         <Card className="border-border/50">
-           <CardContent className="p-4">
-             <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Internal Ticket Submission URL</p>
-             <div className="flex items-center gap-2">
-               <code className="flex-1 text-sm font-mono bg-muted rounded-lg px-3 py-2 text-foreground truncate">{internalTicketUrl}</code>
-               <Button size="sm" variant="outline" onClick={handleCopyInternal} className="gap-1.5 shrink-0">
-                 {copied ? <><Check className="w-3.5 h-3.5 text-green-500" /> Copied!</> : <><Copy className="w-3.5 h-3.5" /> Copy URL</>}
-               </Button>
-             </div>
-           </CardContent>
-         </Card>
+         {hasAccess('internal-tickets') && (
+           <Card className="border-border/50">
+             <CardContent className="p-4">
+               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Internal Ticket Submission URL</p>
+               <div className="flex items-center gap-2">
+                 <code className="flex-1 text-sm font-mono bg-muted rounded-lg px-3 py-2 text-foreground truncate">{internalTicketUrl}</code>
+                 <Button size="sm" variant="outline" onClick={handleCopyInternal} className="gap-1.5 shrink-0">
+                   {copied ? <><Check className="w-3.5 h-3.5 text-green-500" /> Copied!</> : <><Copy className="w-3.5 h-3.5" /> Copy URL</>}
+                 </Button>
+               </div>
+             </CardContent>
+           </Card>
+         )}
        </div>
 
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
