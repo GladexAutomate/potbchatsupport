@@ -117,18 +117,19 @@ function makeEntityProxy(entityName) {
  */
 export const db = {
   // Operational entities (env-isolated)
-  Ticket:           makeEntityProxy('Ticket'),
-  TicketMessage:    makeEntityProxy('TicketMessage'),
-  TicketHistory:    makeEntityProxy('TicketHistory'),
-  InternalTicket:   makeEntityProxy('InternalTicket'),
-  GroupChatMessage: makeEntityProxy('GroupChatMessage'),
-  EmployeeAccount:  makeEntityProxy('EmployeeAccount'),
-  StaffDirectory:   makeEntityProxy('StaffDirectory'),
-  VIPCustomer:      makeEntityProxy('VIPCustomer'),
-  StaffRating:      makeEntityProxy('StaffRating'),
-  ConversationTag:  makeEntityProxy('ConversationTag'),
-  SavedReply:       makeEntityProxy('SavedReply'),
-  Permission:       makeEntityProxy('Permission'),
+   Ticket:           makeEntityProxy('Ticket'),
+   TicketMessage:    makeEntityProxy('TicketMessage'),
+   TicketHistory:    makeEntityProxy('TicketHistory'),
+   InternalTicket:   makeEntityProxy('InternalTicket'),
+   GroupChatMessage: makeEntityProxy('GroupChatMessage'),
+   EmployeeAccount:  makeEntityProxy('EmployeeAccount'),
+   StaffDirectory:   makeEntityProxy('StaffDirectory'),
+   VIPCustomer:      makeEntityProxy('VIPCustomer'),
+   StaffRating:      makeEntityProxy('StaffRating'),
+   ConversationTag:  makeEntityProxy('ConversationTag'),
+   SavedReply:       makeEntityProxy('SavedReply'),
+   Permission:       makeEntityProxy('Permission'),
+   Notification:     makeEntityProxy('Notification'),
 
   // Global config entities (pass-through, not env-isolated)
   User:             base44.entities.User,

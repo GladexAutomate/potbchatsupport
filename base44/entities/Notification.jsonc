@@ -16,7 +16,8 @@
         "group_chat_mention",
         "ticket_reply",
         "internal_note",
-        "ticket_assignment"
+        "ticket_assignment",
+        "internal_ticket"
       ],
       "description": "Type of notification"
     },
