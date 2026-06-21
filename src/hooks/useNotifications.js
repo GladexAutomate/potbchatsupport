@@ -38,15 +38,18 @@ export function useNotifications(user) {
 
     loadNotifications();
 
-    // Subscribe to new notifications
+    // Subscribe to new notifications and updates
     const unsub = db.Notification.subscribe((event) => {
       if (event.data?.user_email !== user.email) return;
       if (event.type === 'create') {
         setItems(prev => [event.data, ...prev]);
         if (!event.data?.is_read) setCount(c => c + 1);
       }
-      if (event.type === 'update' && event.data?.is_read) {
-        setCount(c => Math.max(0, c - 1));
+      if (event.type === 'update') {
+        if (event.data?.is_read) {
+          setItems(prev => prev.map(n => n.id === event.data.id ? event.data : n));
+          setCount(c => Math.max(0, c - 1));
+        }
       }
     });
 
