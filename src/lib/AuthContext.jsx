@@ -76,11 +76,22 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener('popstate', handleUrlChange);
   }, []);
 
-  // Poll every 60s to detect if a logged-in user gets blocked mid-session
+  // Background check every 5 minutes (only when authenticated) to detect if user gets blocked
+  // Does NOT refresh the page or interrupt user sessions
   useEffect(() => {
-    const interval = setInterval(() => {
-      if (isAuthenticated) checkUserAuth();
-    }, 60000);
+    if (!isAuthenticated) return;
+    const interval = setInterval(async () => {
+      try {
+        const currentUser = await base44.auth.me();
+        const empRecords = await db.EmployeeAccount.filter({ email: currentUser.email }, 1);
+        if (empRecords?.length > 0 && empRecords[0].is_blocked) {
+          console.warn('User blocked detected, logging out silently');
+          logout(false);
+        }
+      } catch (e) {
+        // Silent fail - don't interrupt user
+      }
+    }, 300000); // 5 minutes
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 
