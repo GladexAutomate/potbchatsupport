@@ -7,8 +7,9 @@ import { useAuth } from '@/lib/AuthContext';
 import {
   LayoutDashboard, Ticket, BarChart2, Settings, MessageSquare,
   ChevronLeft, ChevronRight, LogOut, Menu, X, ShieldCheck, Users,
-  MessageSquareText, Tag, Star, MessagesSquare, Crown, UserCheck, Shield, Lock, Send, FolderOpen, Clock, AlertCircle
+  MessageSquareText, Tag, Star, MessagesSquare, Crown, UserCheck, Shield, Lock, Send, FolderOpen, Clock, AlertCircle, Bell
 } from 'lucide-react';
+import { useNotifications } from '@/hooks/useNotifications';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -73,6 +74,9 @@ export default function Layout() {
   const role = user?.role || 'customer';
   const isSuperAdmin = role === 'super_admin';
   const [permissionsLoaded, setPermissionsLoaded] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const { count: notifCount, items: notifItems, markAllRead } = useNotifications(user);
+  const notifRef = useRef(null);
 
   const PATH_TO_PAGE_KEY = {
     '/dashboard': 'dashboard',
@@ -325,13 +329,49 @@ export default function Layout() {
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
       <div className={cn("flex items-center gap-3 px-4 py-5 border-b border-sidebar-border", isCollapsed && "justify-center px-2")}>
-        <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center flex-shrink-0">
-          <ShieldCheck className="w-4 h-4 text-white" />
-        </div>
+        <img
+          src="https://media.base44.com/images/public/6a0c352fa1dbbd33554db2fb/ed813df70_POTBlogo.jpg"
+          alt="POTB Logo"
+          className="w-8 h-8 rounded-lg object-cover flex-shrink-0"
+        />
         {!isCollapsed && (
-          <div>
-            <p className="font-sora font-semibold text-sm text-white leading-tight">LakbayHub</p>
-            <p className="text-xs text-sidebar-foreground/60">Support Hub</p>
+          <div className="flex-1 min-w-0">
+            <p className="font-sora font-semibold text-sm text-white leading-tight">Pinoy Online Travel Biz</p>
+            <div className="flex items-center gap-1.5">
+              <p className="text-xs text-sidebar-foreground/60">Support Hub</p>
+              <div className="relative">
+                <button
+                  onClick={() => { setNotifOpen(v => !v); if (!notifOpen) markAllRead(); }}
+                  className="relative text-sidebar-foreground/60 hover:text-white transition-colors"
+                  title="Notifications"
+                >
+                  <Bell className={`w-3.5 h-3.5 ${notifCount > 0 ? 'text-red-400 animate-pulse' : ''}`} />
+                  {notifCount > 0 && (
+                    <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+                      {notifCount > 9 ? '9+' : notifCount}
+                    </span>
+                  )}
+                </button>
+                {notifOpen && (
+                  <div className="absolute left-0 top-6 z-50 w-72 bg-popover border border-border rounded-xl shadow-xl overflow-hidden">
+                    <div className="px-3 py-2 border-b border-border flex items-center justify-between">
+                      <span className="text-xs font-semibold text-foreground">Notifications</span>
+                      <button onClick={() => setNotifOpen(false)} className="text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5" /></button>
+                    </div>
+                    <div className="max-h-72 overflow-y-auto">
+                      {notifItems.length === 0 ? (
+                        <p className="text-xs text-muted-foreground text-center py-6">No new notifications</p>
+                      ) : [...notifItems].reverse().map((n, i) => (
+                        <div key={i} className="px-3 py-2.5 border-b border-border/50 hover:bg-muted/50">
+                          <p className="text-xs text-foreground font-medium leading-snug">{n.message}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">{n.time ? new Date(n.time).toLocaleTimeString() : ''}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -453,7 +493,15 @@ export default function Layout() {
         })}
       </nav>
 
-      <div className={cn("p-3 border-t border-sidebar-border", isCollapsed && "flex justify-center")}>
+      <div className={cn("p-3 border-t border-sidebar-border", isCollapsed && "flex flex-col items-center gap-2")}>
+        {isCollapsed && notifCount > 0 && (
+          <button onClick={() => { setNotifOpen(v => !v); if (!notifOpen) markAllRead(); }} className="relative text-sidebar-foreground hover:text-white mb-1">
+            <Bell className="w-4 h-4 text-red-400 animate-pulse" />
+            <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
+              {notifCount > 9 ? '9+' : notifCount}
+            </span>
+          </button>
+        )}
         {!isCollapsed && (
           <div className="flex items-center gap-2 mb-3 px-2">
             <div className="w-7 h-7 rounded-full bg-primary/20 flex items-center justify-center">
@@ -543,7 +591,7 @@ export default function Layout() {
           <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)}>
             <Menu className="w-5 h-5" />
           </Button>
-          <span className="font-sora font-semibold text-sm">LakbayHub Support</span>
+          <span className="font-sora font-semibold text-sm">Pinoy Online Travel Biz</span>
         </header>
 
         <main className="flex-1 overflow-auto">

@@ -44,12 +44,29 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
   const fileInputRef = useRef(null);
   const textareaRef = useRef(null);
 
+  // Maps department → role values in EmployeeAccount.POTBChatsupportrole
+  const DEPT_TO_ROLES = {
+    'Sales': ['sales'], 'IT': ['it'], 'Accounting': ['accounting'],
+    'Sign-Ups': ['sign_ups'], 'On-Boarding': ['on_boarding'],
+    'Corp/Training': ['corp_training'], 'Admin': ['admin'],
+    'TL/Management': ['tl_management', 'super_admin'], 'CSR': ['csr'],
+  };
+
   useEffect(() => {
-    db.User.list().then(d => setAgents(d || []));
+    const dept = ticket.department;
+    const roles = dept ? (DEPT_TO_ROLES[dept] || []) : [];
+    if (roles.length > 0) {
+      db.EmployeeAccount.filter({ portal_access_granted: true }).then(all => {
+        setAgents((all || []).filter(e => e.status === 'active' && roles.includes(e.POTBChatsupportrole)));
+      });
+    } else {
+      // No department set — show all staff
+      db.User.list().then(d => setAgents(d || []));
+    }
     db.SLAPolicy.filter({ priority: ticket.priority }).then(d => {
       if (d?.length) setSlaPolicy(d[0]);
     });
-  }, [ticket.priority]);
+  }, [ticket.priority, ticket.department]);
 
   // Load internal staff messages for this ticket
   useEffect(() => {
@@ -245,9 +262,16 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
             <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Unassigned" /></SelectTrigger>
             <SelectContent>
               <SelectItem value={null}>Unassigned</SelectItem>
-              {agents.map(a => <SelectItem key={a.id} value={a.email}>{a.full_name || a.email}</SelectItem>)}
+              {agents.map(a => (
+                <SelectItem key={a.id} value={a.email || a.id}>
+                  {a.full_name || a.email}
+                </SelectItem>
+              ))}
             </SelectContent>
           </Select>
+          {ticket.department && (
+            <p className="text-[10px] text-muted-foreground mt-0.5">Showing staff from: {ticket.department}</p>
+          )}
         </div>
 
         {/* SLA */}

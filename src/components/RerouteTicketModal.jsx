@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { db } from '@/lib/db';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
@@ -19,6 +19,19 @@ const CSR_BACK_DEPARTMENTS = ['General'];
 const DEPARTMENTS = ALL_DEPARTMENTS; // used conditionally below
 const PRIORITIES = ['Low', 'Medium', 'High', 'Critical'];
 const STATUSES = ['Open', 'In Progress', 'Pending Department'];
+
+// Maps department → role values in EmployeeAccount.POTBChatsupportrole
+const DEPT_TO_ROLES = {
+  'Sales': ['sales'],
+  'IT': ['it'],
+  'Accounting': ['accounting'],
+  'Sign-Ups': ['sign_ups'],
+  'On-Boarding': ['on_boarding'],
+  'Corp/Training': ['corp_training'],
+  'Admin': ['admin'],
+  'TL/Management': ['tl_management', 'super_admin'],
+  'CSR': ['csr'],
+};
 
 const DEPT_NOTES = {
   'Sales': 'Domestic / International inquiries',
@@ -47,6 +60,22 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
   const [saving, setSaving] = useState(false);
   const [showCenterToast, setShowCenterToast] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [deptStaff, setDeptStaff] = useState([]);
+  const [assignTo, setAssignTo] = useState(ticket?.assigned_to || '');
+
+  // Load staff for selected department
+  useEffect(() => {
+    if (!department) { setDeptStaff([]); return; }
+    const roles = DEPT_TO_ROLES[department] || [];
+    if (roles.length === 0) { setDeptStaff([]); return; }
+    db.EmployeeAccount.filter({ portal_access_granted: true }).then(all => {
+      const filtered = (all || []).filter(e =>
+        e.status === 'active' && roles.includes(e.POTBChatsupportrole)
+      );
+      setDeptStaff(filtered);
+    });
+    setAssignTo(''); // reset when dept changes
+  }, [department]);
 
   const stopAndStartSLA = (existingLog, stoppingDept, nextDept) => {
     const now = new Date().toISOString();
@@ -79,14 +108,9 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
       if (isCSR || canEscalate) {
         const currentDept = ticket.department || 'CSR';
         const updatedLog = stopAndStartSLA(ticket.dept_sla_log, currentDept, department);
-        // Always persist the escalated state, even if false
-        await db.Ticket.update(ticket.id, { 
-          department, 
-          priority, 
-          status, 
-          escalated,  // This now persists false if unchecked
-          dept_sla_log: updatedLog 
-        });
+        const updatePayload = { department, priority, status, escalated, dept_sla_log: updatedLog };
+        if (assignTo) updatePayload.assigned_to = assignTo;
+        await db.Ticket.update(ticket.id, updatePayload);
       } else {
         // Non-escalate roles: route back to L1/CSR
         const currentDept = ticket.department || 'CSR';
@@ -191,6 +215,21 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
                    </SelectContent>
                  </Select>
                </div>
+
+               {department && (
+                 <div className="space-y-1.5">
+                   <Label className="text-xs">Assign To (optional)</Label>
+                   <Select value={assignTo} onValueChange={setAssignTo}>
+                     <SelectTrigger><SelectValue placeholder={deptStaff.length === 0 ? 'No staff found' : 'Select agent...'} /></SelectTrigger>
+                     <SelectContent>
+                       <SelectItem value={null}>Unassigned</SelectItem>
+                       {deptStaff.map(s => (
+                         <SelectItem key={s.id} value={s.email}>{s.full_name || s.email}</SelectItem>
+                       ))}
+                     </SelectContent>
+                   </Select>
+                 </div>
+               )}
 
                <div className="grid grid-cols-2 gap-3">
                  <div className="space-y-1.5">
