@@ -3,18 +3,14 @@ import { base44 } from '@/api/base44Client';
 import { db } from '@/lib/db';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Clock, ChevronRight, ChevronLeft, AlertTriangle, Send, Loader2, Paperclip, X, FileText, History } from 'lucide-react';
-import { differenceInMinutes, formatDistanceToNow } from 'date-fns';
+import { differenceInMinutes, formatDistanceToNow, format } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
 import { useAuth } from '@/lib/AuthContext';
-
-const toPHTime = (dateStr) => new Date(new Date(dateStr).getTime() + 8 * 60 * 60 * 1000);
+import { APP_TIMEZONE } from '@/lib/timezone';
 
 const formatPHTime = (dateStr) => {
-  const d = toPHTime(dateStr);
-  const month = d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
-  const day = d.getUTCDate();
-  const hours = String(d.getUTCHours()).padStart(2, '0');
-  const mins = String(d.getUTCMinutes()).padStart(2, '0');
-  return `${month} ${day}, ${hours}:${mins}`;
+  const zonedDate = toZonedTime(new Date(dateStr), APP_TIMEZONE);
+  return format(zonedDate, 'MMM d, HH:mm');
 };
 
 const STATUS_OPTIONS = ['Open', 'In Progress', 'Pending Department', 'Resolved'];
@@ -187,7 +183,7 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
   const slaBreached = slaDeadline && now > slaDeadline;
   const slaMinutesLeft = slaDeadline ? differenceInMinutes(slaDeadline, now) : null;
   const slaLabel = slaBreached
-    ? `Breached ${formatDistanceToNow(toPHTime(ticket.sla_deadline), { addSuffix: true })}`
+    ? `Breached ${formatDistanceToNow(toZonedTime(new Date(ticket.sla_deadline), APP_TIMEZONE), { addSuffix: true })}`
     : slaMinutesLeft !== null
       ? slaMinutesLeft < 60
         ? `${slaMinutesLeft}m left`

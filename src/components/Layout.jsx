@@ -12,6 +12,7 @@ import {
 import { useNotifications } from '@/hooks/useNotifications';
 import { formatDistanceToNow } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
+import { APP_TIMEZONE } from '@/lib/timezone';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -89,8 +90,8 @@ export default function Layout() {
     if (!dateStr) return '';
     try {
       const date = new Date(dateStr);
-      const zonedDate = toZonedTime(date, 'Asia/Manila');
-      const now = toZonedTime(new Date(), 'Asia/Manila');
+      const zonedDate = toZonedTime(date, APP_TIMEZONE);
+      const now = toZonedTime(new Date(), APP_TIMEZONE);
       const diffMs = now - zonedDate;
       const diffMins = Math.floor(diffMs / 60000);
       const diffHours = Math.floor(diffMs / 3600000);
