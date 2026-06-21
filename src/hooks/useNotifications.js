@@ -29,7 +29,9 @@ export function useNotifications(user) {
 
   const markAllRead = () => {
     if (!user?.email) return;
-    localStorage.setItem(STORAGE_KEY(user.email), String(Date.now()));
+    const now = Date.now();
+    localStorage.setItem(STORAGE_KEY(user.email), String(now));
+    lastSeenRef.current = now;
     setCount(0);
     setItems([]);
   };

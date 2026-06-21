@@ -341,7 +341,7 @@ export default function Layout() {
               <p className="text-xs text-sidebar-foreground/60">Support Hub</p>
               <div className="relative">
                 <button
-                  onClick={() => { setNotifOpen(v => !v); if (!notifOpen) markAllRead(); }}
+                  onClick={() => setNotifOpen(v => !v)}
                   className="relative text-sidebar-foreground/60 hover:text-white transition-colors"
                   title="Notifications"
                 >
@@ -356,7 +356,7 @@ export default function Layout() {
                   <div className="absolute left-0 top-6 z-50 w-72 bg-popover border border-border rounded-xl shadow-xl overflow-hidden">
                     <div className="px-3 py-2 border-b border-border flex items-center justify-between">
                       <span className="text-xs font-semibold text-foreground">Notifications</span>
-                      <button onClick={() => setNotifOpen(false)} className="text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => { setNotifOpen(false); markAllRead(); }} className="text-muted-foreground hover:text-foreground"><X className="w-3.5 h-3.5" /></button>
                     </div>
                     <div className="max-h-72 overflow-y-auto">
                       {notifItems.length === 0 ? (
@@ -495,7 +495,7 @@ export default function Layout() {
 
       <div className={cn("p-3 border-t border-sidebar-border", isCollapsed && "flex flex-col items-center gap-2")}>
         {isCollapsed && notifCount > 0 && (
-          <button onClick={() => { setNotifOpen(v => !v); if (!notifOpen) markAllRead(); }} className="relative text-sidebar-foreground hover:text-white mb-1">
+          <button onClick={() => setNotifOpen(v => !v)} className="relative text-sidebar-foreground hover:text-white mb-1">
             <Bell className="w-4 h-4 text-red-400 animate-pulse" />
             <span className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-red-500 text-white text-[8px] font-bold rounded-full flex items-center justify-center">
               {notifCount > 9 ? '9+' : notifCount}
