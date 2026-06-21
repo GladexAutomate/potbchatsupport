@@ -25,6 +25,15 @@ export default function EmailLogin() {
        const employees = await base44.entities.EmployeeAccount.filter({ email }).catch(() => []);
 
        if (employees && employees.length > 0) {
+         const emp = employees[0];
+
+         // Block check — prevent blocked users from even initiating login
+         if (emp.is_blocked) {
+           setError('Your account has been blocked. Please contact your administrator.');
+           setLoading(false);
+           return;
+         }
+
          // Employee - store intent in sessionStorage and redirect to Base44 login
          sessionStorage.setItem('loginRedirect', '/dashboard');
          base44.auth.redirectToLogin();

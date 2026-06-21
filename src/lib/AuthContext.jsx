@@ -187,9 +187,12 @@ export const AuthProvider = ({ children }) => {
         if (empRecords && empRecords.length > 0) {
           const emp = empRecords[0];
 
-          // If blocked — force logout immediately
+          // If blocked — force logout immediately, clear any pending redirect
           if (emp.is_blocked) {
             console.warn('User is blocked. Forcing logout.');
+            sessionStorage.removeItem('loginRedirect');
+            setIsLoadingAuth(false);
+            setAuthChecked(true);
             base44.auth.logout('/');
             return;
           }
@@ -208,6 +211,9 @@ export const AuthProvider = ({ children }) => {
             // If blocked in StaffDirectory too
             if (staff.is_blocked) {
               console.warn('User is blocked in StaffDirectory. Forcing logout.');
+              sessionStorage.removeItem('loginRedirect');
+              setIsLoadingAuth(false);
+              setAuthChecked(true);
               base44.auth.logout('/');
               return;
             }
