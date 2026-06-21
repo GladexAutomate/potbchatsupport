@@ -265,8 +265,9 @@ export default function Layout() {
     const pageKey = PATH_TO_PAGE_KEY[location.pathname];
     if (pageKey && !hasPageAccess(pageKey)) {
       // Find first accessible page to redirect to
-      const firstAccessible = Object.entries(PATH_TO_PAGE_KEY).find(([, key]) => hasPageAccess(key));
-      navigate(firstAccessible ? firstAccessible[0] : '/');
+      const orderedPaths = Object.entries(PATH_TO_PAGE_KEY);
+      const firstAccessible = orderedPaths.find(([, key]) => hasPageAccess(key));
+      navigate(firstAccessible ? firstAccessible[0] : '/', { replace: true });
     }
   }, [location.pathname, permissions, permissionsLoaded]);
 
@@ -546,7 +547,13 @@ export default function Layout() {
         </header>
 
         <main className="flex-1 overflow-auto">
-          <Outlet />
+          {!isSuperAdmin && !permissionsLoaded ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="w-6 h-6 border-4 border-slate-200 border-t-primary rounded-full animate-spin" />
+            </div>
+          ) : (
+            <Outlet />
+          )}
         </main>
       </div>
     </div>
