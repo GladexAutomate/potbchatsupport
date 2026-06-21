@@ -392,18 +392,28 @@ export default function Layout() {
                       ) : (
                         <div>
                           {[...notifToShow].reverse().map((n, i) => (
-                            <div key={i} className="px-4 py-3 border-b border-border/30 hover:bg-muted/40 transition-colors cursor-pointer group">
+                            <button
+                              key={i}
+                              onClick={async () => {
+                                setNotifOpen(false);
+                                await db.Notification.update(n.id, { is_read: true });
+                                if (n.redirect_url) {
+                                  navigate(n.redirect_url);
+                                }
+                              }}
+                              className="w-full text-left px-4 py-3 border-b border-border/30 hover:bg-muted/40 transition-colors cursor-pointer group"
+                            >
                               <div className="flex gap-3">
                                 <div className="w-10 h-10 rounded-full bg-primary/20 flex-shrink-0 flex items-center justify-center text-primary font-semibold text-sm">
                                   {n.message.charAt(0).toUpperCase()}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <p className="text-sm text-foreground leading-snug break-words">{n.message}</p>
-                                  <p className="text-xs text-muted-foreground mt-1">{formatNotifTime(n.time)}</p>
+                                  <p className="text-xs text-muted-foreground mt-1">{formatNotifTime(n.created_date)}</p>
                                 </div>
-                                <div className="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0 mt-2"></div>
+                                {!n.is_read && <div className="w-2.5 h-2.5 rounded-full bg-blue-500 flex-shrink-0 mt-2"></div>}
                               </div>
-                            </div>
+                            </button>
                           ))}
                           {hasMore && (
                             <button

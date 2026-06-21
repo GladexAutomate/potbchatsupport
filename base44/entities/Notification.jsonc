@@ -1,0 +1,43 @@
+{
+  "name": "Notification",
+  "type": "object",
+  "properties": {
+    "user_email": {
+      "type": "string",
+      "description": "Email of the user who received the notification"
+    },
+    "message": {
+      "type": "string",
+      "description": "Notification message text"
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "group_chat_mention",
+        "ticket_reply",
+        "internal_note",
+        "ticket_assignment"
+      ],
+      "description": "Type of notification"
+    },
+    "redirect_url": {
+      "type": "string",
+      "description": "URL to redirect to when notification is clicked"
+    },
+    "source_id": {
+      "type": "string",
+      "description": "ID of the source entity (message_id, ticket_id, etc)"
+    },
+    "is_read": {
+      "type": "boolean",
+      "default": false,
+      "description": "Whether the notification has been read"
+    }
+  },
+  "required": [
+    "user_email",
+    "message",
+    "type",
+    "redirect_url"
+  ]
+}
