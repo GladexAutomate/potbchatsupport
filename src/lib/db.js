@@ -115,7 +115,7 @@ function makeEntityProxy(entityName) {
  *
  * All operational/transactional entities ARE proxied.
  */
-export const db = {
+ export const db = {
   // Operational entities (env-isolated)
    Ticket:           makeEntityProxy('Ticket'),
    TicketMessage:    makeEntityProxy('TicketMessage'),
@@ -129,12 +129,14 @@ export const db = {
    ConversationTag:  makeEntityProxy('ConversationTag'),
    SavedReply:       makeEntityProxy('SavedReply'),
    Permission:       makeEntityProxy('Permission'),
-   Notification:     makeEntityProxy('Notification'),
+
+  // User-scoped entities (no env field)
+   Notification:     base44.entities.Notification,
 
   // Global config entities (pass-through, not env-isolated)
-  User:             base44.entities.User,
-  AppSettings:      base44.entities.AppSettings,
-  SLAPolicy:        base44.entities.SLAPolicy,
-  ChatbotConfig:    base44.entities.ChatbotConfig,
-  TestAccount:      base44.entities.TestAccount,
-};
+   User:             base44.entities.User,
+   AppSettings:      base44.entities.AppSettings,
+   SLAPolicy:        base44.entities.SLAPolicy,
+   ChatbotConfig:    base44.entities.ChatbotConfig,
+   TestAccount:      base44.entities.TestAccount,
+ };
