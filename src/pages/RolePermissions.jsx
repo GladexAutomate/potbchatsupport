@@ -6,7 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { ChevronDown, ChevronUp, Lock, Zap, Shield } from 'lucide-react';
+import { ChevronDown, ChevronUp, Lock, Zap, Shield, Save, RotateCcw, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 const PAGES = [
   { name: 'dashboard', label: 'Dashboard', description: 'Overview of ticket stats, team performance, and live activity feed.' },
@@ -56,11 +57,14 @@ const ROLE_COLORS = {
 };
 
 export default function RolePermissions() {
-  const [permissions, setPermissions] = useState([]);
+  const [savedPermissions, setSavedPermissions] = useState([]); // source of truth from DB
+  const [draftPermissions, setDraftPermissions] = useState([]); // local working copy
   const [selectedRole, setSelectedRole] = useState('admin');
   const [expandedSections, setExpandedSections] = useState({ pages: true, features: false });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [saveSuccess, setSaveSuccess] = useState(false);
 
   useEffect(() => {
     loadPermissions();
@@ -69,8 +73,9 @@ export default function RolePermissions() {
   const loadPermissions = async () => {
     try {
       setLoading(true);
-      const data = await db.Permission.list();
-      setPermissions(data || []);
+      const data = await db.Permission.list(null, 1000);
+      setSavedPermissions(data || []);
+      setDraftPermissions(data || []);
     } catch (error) {
       console.error('Failed to load permissions:', error);
     } finally {
@@ -79,41 +84,98 @@ export default function RolePermissions() {
   };
 
   const getPermission = (role, resourceType, resourceName) => {
-    return permissions.find(
+    return draftPermissions.find(
       p => p.role === role && p.resource_type === resourceType && p.resource_name === resourceName
     );
   };
 
-  const togglePermission = async (role, resourceType, resourceName, label) => {
+  // Check if there are unsaved changes for the current role
+  const hasUnsavedChanges = () => {
+    const allKeys = [...PAGES.map(p => `page_${selectedRole}_${p.name}`), ...FEATURES.map(f => `feature_${selectedRole}_${f.name}`)];
+    return allKeys.some(key => {
+      const [, role, ...rest] = key.split('_');
+      const resourceType = key.startsWith('page') ? 'page' : 'feature';
+      const resourceName = rest.join('_');
+      const draft = draftPermissions.find(p => p.role === role && p.resource_type === resourceType && p.resource_name === resourceName);
+      const saved = savedPermissions.find(p => p.role === role && p.resource_type === resourceType && p.resource_name === resourceName);
+      return (draft?.has_access ?? false) !== (saved?.has_access ?? false);
+    });
+  };
+
+  const togglePermission = (role, resourceType, resourceName, label) => {
     const perm = getPermission(role, resourceType, resourceName);
     const newAccess = perm ? !perm.has_access : true;
+    setSaveSuccess(false);
+    setSaveError('');
 
-    // Optimistic update — apply immediately so UI stays responsive
     if (perm) {
-      setPermissions(prev => prev.map(p => p.id === perm.id ? { ...p, has_access: newAccess } : p));
+      setDraftPermissions(prev => prev.map(p =>
+        p.role === role && p.resource_type === resourceType && p.resource_name === resourceName
+          ? { ...p, has_access: newAccess }
+          : p
+      ));
     } else {
-      const tempId = `temp_${role}_${resourceType}_${resourceName}`;
-      setPermissions(prev => [...prev, { id: tempId, role, resource_type: resourceType, resource_name: resourceName, resource_label: label, has_access: newAccess }]);
+      setDraftPermissions(prev => [...prev, {
+        id: `draft_${role}_${resourceType}_${resourceName}`,
+        role, resource_type: resourceType, resource_name: resourceName, resource_label: label, has_access: newAccess
+      }]);
     }
+  };
 
-    // Persist in background
-    if (perm) {
-      db.Permission.update(perm.id, { has_access: newAccess }).catch(() => {
-        // Revert on failure
-        setPermissions(prev => prev.map(p => p.id === perm.id ? { ...p, has_access: !newAccess } : p));
-      });
-    } else {
-      db.Permission.create({
-        role, resource_type: resourceType, resource_name: resourceName, resource_label: label, has_access: newAccess,
-      }).then(created => {
-        // Replace temp record with real one
-        const tempId = `temp_${role}_${resourceType}_${resourceName}`;
-        setPermissions(prev => prev.map(p => p.id === tempId ? created : p));
-      }).catch(() => {
-        const tempId = `temp_${role}_${resourceType}_${resourceName}`;
-        setPermissions(prev => prev.filter(p => p.id !== tempId));
-      });
+  const savePermissions = async () => {
+    setSaving(true);
+    setSaveError('');
+    setSaveSuccess(false);
+    try {
+      // Find all changed permissions for current role
+      const roleTypes = [
+        ...PAGES.map(p => ({ resourceType: 'page', resourceName: p.name, label: p.label })),
+        ...FEATURES.map(f => ({ resourceType: 'feature', resourceName: f.name, label: f.label })),
+      ];
+
+      for (const { resourceType, resourceName, label } of roleTypes) {
+        const draft = draftPermissions.find(p => p.role === selectedRole && p.resource_type === resourceType && p.resource_name === resourceName);
+        const saved = savedPermissions.find(p => p.role === selectedRole && p.resource_type === resourceType && p.resource_name === resourceName);
+        const draftAccess = draft?.has_access ?? false;
+        const savedAccess = saved?.has_access ?? false;
+
+        if (draftAccess === savedAccess) continue; // no change
+
+        if (saved && !saved.id.startsWith('draft_')) {
+          // Update existing record
+          await db.Permission.update(saved.id, { has_access: draftAccess });
+        } else {
+          // Create new record
+          const created = await db.Permission.create({
+            role: selectedRole, resource_type: resourceType, resource_name: resourceName,
+            resource_label: label, has_access: draftAccess,
+          });
+          // Update draft with real id
+          setDraftPermissions(prev => prev.map(p =>
+            p.role === selectedRole && p.resource_type === resourceType && p.resource_name === resourceName
+              ? created : p
+          ));
+        }
+      }
+
+      // Reload from DB to confirm
+      const fresh = await db.Permission.list(null, 1000);
+      setSavedPermissions(fresh || []);
+      setDraftPermissions(fresh || []);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err) {
+      console.error('Save failed:', err);
+      setSaveError('Save failed. Please try again.');
+    } finally {
+      setSaving(false);
     }
+  };
+
+  const discardChanges = () => {
+    setDraftPermissions([...savedPermissions]);
+    setSaveError('');
+    setSaveSuccess(false);
   };
 
   const toggleSection = (section) => {
@@ -151,7 +213,13 @@ export default function RolePermissions() {
             {ROLES.map(role => (
               <button
                 key={role}
-                onClick={() => setSelectedRole(role)}
+                onClick={() => {
+                  if (hasUnsavedChanges() && role !== selectedRole) {
+                    if (!window.confirm(`You have unsaved changes for "${selectedRole}". Discard and switch?`)) return;
+                    discardChanges();
+                  }
+                  setSelectedRole(role);
+                }}
                 className={`px-3 py-2 rounded-lg border-2 font-medium text-sm transition-all ${
                   selectedRole === role
                     ? `${ROLE_COLORS[role]} border-current`
@@ -164,6 +232,39 @@ export default function RolePermissions() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Save Bar */}
+      <div className="flex items-center gap-3 p-4 rounded-xl border bg-card">
+        <div className="flex-1">
+          {saveSuccess && (
+            <div className="flex items-center gap-2 text-green-600 text-sm font-medium">
+              <CheckCircle2 className="w-4 h-4" />
+              Permissions saved successfully!
+            </div>
+          )}
+          {saveError && (
+            <div className="flex items-center gap-2 text-destructive text-sm font-medium">
+              <AlertCircle className="w-4 h-4" />
+              {saveError}
+            </div>
+          )}
+          {!saveSuccess && !saveError && (
+            <p className="text-sm text-muted-foreground">
+              {hasUnsavedChanges()
+                ? <span className="text-amber-600 font-medium">⚠ You have unsaved changes for the <strong>{selectedRole}</strong> role</span>
+                : `Editing permissions for: ${selectedRole}`}
+            </p>
+          )}
+        </div>
+        <Button variant="outline" size="sm" onClick={discardChanges} disabled={saving || !hasUnsavedChanges()} className="gap-2">
+          <RotateCcw className="w-4 h-4" />
+          Discard
+        </Button>
+        <Button size="sm" onClick={savePermissions} disabled={saving || !hasUnsavedChanges()} className="gap-2">
+          {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
+          {saving ? 'Saving...' : 'Save Changes'}
+        </Button>
+      </div>
 
       {/* Permissions Grid */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
