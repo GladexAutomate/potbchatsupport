@@ -187,7 +187,7 @@ export default function RolePermissions() {
     }));
   };
 
-  const copyPermissions = async () => {
+  const copyPermissions = () => {
     if (!copyFromRole) {
       setSaveError('Select a source role to copy from');
       return;
@@ -197,6 +197,7 @@ export default function RolePermissions() {
       return;
     }
     setSaveError('');
+    
     try {
       // Copy all pages and features from source role to target role
       const allResources = [
@@ -204,36 +205,34 @@ export default function RolePermissions() {
         ...FEATURES.map(f => ({ resourceType: 'feature', resourceName: f.name, label: f.label })),
       ];
 
-      setDraftPermissions(prev => {
-        let updated = [...prev];
-        for (const resource of allResources) {
-          const sourcePerm = prev.find(p => p.role === copyFromRole && p.resource_type === resource.resourceType && p.resource_name === resource.resourceName);
-          const sourceAccess = sourcePerm?.has_access ?? false;
-          const existing = updated.find(p => p.role === selectedRole && p.resource_type === resource.resourceType && p.resource_name === resource.resourceName);
-          
-          if (existing) {
-            updated = updated.map(p =>
-              p.role === selectedRole && p.resource_type === resource.resourceType && p.resource_name === resource.resourceName
-                ? { ...p, has_access: sourceAccess }
-                : p
-            );
-          } else {
-            updated.push({
-              id: `draft_${selectedRole}_${resource.resourceType}_${resource.resourceName}`,
-              role: selectedRole,
-              resource_type: resource.resourceType,
-              resource_name: resource.resourceName,
-              resource_label: resource.label,
-              has_access: sourceAccess
-            });
-          }
+      let updated = [...draftPermissions];
+      for (const resource of allResources) {
+        const sourcePerm = draftPermissions.find(p => p.role === copyFromRole && p.resource_type === resource.resourceType && p.resource_name === resource.resourceName);
+        const sourceAccess = sourcePerm?.has_access ?? false;
+        const existing = updated.find(p => p.role === selectedRole && p.resource_type === resource.resourceType && p.resource_name === resource.resourceName);
+        
+        if (existing) {
+          updated = updated.map(p =>
+            p.role === selectedRole && p.resource_type === resource.resourceType && p.resource_name === resource.resourceName
+              ? { ...p, has_access: sourceAccess }
+              : p
+          );
+        } else {
+          updated.push({
+            id: `draft_${selectedRole}_${resource.resourceType}_${resource.resourceName}`,
+            role: selectedRole,
+            resource_type: resource.resourceType,
+            resource_name: resource.resourceName,
+            resource_label: resource.label,
+            has_access: sourceAccess
+          });
         }
-        return updated;
-      });
-      setSaveSuccess(false);
-      setSaveError('');
+      }
+      
+      setDraftPermissions(updated);
       setCopyMode(false);
       setCopyFromRole('');
+      setSaveSuccess(false);
     } catch (err) {
       console.error('Copy failed:', err);
       setSaveError('Failed to copy permissions');
