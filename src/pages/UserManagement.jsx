@@ -399,7 +399,7 @@ export default function UserManagement() {
                             onClick={() => handleAccessToggle(emp)}
                             disabled={!!accessLoading}
                             title={emp.portal_access_granted ? 'Revoke access' : 'Grant portal access'}
-                            className="flex items-center gap-1 text-xs"
+                            className="flex items-center gap-1 text-xs select-none min-h-[44px]"
                           >
                             {accessLoading ? <Loader2 className="w-4 h-4 animate-spin text-muted-foreground" /> :
                               emp.portal_access_granted
@@ -415,10 +415,10 @@ export default function UserManagement() {
                       {/* Actions: Block/Unblock + Manage Role */}
                       <span className="flex items-center gap-1.5 flex-wrap">
                         <button
-                          onClick={() => handleBlockToggle(emp)}
-                          disabled={!!blockLoading}
-                          title={isBlocked ? 'Unblock user' : 'Block user'}
-                          className={`flex items-center gap-1 text-xs px-2 py-1 rounded-md border transition-colors ${
+                         onClick={() => handleBlockToggle(emp)}
+                         disabled={!!blockLoading}
+                         title={isBlocked ? 'Unblock user' : 'Block user'}
+                         className={`flex items-center gap-1 text-xs px-2 py-1 rounded-md border transition-colors select-none min-h-[44px] ${
                             isBlocked
                               ? 'border-green-500/30 text-green-600 hover:bg-green-500/10'
                               : 'border-red-500/30 text-red-400 hover:bg-red-500/10'
@@ -431,9 +431,9 @@ export default function UserManagement() {
                         </button>
                         {showRoleBtn && (
                           <button
-                            onClick={() => handleOpenRoleEdit(emp)}
-                            title="Manage role"
-                            className="flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-primary/30 text-primary hover:bg-primary/10 transition-colors"
+                           onClick={() => handleOpenRoleEdit(emp)}
+                           title="Manage role"
+                           className="flex items-center gap-1 text-xs px-2 py-1 rounded-md border border-primary/30 text-primary hover:bg-primary/10 transition-colors select-none min-h-[44px]"
                           >
                             <ShieldCheck className="w-3 h-3" />
                             Role

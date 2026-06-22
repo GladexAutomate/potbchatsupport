@@ -1,9 +1,10 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { db } from '@/lib/db';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import StaffMessenger from '@/components/StaffMessenger';
 import { useLocation } from 'react-router-dom';
+import { RefreshCw } from 'lucide-react';
 
 // Map role to department name as stored on the ticket
 const ROLE_TO_DEPT = {
@@ -22,6 +23,8 @@ export default function Tickets() {
   const [tickets, setTickets] = useState([]);
   const [vipEmails, setVipEmails] = useState(new Set());
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const touchStartY = useRef(null);
   const autoOpenId = new URLSearchParams(location.search).get('open');
 
   // Server-side filter: only fetch what this user needs
@@ -81,11 +84,34 @@ export default function Tickets() {
     return () => { clearTimeout(loadTimer); unsub(); };
   }, [user]);
 
+  const handleTouchStart = (e) => { touchStartY.current = e.touches[0].clientY; };
+  const handleTouchEnd = async (e) => {
+    if (touchStartY.current === null) return;
+    const diff = e.changedTouches[0].clientY - touchStartY.current;
+    touchStartY.current = null;
+    if (diff > 80 && !refreshing) {
+      setRefreshing(true);
+      await loadTickets();
+      setRefreshing(false);
+    }
+  };
+
   return (
-    <div className="p-4 md:p-6 h-full">
-      <div className="mb-4">
-        <h1 className="font-sora text-2xl font-bold">Tickets</h1>
-        <p className="text-muted-foreground text-sm mt-0.5">{tickets.length} ticket{tickets.length !== 1 ? 's' : ''}</p>
+    <div
+      className="p-4 md:p-6 h-full"
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+    >
+      <div className="mb-4 flex items-center justify-between">
+        <div>
+          <h1 className="font-sora text-2xl font-bold">Tickets</h1>
+          <p className="text-muted-foreground text-sm mt-0.5">{tickets.length} ticket{tickets.length !== 1 ? 's' : ''}</p>
+        </div>
+        {refreshing && (
+          <div className="flex items-center gap-1.5 text-xs text-primary animate-pulse">
+            <RefreshCw className="w-3.5 h-3.5 animate-spin" /> Refreshing...
+          </div>
+        )}
       </div>
       <StaffMessenger tickets={tickets} loading={loading} autoOpenTicketId={autoOpenId} />
     </div>

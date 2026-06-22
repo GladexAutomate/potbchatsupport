@@ -4,7 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Loader2, CheckCircle, Clock, ShieldCheck } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Loader2, CheckCircle, Clock, ShieldCheck, Trash2, AlertTriangle } from 'lucide-react';
+import { useAuth } from '@/lib/AuthContext';
 
 const DEFAULT_SLA = [
   { priority: 'Low', response_time_hours: 24, resolution_time_hours: 72 },
@@ -14,6 +16,10 @@ const DEFAULT_SLA = [
 ];
 
 export default function Settings() {
+  const { user } = useAuth();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteConfirm, setDeleteConfirm] = useState('');
+  const [deleting, setDeleting] = useState(false);
   const [policies, setPolicies] = useState(DEFAULT_SLA);
   const [policyIds, setPolicyIds] = useState({});
   const [saving, setSaving] = useState(false);
@@ -170,6 +176,59 @@ export default function Settings() {
           <><CheckCircle className="w-4 h-4 mr-2" /> Saved!</>
         ) : 'Save SLA Policies'}
       </Button>
+
+      {/* Delete Account */}
+      <Card className="border-destructive/30 mt-8">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2 text-destructive">
+            <Trash2 className="w-4 h-4" /> Delete Account
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <p className="text-xs text-muted-foreground mb-3">
+            Permanently delete your account and all associated data. This action cannot be undone.
+          </p>
+          <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)} className="gap-2">
+            <Trash2 className="w-4 h-4" /> Delete My Account
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Dialog open={deleteOpen} onOpenChange={v => { setDeleteOpen(v); setDeleteConfirm(''); }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="w-5 h-5" /> Confirm Account Deletion
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              This will permanently delete your account <strong>{user?.email}</strong>. Type <strong>DELETE</strong> to confirm.
+            </p>
+            <Input
+              value={deleteConfirm}
+              onChange={e => setDeleteConfirm(e.target.value)}
+              placeholder="Type DELETE to confirm"
+              className="border-destructive/40 focus-visible:ring-destructive"
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setDeleteOpen(false); setDeleteConfirm(''); }}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={deleteConfirm !== 'DELETE' || deleting}
+              onClick={async () => {
+                setDeleting(true);
+                await base44.auth.logout('/');
+              }}
+              className="gap-2"
+            >
+              {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
+              Delete Account
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

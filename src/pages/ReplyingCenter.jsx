@@ -115,10 +115,10 @@ export default function ReplyingCenter() {
                 </td>
                 <td className="px-4 py-3">
                   <div className="flex items-center gap-1 justify-end">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(r)}>
+                    <Button variant="ghost" size="icon" className="h-11 w-11 select-none" onClick={() => openEdit(r)}>
                       <Pencil className="w-3.5 h-3.5" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive"
+                    <Button variant="ghost" size="icon" className="h-11 w-11 text-destructive hover:text-destructive select-none"
                       onClick={() => handleDelete(r.id)} disabled={deleting === r.id}>
                       {deleting === r.id ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-3.5 h-3.5" />}
                     </Button>

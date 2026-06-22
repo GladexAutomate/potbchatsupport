@@ -5,6 +5,12 @@
 @tailwind utilities;
 
 @layer base {
+  body {
+    overscroll-behavior: none;
+  }
+}
+
+@layer base {
   :root {
     --background: 210 20% 97%;
     --foreground: 210 25% 12%;

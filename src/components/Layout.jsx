@@ -16,6 +16,7 @@ import { APP_TIMEZONE } from '@/lib/timezone';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import BottomTabNav from '@/components/BottomTabNav';
 
 
 const STAFF_ROLES = ['super_admin', 'admin', 'csr', 'sales', 'accounting', 'sign_ups', 'on_boarding', 'corp_training', 'tl_management'];
@@ -76,6 +77,17 @@ export default function Layout() {
 
   const role = user?.role || 'customer';
   const isSuperAdmin = role === 'super_admin';
+
+  // Auto dark mode detection based on system preference
+  useEffect(() => {
+    const applyDark = (e) => {
+      document.documentElement.classList.toggle('dark', e.matches);
+    };
+    const mq = window.matchMedia('(prefers-color-scheme: dark)');
+    document.documentElement.classList.toggle('dark', mq.matches);
+    mq.addEventListener('change', applyDark);
+    return () => mq.removeEventListener('change', applyDark);
+  }, []);
   const [permissionsLoaded, setPermissionsLoaded] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
   const { count: notifCount, items: notifItems, markAllRead } = useNotifications(user);
@@ -357,7 +369,7 @@ export default function Layout() {
 
   const SidebarContent = () => (
     <div className="flex flex-col h-full">
-      <div className={cn("flex items-center gap-3 px-4 py-5 border-b border-sidebar-border", isCollapsed && "justify-center px-2")}>
+      <div className={cn("flex items-center gap-3 px-4 py-5 border-b border-sidebar-border select-none", isCollapsed && "justify-center px-2")} style={{ paddingTop: 'max(1.25rem, env(safe-area-inset-top))' }}>
         <img
           src="https://media.base44.com/images/public/6a0c352fa1dbbd33554db2fb/ed813df70_POTBlogo.jpg"
           alt="POTB Logo"
@@ -370,9 +382,9 @@ export default function Layout() {
               <p className="text-xs text-sidebar-foreground/60">Support Hub</p>
               <div className="relative">
                 <button
-                  onClick={() => { setNotifOpen(v => !v); if (!notifOpen) setNotifPage(0); }}
-                  className="relative text-sidebar-foreground/60 hover:text-white transition-colors"
-                  title="Notifications"
+                 onClick={() => { setNotifOpen(v => !v); if (!notifOpen) setNotifPage(0); }}
+                 className="relative text-sidebar-foreground/60 hover:text-white transition-colors select-none"
+                 title="Notifications"
                 >
                   <Bell className={`w-3.5 h-3.5 ${notifCount > 0 ? 'text-red-400 animate-pulse' : ''}`} />
                   {notifCount > 0 && (
@@ -449,15 +461,15 @@ export default function Layout() {
             return (
               <div key={item.href}>
                 <button
-                   onClick={() => {
-                     if (item.pageKey === 'settings') handleCategoryToggle(setSettingsExpanded);
-                     if (item.pageKey === 'customer-operations') handleCategoryToggle(setCustomerOpsExpanded);
-                     if (item.pageKey === 'internal-operations') handleCategoryToggle(setInternalOpsExpanded);
-                     if (item.pageKey === 'analytics') handleCategoryToggle(setAnalyticsExpanded);
-                     if (item.pageKey === 'administration') handleCategoryToggle(setAdminExpanded);
-                   }}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium",
+                  onClick={() => {
+                    if (item.pageKey === 'settings') handleCategoryToggle(setSettingsExpanded);
+                    if (item.pageKey === 'customer-operations') handleCategoryToggle(setCustomerOpsExpanded);
+                    if (item.pageKey === 'internal-operations') handleCategoryToggle(setInternalOpsExpanded);
+                    if (item.pageKey === 'analytics') handleCategoryToggle(setAnalyticsExpanded);
+                    if (item.pageKey === 'administration') handleCategoryToggle(setAdminExpanded);
+                  }}
+                 className={cn(
+                   "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all text-sm font-medium select-none",
                     isCollapsed && "justify-center px-2",
                     (active || anyChildActive)
                       ? "bg-primary text-white shadow-lg shadow-primary/30"
@@ -486,7 +498,7 @@ export default function Layout() {
                           to={child.href}
                           onClick={() => setMobileOpen(false)}
                           className={cn(
-                            "flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-sm font-medium relative",
+                            "flex items-center gap-3 px-3 py-2 rounded-lg transition-all text-sm font-medium relative select-none",
                             childActive
                               ? "bg-primary text-white shadow-lg shadow-primary/30"
                               : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-white",
@@ -634,7 +646,7 @@ export default function Layout() {
         </button>
       </aside>
 
-      {/* Mobile Sidebar */}
+      {/* Mobile Sidebar drawer - hidden on mobile since we use BottomTabNav */}
       {mobileOpen && (
         <div className="md:hidden fixed inset-0 z-50 flex">
           <div className="w-56 flex flex-col" style={{ background: 'hsl(var(--sidebar-background))' }}>
@@ -644,16 +656,19 @@ export default function Layout() {
         </div>
       )}
 
+      {/* Mobile Bottom Tab Navigation */}
+      <BottomTabNav />
+
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden z-0">
         {/* Mobile Header */}
-        <header className="md:hidden flex items-center gap-3 px-4 py-3 bg-card border-b border-border">
-          <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)}>
+        <header className="md:hidden flex items-center gap-3 px-4 bg-card border-b border-border select-none" style={{ paddingTop: 'max(0.75rem, env(safe-area-inset-top))', paddingBottom: '0.75rem' }}>
+          <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)} className="select-none min-h-[44px] min-w-[44px]">
             <Menu className="w-5 h-5" />
           </Button>
           <span className="font-sora font-semibold text-sm">Pinoy Online Travel Biz</span>
         </header>
 
-        <main className="flex-1 overflow-auto">
+        <main className="flex-1 overflow-auto pb-safe" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
           {!isSuperAdmin && !permissionsLoaded ? (
             <div className="flex items-center justify-center h-full">
               <div className="w-6 h-6 border-4 border-slate-200 border-t-primary rounded-full animate-spin" />
