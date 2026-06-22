@@ -244,7 +244,7 @@ export default function UserManagement() {
   const uniqueJobTitles = [...new Set(filteredEmployees.filter(e => !e.is_blocked && !e.POTBChatsupportrole && e.job_title).map(e => e.job_title))].sort();
 
   return (
-    <div className="p-6 max-w-7xl mx-auto">
+    <div className="p-4 md:p-6 max-w-7xl mx-auto pb-24 md:pb-6">
       <div className="flex items-center justify-between mb-6">
         <div>
           <h1 className="font-sora text-2xl font-bold">User Management</h1>
@@ -291,23 +291,23 @@ export default function UserManagement() {
             <h2 className="font-sora font-semibold text-sm">Employee Directory</h2>
             <span className="text-xs text-muted-foreground ml-1">({filteredEmployees.length})</span>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
              {filteredEmployees.length > 0 && (
-               <Button variant="outline" size="sm" onClick={() => setBulkApplyOpen(true)} className="gap-2">
+               <Button variant="outline" size="sm" onClick={() => setBulkApplyOpen(true)} className="gap-2 w-full sm:w-auto">
                  <BadgeCheck className="w-4 h-4" />
                  Auto-Assign Roles
                </Button>
              )}
+             <Button variant="outline" size="sm" onClick={handleSyncEmployees} disabled={syncing} className="gap-2 w-full sm:w-auto">
+               {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+               Sync from Supabase
+             </Button>
              {['active', 'inactive', 'non_potb'].includes(empTab) && filteredEmployees.length > 0 && (
-               <Button variant="outline" size="sm" onClick={handleExport} className="gap-2">
+               <Button variant="outline" size="sm" onClick={handleExport} className="gap-2 w-full sm:w-auto">
                  <Download className="w-4 h-4" />
                  Export CSV
                </Button>
              )}
-             <Button variant="outline" size="sm" onClick={handleSyncEmployees} disabled={syncing} className="gap-2">
-               {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-               Sync from Supabase
-             </Button>
            </div>
         </div>
 
