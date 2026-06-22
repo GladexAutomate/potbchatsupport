@@ -1,7 +1,8 @@
 import { Toaster } from "@/components/ui/toaster"
 import { QueryClientProvider } from '@tanstack/react-query'
 import { queryClientInstance } from '@/lib/query-client'
-import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Routes, useLocation } from 'react-router-dom';
+import { AnimatePresence, motion } from 'framer-motion';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -33,6 +34,7 @@ import SLASettings from './pages/SLASettings';
 
 const AuthenticatedApp = () => {
   const { isLoadingAuth, isLoadingPublicSettings, authError, navigateToLogin, isAuthenticated, authChecked } = useAuth();
+  const location = useLocation();
 
   if (isLoadingPublicSettings || isLoadingAuth) {
     return (
@@ -69,36 +71,47 @@ const AuthenticatedApp = () => {
 
   return (
     <ErrorBoundary>
-      <Routes>
-        {/* Public customer portal - customers & unauthenticated */}
-        <Route path="/" element={<ErrorBoundary><CustomerPortal /></ErrorBoundary>} />
-        <Route path="/my-tickets" element={<ErrorBoundary><MyTickets /></ErrorBoundary>} />
-        <Route path="/submit-ticket" element={<ErrorBoundary><SubmitTicket /></ErrorBoundary>} />
-        <Route path="/submit-internal-ticket" element={<ErrorBoundary><SubmitInternalTicket /></ErrorBoundary>} />
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.div
+          key={location.pathname}
+          initial={{ x: 24, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+          exit={{ x: -24, opacity: 0 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+          style={{ display: 'contents' }}
+        >
+        <Routes location={location}>
+          {/* Public customer portal - customers & unauthenticated */}
+          <Route path="/" element={<ErrorBoundary><CustomerPortal /></ErrorBoundary>} />
+          <Route path="/my-tickets" element={<ErrorBoundary><MyTickets /></ErrorBoundary>} />
+          <Route path="/submit-ticket" element={<ErrorBoundary><SubmitTicket /></ErrorBoundary>} />
+          <Route path="/submit-internal-ticket" element={<ErrorBoundary><SubmitInternalTicket /></ErrorBoundary>} />
 
-        {/* Staff portal with layout - role-gated in Layout */}
-        <Route element={<Layout />}>
-          <Route path="/dashboard" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
-          <Route path="/tickets" element={<ErrorBoundary><Tickets /></ErrorBoundary>} />
-          <Route path="/kpi" element={<ErrorBoundary><KPI /></ErrorBoundary>} />
-          <Route path="/chatbot-config" element={<ErrorBoundary><ChatbotConfig /></ErrorBoundary>} />
-          <Route path="/settings" element={<ErrorBoundary><Settings /></ErrorBoundary>} />
-          <Route path="/test-accounts" element={<ErrorBoundary><TestAccounts /></ErrorBoundary>} />
-          <Route path="/users" element={<ErrorBoundary><UserManagement /></ErrorBoundary>} />
-          <Route path="/role-permissions" element={<ErrorBoundary><RolePermissions /></ErrorBoundary>} />
-          <Route path="/customers" element={<ErrorBoundary><Customers /></ErrorBoundary>} />
-          <Route path="/replying-center" element={<ErrorBoundary><ReplyingCenter /></ErrorBoundary>} />
-          <Route path="/conversation-tags" element={<ErrorBoundary><ConversationTags /></ErrorBoundary>} />
-          <Route path="/staff-ratings" element={<ErrorBoundary><StaffRatings /></ErrorBoundary>} />
-          <Route path="/group-chat" element={<ErrorBoundary><GroupChat /></ErrorBoundary>} />
-          <Route path="/vip-tickets" element={<ErrorBoundary><VIPTickets /></ErrorBoundary>} />
-          <Route path="/internal-tickets" element={<ErrorBoundary><InternalTicketsDashboard /></ErrorBoundary>} />
-          <Route path="/escalations" element={<ErrorBoundary><InternalEscalations /></ErrorBoundary>} />
-          <Route path="/sla-settings" element={<ErrorBoundary><SLASettings /></ErrorBoundary>} />
-        </Route>
+          {/* Staff portal with layout - role-gated in Layout */}
+          <Route element={<Layout />}>
+            <Route path="/dashboard" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
+            <Route path="/tickets" element={<ErrorBoundary><Tickets /></ErrorBoundary>} />
+            <Route path="/kpi" element={<ErrorBoundary><KPI /></ErrorBoundary>} />
+            <Route path="/chatbot-config" element={<ErrorBoundary><ChatbotConfig /></ErrorBoundary>} />
+            <Route path="/settings" element={<ErrorBoundary><Settings /></ErrorBoundary>} />
+            <Route path="/test-accounts" element={<ErrorBoundary><TestAccounts /></ErrorBoundary>} />
+            <Route path="/users" element={<ErrorBoundary><UserManagement /></ErrorBoundary>} />
+            <Route path="/role-permissions" element={<ErrorBoundary><RolePermissions /></ErrorBoundary>} />
+            <Route path="/customers" element={<ErrorBoundary><Customers /></ErrorBoundary>} />
+            <Route path="/replying-center" element={<ErrorBoundary><ReplyingCenter /></ErrorBoundary>} />
+            <Route path="/conversation-tags" element={<ErrorBoundary><ConversationTags /></ErrorBoundary>} />
+            <Route path="/staff-ratings" element={<ErrorBoundary><StaffRatings /></ErrorBoundary>} />
+            <Route path="/group-chat" element={<ErrorBoundary><GroupChat /></ErrorBoundary>} />
+            <Route path="/vip-tickets" element={<ErrorBoundary><VIPTickets /></ErrorBoundary>} />
+            <Route path="/internal-tickets" element={<ErrorBoundary><InternalTicketsDashboard /></ErrorBoundary>} />
+            <Route path="/escalations" element={<ErrorBoundary><InternalEscalations /></ErrorBoundary>} />
+            <Route path="/sla-settings" element={<ErrorBoundary><SLASettings /></ErrorBoundary>} />
+          </Route>
 
-        <Route path="*" element={<PageNotFound />} />
-      </Routes>
+          <Route path="*" element={<PageNotFound />} />
+        </Routes>
+        </motion.div>
+      </AnimatePresence>
     </ErrorBoundary>
   );
 };

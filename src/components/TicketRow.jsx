@@ -29,7 +29,7 @@ export default function TicketRow({ t, isVip, unread, selectedTicket, handleSele
     <button
       key={t.id}
       onClick={() => handleSelectTicket(t)}
-      className={`w-full text-left px-4 py-3.5 border-b transition-colors relative
+      className={`w-full text-left px-4 py-3.5 border-b transition-colors relative select-none min-h-[56px]
         ${isVip ? 'border-yellow-500/20' : 'border-border/30'}
         ${isSelected ? 'bg-primary/10 border-l-2 border-l-primary' : 'hover:bg-muted/40'}
         ${isVip && !isSelected ? 'bg-yellow-500/5 hover:bg-yellow-500/10' : ''}

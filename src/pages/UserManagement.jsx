@@ -317,7 +317,7 @@ export default function UserManagement() {
             <button
               key={tab.key}
               onClick={() => setEmpTab(tab.key)}
-              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 ${
+              className={`px-3 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5 select-none min-h-[44px] ${
                 empTab === tab.key
                   ? 'bg-background text-foreground shadow-sm'
                   : 'text-muted-foreground hover:text-foreground'

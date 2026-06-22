@@ -22,7 +22,10 @@ export default function TicketChat({ ticketId }) {
     if (!ticketId) return;
     loadMessages();
     const unsub = db.TicketMessage.subscribe(event => {
-      if (event.data?.ticket_id === ticketId) loadMessages();
+      if (event.data?.ticket_id === ticketId) {
+        // Replace any optimistic messages with real ones on next load
+        loadMessages();
+      }
     });
     return () => unsub();
   }, [ticketId]);
@@ -50,19 +53,31 @@ export default function TicketChat({ ticketId }) {
 
   const handleSend = async () => {
     if (!newMessage.trim() && attachments.length === 0) return;
-    setSending(true);
-    await db.TicketMessage.create({
+    const optimisticMsg = {
+      id: `optimistic-${Date.now()}`,
       ticket_id: ticketId,
       sender_email: user?.email || '',
       sender_name: user?.full_name || user?.email || 'Support',
       sender_role: 'staff',
       message: newMessage.trim(),
       attachments: attachments.map(a => a.url),
-    });
+      created_date: new Date().toISOString(),
+      _optimistic: true,
+    };
+    setMessages(prev => [...prev, optimisticMsg]);
     setNewMessage('');
     setAttachments([]);
-    await loadMessages();
+    setSending(true);
+    await db.TicketMessage.create({
+      ticket_id: ticketId,
+      sender_email: optimisticMsg.sender_email,
+      sender_name: optimisticMsg.sender_name,
+      sender_role: 'staff',
+      message: optimisticMsg.message,
+      attachments: optimisticMsg.attachments,
+    });
     setSending(false);
+    // Real messages arrive via subscription — subscription will replace optimistic with real
   };
 
   return (

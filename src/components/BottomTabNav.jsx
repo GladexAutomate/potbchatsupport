@@ -1,4 +1,4 @@
-import { Link, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Ticket, BarChart2, Settings } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -11,6 +11,16 @@ const TABS = [
 
 export default function BottomTabNav() {
   const location = useLocation();
+  const navigate = useNavigate();
+
+  const handleTabClick = (tab) => {
+    if (location.pathname === tab.href) {
+      // Already on this tab — scroll to top as a "reset"
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    } else {
+      navigate(tab.href);
+    }
+  };
 
   return (
     <nav
@@ -20,9 +30,9 @@ export default function BottomTabNav() {
       {TABS.map(tab => {
         const active = location.pathname === tab.href;
         return (
-          <Link
+          <button
             key={tab.href}
-            to={tab.href}
+            onClick={() => handleTabClick(tab)}
             className={cn(
               'flex-1 flex flex-col items-center justify-center gap-1 py-2 min-h-[56px] select-none transition-colors',
               active ? 'text-sidebar-primary' : 'text-sidebar-foreground/60 hover:text-sidebar-foreground'
@@ -30,7 +40,7 @@ export default function BottomTabNav() {
           >
             <tab.icon className="w-5 h-5 flex-shrink-0" />
             <span className="text-[10px] font-medium">{tab.label}</span>
-          </Link>
+          </button>
         );
       })}
     </nav>

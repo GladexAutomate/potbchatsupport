@@ -143,9 +143,9 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
     loadMessages(selectedTicket.id);
     setLastSeenMap(prev => ({ ...prev, [selectedTicket.id]: new Date().toISOString() }));
 
-    // Subscribe with debounce to avoid rate limiting on rapid updates
+    // Subscribe with debounce — replaces optimistic messages with real ones
     const unsub = db.TicketMessage.subscribe(event => {
-      if (event.data?.ticket_id === selectedTicket.id) {
+      if (event.data?.ticket_id === selectedTicket.id && !event.data?.id?.startsWith('optimistic-')) {
         clearTimeout(loadTimer);
         loadTimer = setTimeout(() => {
           loadMessages(selectedTicket.id);
@@ -211,8 +211,8 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
 
   const handleSend = async () => {
     if (!newMessage.trim() && attachments.length === 0) return;
-    setSending(true);
-    await db.TicketMessage.create({
+    const optimisticMsg = {
+      id: `optimistic-${Date.now()}`,
       ticket_id: selectedTicket.id,
       sender_email: user?.email || '',
       sender_name: user?.full_name || user?.email || 'Support',
@@ -220,12 +220,25 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
       message: newMessage.trim(),
       is_internal: isInternal,
       attachments: attachments.map(a => a.url),
-    });
+      created_date: new Date().toISOString(),
+      _optimistic: true,
+    };
+    setMessages(prev => [...prev, optimisticMsg]);
     setNewMessage('');
     setAttachments([]);
-    await loadMessages(selectedTicket.id);
+    setSending(true);
+    await db.TicketMessage.create({
+      ticket_id: selectedTicket.id,
+      sender_email: optimisticMsg.sender_email,
+      sender_name: optimisticMsg.sender_name,
+      sender_role: 'staff',
+      message: optimisticMsg.message,
+      is_internal: isInternal,
+      attachments: optimisticMsg.attachments,
+    });
     setLastSeenMap(prev => ({ ...prev, [selectedTicket.id]: new Date().toISOString() }));
     setSending(false);
+    // Real messages will arrive via subscription — no need to manually reload
   };
 
   const toggleTag = async (ticketId, tagName) => {
