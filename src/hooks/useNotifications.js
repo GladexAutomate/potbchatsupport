@@ -110,63 +110,99 @@ export function useNotifications(user) {
   }, [user?.email, user?.full_name]);
 
   // --- TICKET MESSAGES (customer replies + internal staff chat) ---
+  // Debounced to prevent DB read storms under high traffic: events are batched
+  // within a 2s window; only one DB fetch fires per burst of rapid messages.
   useEffect(() => {
     if (!user?.email) return;
-    const unsubTicketMsg = db.TicketMessage.subscribe(async (event) => {
+    const pendingMsgs = [];
+    let debounceTimer = null;
+
+    const processBatch = async () => {
+      const batch = pendingMsgs.splice(0);
+      if (!batch.length) return;
+      // Deduplicate by ticket_id so we only fetch each ticket once per burst
+      const byTicket = {};
+      for (const msg of batch) {
+        if (!byTicket[msg.ticket_id]) byTicket[msg.ticket_id] = msg;
+      }
+      for (const [ticketId, msg] of Object.entries(byTicket)) {
+        try {
+          const ticket = await db.Ticket.get(ticketId);
+          if (!ticket || ticket.assigned_to !== user.email) continue;
+          if (msg.is_internal) {
+            await createNotification('internal_note', `${msg.sender_name} posted a note on ticket ${ticket.ticket_number}`, `/tickets?ticket_id=${ticket.id}`, ticket.id);
+          } else {
+            await createNotification('ticket_reply', `${ticket.customer_name} replied on ticket ${ticket.ticket_number}`, `/tickets?ticket_id=${ticket.id}`, ticket.id);
+          }
+        } catch (e) {
+          console.error('[useNotifications] Ticket message error:', e);
+        }
+      }
+    };
+
+    const unsubTicketMsg = db.TicketMessage.subscribe((event) => {
       if (event.type !== 'create') return;
       const msg = event.data;
       if (!msg || msg.sender_email === user.email) return;
-
-      try {
-        const ticket = await db.Ticket.get(msg.ticket_id);
-        if (!ticket || ticket.assigned_to !== user.email) return;
-
-        if (msg.is_internal) {
-          const redirectUrl = `/tickets?ticket_id=${ticket.id}`;
-          await createNotification('internal_note', `${msg.sender_name} posted a note on ticket ${ticket.ticket_number}`, redirectUrl, ticket.id);
-        } else {
-          const redirectUrl = `/tickets?ticket_id=${ticket.id}`;
-          await createNotification('ticket_reply', `${ticket.customer_name} replied on ticket ${ticket.ticket_number}`, redirectUrl, ticket.id);
-        }
-      } catch (e) {
-        console.error('[useNotifications] Ticket message error:', e);
-      }
+      pendingMsgs.push(msg);
+      clearTimeout(debounceTimer);
+      // Random jitter (0–500ms) prevents all connected clients from hitting DB simultaneously
+      debounceTimer = setTimeout(processBatch, 2000 + Math.random() * 500);
     });
-    return () => unsubTicketMsg();
+
+    return () => { clearTimeout(debounceTimer); unsubTicketMsg(); };
   }, [user?.email]);
 
   // --- NEW INTERNAL TICKETS to this user's department ---
   useEffect(() => {
     if (!user?.email || !user?.role) return;
     const userDept = ROLE_TO_DEPT[user.role] ?? null;
-    
+    let debounceTimer = null;
+    const pendingTickets = [];
+
+    const processBatch = () => {
+      const batch = pendingTickets.splice(0);
+      for (const t of batch) {
+        const redirectUrl = `/internal-tickets?ticket_id=${t.id}`;
+        createNotification('internal_ticket', `New internal ticket from ${t.from_department}: ${t.subject}`, redirectUrl, t.id);
+      }
+    };
+
     const unsubInternal = db.InternalTicket.subscribe((event) => {
       if (event.type !== 'create') return;
       const t = event.data;
       if (!t || t.created_by_email === user.email) return;
-
       const isRelevant = user.role === 'super_admin' || user.role === 'tl_management'
         || (userDept && t.to_department === userDept);
       if (isRelevant) {
-        const redirectUrl = `/internal-tickets?ticket_id=${t.id}`;
-        createNotification('internal_ticket', `New internal ticket from ${t.from_department}: ${t.subject}`, redirectUrl, t.id);
+        pendingTickets.push(t);
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(processBatch, 1500 + Math.random() * 500);
       }
     });
-    return () => unsubInternal();
+    return () => { clearTimeout(debounceTimer); unsubInternal(); };
   }, [user?.email, user?.role]);
 
   // --- TICKET ASSIGNMENT (newly assigned to this user) ---
   useEffect(() => {
     if (!user?.email) return;
+    let debounceTimer = null;
+    let lastAssigned = null;
+
     const unsubTicketAssign = db.Ticket.subscribe((event) => {
       if (event.type !== 'update') return;
       const t = event.data;
       if (!t || t.assigned_to !== user.email) return;
-
-      const redirectUrl = `/tickets?ticket_id=${t.id}`;
-      createNotification('ticket_assignment', `You were assigned ticket ${t.ticket_number}`, redirectUrl, t.id);
+      // Deduplicate: don't fire twice for the same ticket assignment event
+      if (lastAssigned === t.id) return;
+      lastAssigned = t.id;
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(() => {
+        createNotification('ticket_assignment', `You were assigned ticket ${t.ticket_number}`, `/tickets?ticket_id=${t.id}`, t.id);
+        lastAssigned = null;
+      }, 1000 + Math.random() * 500);
     });
-    return () => unsubTicketAssign();
+    return () => { clearTimeout(debounceTimer); unsubTicketAssign(); };
   }, [user?.email]);
 
   return { count, items, markAllRead };

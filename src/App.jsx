@@ -4,6 +4,7 @@ import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
 import Layout from './components/Layout';
 import CustomerPortal from './pages/CustomerPortal';
@@ -67,36 +68,38 @@ const AuthenticatedApp = () => {
   }
 
   return (
-    <Routes>
-      {/* Public customer portal - customers & unauthenticated */}
-      <Route path="/" element={<CustomerPortal />} />
-      <Route path="/my-tickets" element={<MyTickets />} />
-      <Route path="/submit-ticket" element={<SubmitTicket />} />
-      <Route path="/submit-internal-ticket" element={<SubmitInternalTicket />} />
+    <ErrorBoundary>
+      <Routes>
+        {/* Public customer portal - customers & unauthenticated */}
+        <Route path="/" element={<ErrorBoundary><CustomerPortal /></ErrorBoundary>} />
+        <Route path="/my-tickets" element={<ErrorBoundary><MyTickets /></ErrorBoundary>} />
+        <Route path="/submit-ticket" element={<ErrorBoundary><SubmitTicket /></ErrorBoundary>} />
+        <Route path="/submit-internal-ticket" element={<ErrorBoundary><SubmitInternalTicket /></ErrorBoundary>} />
 
-      {/* Staff portal with layout - role-gated in Layout */}
-      <Route element={<Layout />}>
-        <Route path="/dashboard" element={<Dashboard />} />
-        <Route path="/tickets" element={<Tickets />} />
-        <Route path="/kpi" element={<KPI />} />
-        <Route path="/chatbot-config" element={<ChatbotConfig />} />
-        <Route path="/settings" element={<Settings />} />
-        <Route path="/test-accounts" element={<TestAccounts />} />
-        <Route path="/users" element={<UserManagement />} />
-        <Route path="/role-permissions" element={<RolePermissions />} />
-        <Route path="/customers" element={<Customers />} />
-        <Route path="/replying-center" element={<ReplyingCenter />} />
-        <Route path="/conversation-tags" element={<ConversationTags />} />
-        <Route path="/staff-ratings" element={<StaffRatings />} />
-        <Route path="/group-chat" element={<GroupChat />} />
-        <Route path="/vip-tickets" element={<VIPTickets />} />
-        <Route path="/internal-tickets" element={<InternalTicketsDashboard />} />
-        <Route path="/escalations" element={<InternalEscalations />} />
-        <Route path="/sla-settings" element={<SLASettings />} />
-      </Route>
+        {/* Staff portal with layout - role-gated in Layout */}
+        <Route element={<Layout />}>
+          <Route path="/dashboard" element={<ErrorBoundary><Dashboard /></ErrorBoundary>} />
+          <Route path="/tickets" element={<ErrorBoundary><Tickets /></ErrorBoundary>} />
+          <Route path="/kpi" element={<ErrorBoundary><KPI /></ErrorBoundary>} />
+          <Route path="/chatbot-config" element={<ErrorBoundary><ChatbotConfig /></ErrorBoundary>} />
+          <Route path="/settings" element={<ErrorBoundary><Settings /></ErrorBoundary>} />
+          <Route path="/test-accounts" element={<ErrorBoundary><TestAccounts /></ErrorBoundary>} />
+          <Route path="/users" element={<ErrorBoundary><UserManagement /></ErrorBoundary>} />
+          <Route path="/role-permissions" element={<ErrorBoundary><RolePermissions /></ErrorBoundary>} />
+          <Route path="/customers" element={<ErrorBoundary><Customers /></ErrorBoundary>} />
+          <Route path="/replying-center" element={<ErrorBoundary><ReplyingCenter /></ErrorBoundary>} />
+          <Route path="/conversation-tags" element={<ErrorBoundary><ConversationTags /></ErrorBoundary>} />
+          <Route path="/staff-ratings" element={<ErrorBoundary><StaffRatings /></ErrorBoundary>} />
+          <Route path="/group-chat" element={<ErrorBoundary><GroupChat /></ErrorBoundary>} />
+          <Route path="/vip-tickets" element={<ErrorBoundary><VIPTickets /></ErrorBoundary>} />
+          <Route path="/internal-tickets" element={<ErrorBoundary><InternalTicketsDashboard /></ErrorBoundary>} />
+          <Route path="/escalations" element={<ErrorBoundary><InternalEscalations /></ErrorBoundary>} />
+          <Route path="/sla-settings" element={<ErrorBoundary><SLASettings /></ErrorBoundary>} />
+        </Route>
 
-      <Route path="*" element={<PageNotFound />} />
-    </Routes>
+        <Route path="*" element={<PageNotFound />} />
+      </Routes>
+    </ErrorBoundary>
   );
 };
 
