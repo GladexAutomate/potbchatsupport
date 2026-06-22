@@ -70,7 +70,7 @@ export default function CustomerPortal() {
       .map(t => parseInt(t.ticket_number?.replace(/^TKT-/, ''), 10))
       .filter(n => !isNaN(n));
     const next = nums.length > 0 ? Math.max(...nums) + 1 : 1;
-    return `TKT-${String(next).padStart(5, '0')}`;
+    return `TKT-${String(next).padStart(8, '0')}`;
   };
 
   const handleFiles = async (files) => {

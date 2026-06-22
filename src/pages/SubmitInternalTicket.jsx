@@ -55,7 +55,7 @@ export default function SubmitInternalTicket() {
       .map(t => parseInt(t.ticket_number?.replace(/^INT-/, ''), 10))
       .filter(n => !isNaN(n));
     const next = nums.length > 0 ? Math.max(...nums) + 1 : 1;
-    return `INT-${String(next).padStart(5, '0')}`;
+    return `INT-${String(next).padStart(8, '0')}`;
   };
 
   const handleFiles = async (files) => {
