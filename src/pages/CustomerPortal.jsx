@@ -122,27 +122,27 @@ export default function CustomerPortal() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-950 to-slate-900 flex flex-col">
       {/* Header */}
-      <header className="flex items-center gap-3 px-6 py-4">
-        <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center">
+      <header className="flex flex-wrap items-center gap-2 px-4 py-3">
+        <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
           <ShieldCheck className="w-5 h-5 text-white" />
         </div>
-        <div>
+        <div className="flex-shrink-0">
           <span className="font-sora font-bold text-white text-lg">LakbayHub</span>
           <span className="text-white/40 text-sm ml-2">Support</span>
         </div>
-        <div className="ml-auto flex items-center gap-2">
+        <div className="ml-auto flex items-center gap-2 flex-wrap justify-end">
            <Link to="/my-tickets">
-             <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10 gap-2">
-               <ClipboardList className="w-4 h-4" /> My Tickets
+             <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10 gap-1.5 text-xs px-2.5">
+               <ClipboardList className="w-3.5 h-3.5" /> My Tickets
              </Button>
            </Link>
            {(employeeRecord || (user?.role && user?.role !== 'user' && user?.role !== 'customer')) && (
-             <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10 gap-2" onClick={handleStaffLoginClick}>
-               <ShieldCheck className="w-4 h-4" /> Staff Login
+             <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10 gap-1.5 text-xs px-2.5" onClick={handleStaffLoginClick}>
+               <ShieldCheck className="w-3.5 h-3.5" /> Staff Login
              </Button>
            )}
            {user && (
-             <Button variant="ghost" size="sm" className="text-white/60 hover:text-white hover:bg-white/10" onClick={() => base44.auth.logout('/')}>
+             <Button variant="ghost" size="sm" className="text-white/60 hover:text-white hover:bg-white/10 text-xs px-2.5" onClick={() => base44.auth.logout('/')}>
                Switch Account
              </Button>
            )}
