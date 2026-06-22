@@ -11,7 +11,7 @@ import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, ChevronLe
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { formatDateFull, convertOldTimestampFormat } from '@/lib/timezone';
+import { formatDateFull, convertOldTimestampFormat, APP_TIMEZONE } from '@/lib/timezone';
 import CreateInternalTicketModal from '@/components/CreateInternalTicketModal';
 import { toZonedTime } from 'date-fns-tz';
 import { format } from 'date-fns';
@@ -134,7 +134,7 @@ export default function InternalTicketsDashboard() {
   const handleSend = async () => {
     if (!newMessage.trim() && attachments.length === 0) return;
     setSending(true);
-    const zonedDate = toZonedTime(new Date(), 'Asia/Manila');
+    const zonedDate = toZonedTime(new Date(), APP_TIMEZONE);
     const timestamp = format(zonedDate, 'MMM. d, yyyy, h:mm a');
     const newAttachmentUrls = attachments.map(a => a.url);
     const updatedAttachments = [...(selectedTicket.attachments || []), ...newAttachmentUrls];

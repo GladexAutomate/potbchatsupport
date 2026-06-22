@@ -3,6 +3,8 @@ import { db } from '@/lib/db';
 import { Star, TrendingUp, Users, Award } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { startOfDay, startOfWeek, startOfMonth, subDays, format, isAfter } from 'date-fns';
+import { toZonedTime } from 'date-fns-tz';
+import { APP_TIMEZONE } from '@/lib/timezone';
 
 const PERIODS = ['Daily', 'Weekly', 'Monthly'];
 
@@ -210,7 +212,7 @@ export default function StaffRatings() {
                              )}
                              {r.remarks && <p className="text-xs text-muted-foreground">"{r.remarks}"</p>}
                            </div>
-                           <span className="text-xs text-muted-foreground/50 shrink-0">{format(new Date(r.rated_at), 'MMM d')}</span>
+                           <span className="text-xs text-muted-foreground/50 shrink-0">{format(toZonedTime(new Date(r.rated_at), APP_TIMEZONE), 'MMM d')}</span>
                          </div>
                       );
                     })}
