@@ -64,9 +64,13 @@ export default function CustomerPortal() {
     }
   };
 
-  const generateTicketNumber = () => {
-    const now = new Date();
-    return `TKT-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${Math.floor(Math.random()*9000+1000)}`;
+  const generateTicketNumber = async () => {
+    const recent = await db.Ticket.list('-created_date', 100);
+    const nums = (recent || [])
+      .map(t => parseInt(t.ticket_number?.replace(/^TKT-/, ''), 10))
+      .filter(n => !isNaN(n));
+    const next = nums.length > 0 ? Math.max(...nums) + 1 : 1;
+    return `TKT-${String(next).padStart(5, '0')}`;
   };
 
   const handleFiles = async (files) => {
@@ -90,7 +94,7 @@ export default function CustomerPortal() {
   const handleSubmitTicket = async () => {
     if (!form.customer_name || !form.subject || !form.description) return;
     setSubmitting(true);
-    const num = generateTicketNumber();
+    const num = await generateTicketNumber();
     const deadline = new Date(Date.now() + 24 * 3600000); // default 24h SLA, CSR will update priority
     
     // Check if customer is VIP

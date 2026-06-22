@@ -49,9 +49,13 @@ export default function SubmitInternalTicket() {
      }
    }, [authUser]);
 
-  const generateTicketNumber = () => {
-    const now = new Date();
-    return `INT-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${Math.floor(Math.random()*9000+1000)}`;
+  const generateTicketNumber = async () => {
+    const recent = await db.InternalTicket.list('-created_date', 100);
+    const nums = (recent || [])
+      .map(t => parseInt(t.ticket_number?.replace(/^INT-/, ''), 10))
+      .filter(n => !isNaN(n));
+    const next = nums.length > 0 ? Math.max(...nums) + 1 : 1;
+    return `INT-${String(next).padStart(5, '0')}`;
   };
 
   const handleFiles = async (files) => {
@@ -76,7 +80,7 @@ export default function SubmitInternalTicket() {
     if (!form.from_department || !form.to_department || !form.subject || !form.description) return;
     setSubmitting(true);
     try {
-      const num = generateTicketNumber();
+      const num = await generateTicketNumber();
       
       await db.InternalTicket.create({
         ticket_number: num,
