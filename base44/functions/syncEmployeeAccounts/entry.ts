@@ -39,11 +39,36 @@ Deno.serve(async (req) => {
     // Get existing EmployeeAccount records FOR THIS ENV only — so accounts that exist
     // in another env still get created here.
     const existingAll = await base44.asServiceRole.entities.EmployeeAccount.list('-created_date', 2000);
+
+    // Index existing records by EVERY identifier we might match on.
+    // IMPORTANT: email is mutable — if an employee's email changes in Supabase, matching
+    // on email alone would treat them as a brand-new person and create a duplicate while
+    // the old record keeps the outdated email. So we match on a stable identifier first
+    // (airtable_record_id, then employee_code) and only fall back to email.
+    const norm = (v) => (v || '').toString().trim().toLowerCase();
+    const existingByAid = {};
+    const existingByCode = {};
     const existingByEmail = {};
     for (const e of existingAll) {
       if (e.env !== targetEnv) continue;
-      existingByEmail[e.email?.toLowerCase()] = e;
+      const aid = norm(e.airtable_record_id);
+      const code = norm(e.employee_code);
+      const em = norm(e.email);
+      if (aid) existingByAid[aid] = e;
+      if (code) existingByCode[code] = e;
+      if (em) existingByEmail[em] = e;
     }
+
+    // Resolve an existing record for a Supabase row using stable keys first.
+    const findExisting = (d) => {
+      const aid = norm(d.airtable_record_id);
+      const code = norm(d.employee_code);
+      const em = norm(d.email);
+      return (aid && existingByAid[aid]) ||
+             (code && existingByCode[code]) ||
+             (em && existingByEmail[em]) ||
+             null;
+    };
 
     let created = 0;
     let updated = 0;
@@ -67,16 +92,11 @@ Deno.serve(async (req) => {
         airtable_record_id: d.airtable_record_id || '',
       };
 
-      if (existingByEmail[email]) {
-        // Preserve app-managed fields that should never be overwritten by Supabase sync
-        const existing = existingByEmail[email];
-        toUpdate.push({
-          id: existing.id,
-          ...payload,
-          POTBChatsupportrole: existing.POTBChatsupportrole ?? null,
-          is_blocked: existing.is_blocked ?? false,
-          portal_access_granted: existing.portal_access_granted ?? false,
-        });
+      const existing = findExisting(d);
+      if (existing) {
+        // Carry the matched record through so the update loop can diff against it and
+        // preserve app-managed fields (role/block/access) that Supabase must never overwrite.
+        toUpdate.push({ id: existing.id, existing, data: payload });
       } else {
         toCreate.push(payload);
       }
@@ -88,25 +108,24 @@ Deno.serve(async (req) => {
       created = toCreate.length;
     }
 
-    // Update existing — skip if no change to avoid rate limits
-    for (const rec of toUpdate) {
-      const { id, ...data } = rec;
-      const existing = existingByEmail[data.email?.toLowerCase()];
-      const hasChange = !existing ||
+    // Update existing — skip if no change to avoid rate limits.
+    // email is now part of the diff so a changed email actually propagates.
+    for (const { id, existing, data } of toUpdate) {
+      const hasChange =
+        existing.email !== data.email ||
         existing.full_name !== data.full_name ||
         existing.status !== data.status ||
         existing.employee_code !== data.employee_code ||
         existing.job_title !== data.job_title ||
-        existing.generated_password !== data.generated_password;
+        existing.generated_password !== data.generated_password ||
+        existing.airtable_record_id !== data.airtable_record_id;
       if (hasChange) {
-        // Re-read preserved fields fresh from existing record to guarantee they are not lost
-        const existingRec = existingByEmail[data.email?.toLowerCase()];
-        const { POTBChatsupportrole: _cr, is_blocked: _ib, portal_access_granted: _pa, ...supabaseFields } = data;
         await base44.asServiceRole.entities.EmployeeAccount.update(id, {
-          ...supabaseFields,
-          POTBChatsupportrole: existingRec.POTBChatsupportrole ?? null,
-          is_blocked: existingRec.is_blocked ?? false,
-          portal_access_granted: existingRec.portal_access_granted ?? false,
+          ...data,
+          // Preserve app-managed fields — never overwritten by Supabase sync
+          POTBChatsupportrole: existing.POTBChatsupportrole ?? null,
+          is_blocked: existing.is_blocked ?? false,
+          portal_access_granted: existing.portal_access_granted ?? false,
         });
         updated++;
       }

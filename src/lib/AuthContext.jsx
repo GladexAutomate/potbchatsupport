@@ -84,8 +84,9 @@ export const AuthProvider = ({ children }) => {
       try {
         const currentUser = await base44.auth.me();
         const empRecords = await db.EmployeeAccount.filter({ email: currentUser.email }, 1);
-        if (empRecords?.length > 0 && empRecords[0].is_blocked) {
-          console.warn('User blocked detected, logging out silently');
+        // Log out if the user has been blocked OR set inactive in Supabase since they logged in.
+        if (empRecords?.length > 0 && (empRecords[0].is_blocked || empRecords[0].status === 'inactive')) {
+          console.warn('User blocked/inactive detected, logging out silently');
           logout(false);
         }
       } catch (e) {
@@ -198,9 +199,11 @@ export const AuthProvider = ({ children }) => {
         if (empRecords && empRecords.length > 0) {
           const emp = empRecords[0];
 
-          // If blocked — force logout immediately, clear any pending redirect
-          if (emp.is_blocked) {
-            console.warn('User is blocked. Forcing logout.');
+          // If blocked or inactive — force logout immediately, clear any pending redirect.
+          // Inactive is enforced here too so the OAuth/Google login path matches the
+          // staff-code login (StaffLoginModal), where inactive accounts are denied.
+          if (emp.is_blocked || emp.status === 'inactive') {
+            console.warn(`User is ${emp.is_blocked ? 'blocked' : 'inactive'}. Forcing logout.`);
             sessionStorage.removeItem('loginRedirect');
             setIsLoadingAuth(false);
             setAuthChecked(true);

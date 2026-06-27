@@ -80,23 +80,45 @@ export default function UserManagement() {
    const [bulkApplyOpen, setBulkApplyOpen] = useState(false);
    const [bulkApplying, setBulkApplying] = useState(false);
    const [bulkRoleMappings, setBulkRoleMappings] = useState({});
+   const [lastSynced, setLastSynced] = useState(null);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = async ({ silent = false } = {}) => {
+    if (!silent) setLoading(true);
     const env = getAppEnv() === 'preview' ? 'test' : 'prod';
     const empData = await db.EmployeeAccount.filter({ env }, '-created_date', 500);
     setEmployees(empData || []);
-    setLoading(false);
+    if (!silent) setLoading(false);
   };
-
-  useEffect(() => { loadData(); }, []);
 
   const handleSyncEmployees = async () => {
     setSyncing(true);
-    await base44.functions.invoke('syncEmployeeAccounts', { env: getAppEnv() });
-    await loadData();
-    setSyncing(false);
+    try {
+      await base44.functions.invoke('syncEmployeeAccounts', { env: getAppEnv() });
+      await loadData();
+      setLastSynced(new Date());
+    } finally {
+      setSyncing(false);
+    }
   };
+
+  useEffect(() => {
+    loadData();
+    // Auto-sync from Supabase every 5 minutes while this page is open, so updated
+    // records (e.g. changed emails) flow in without a manual click. Runs silently —
+    // no full-page loading flash — and never overlaps with a manual sync.
+    const SYNC_INTERVAL_MS = 5 * 60 * 1000;
+    const interval = setInterval(async () => {
+      try {
+        await base44.functions.invoke('syncEmployeeAccounts', { env: getAppEnv() });
+        await loadData({ silent: true });
+        setLastSynced(new Date());
+      } catch (err) {
+        console.warn('Background Supabase sync failed (non-critical):', err);
+      }
+    }, SYNC_INTERVAL_MS);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filteredEmployees = employees.filter(e => {
     if (e.email?.toLowerCase() === 'automate@gladextours.com') return false;
@@ -298,10 +320,15 @@ export default function UserManagement() {
                  Auto-Assign Roles
                </Button>
              )}
-             <Button variant="outline" size="sm" onClick={handleSyncEmployees} disabled={syncing} className="gap-2 w-full sm:w-auto">
-               {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
-               Sync from Supabase
-             </Button>
+             <div className="flex flex-col items-start sm:items-end gap-0.5 w-full sm:w-auto">
+               <Button variant="outline" size="sm" onClick={handleSyncEmployees} disabled={syncing} className="gap-2 w-full sm:w-auto">
+                 {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
+                 Sync from Supabase
+               </Button>
+               <span className="text-[10px] text-muted-foreground">
+                 {syncing ? 'Syncing…' : lastSynced ? `Auto-syncs every 5 min · last ${formatDistanceToNow(lastSynced, { addSuffix: true })}` : 'Auto-syncs every 5 min'}
+               </span>
+             </div>
              {['active', 'inactive', 'non_potb'].includes(empTab) && filteredEmployees.length > 0 && (
                <Button variant="outline" size="sm" onClick={handleExport} className="gap-2 w-full sm:w-auto">
                  <Download className="w-4 h-4" />
