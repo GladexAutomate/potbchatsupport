@@ -46,6 +46,23 @@ Deno.serve(async (req) => {
     // the old record keeps the outdated email. So we match on a stable identifier first
     // (airtable_record_id, then employee_code) and only fall back to email.
     const norm = (v) => (v || '').toString().trim().toLowerCase();
+
+    // Supabase rows carry both a personal "email" and a work/business email. We key the
+    // app account off the BUSINESS email when present, falling back to the personal email.
+    // The business field name isn't guaranteed (business_email / work_email / "Business Email"
+    // …), so detect any key containing "business"/"work"/"company" + "email" case-insensitively.
+    const pickEmail = (d) => {
+      if (!d) return '';
+      const keys = Object.keys(d);
+      const matchKey = (...needles) => keys.find((k) => {
+        const lk = k.toLowerCase().replace(/[\s_-]+/g, '');
+        return needles.every((n) => lk.includes(n));
+      });
+      const bizKey = matchKey('business', 'email') || matchKey('work', 'email') || matchKey('company', 'email');
+      const raw = (bizKey ? d[bizKey] : '') || d.email || d.Email || '';
+      return (raw || '').toString().trim();
+    };
+
     const existingByAid = {};
     const existingByCode = {};
     const existingByEmail = {};
@@ -60,10 +77,10 @@ Deno.serve(async (req) => {
     }
 
     // Resolve an existing record for a Supabase row using stable keys first.
-    const findExisting = (d) => {
+    const findExisting = (d, resolvedEmail) => {
       const aid = norm(d.airtable_record_id);
       const code = norm(d.employee_code);
-      const em = norm(d.email);
+      const em = norm(resolvedEmail);
       return (aid && existingByAid[aid]) ||
              (code && existingByCode[code]) ||
              (em && existingByEmail[em]) ||
@@ -78,12 +95,12 @@ Deno.serve(async (req) => {
 
     for (const row of rows) {
       const d = row.data || {};
-      const email = d.email?.toLowerCase();
+      const email = pickEmail(d); // business email preferred, personal email as fallback
       if (!email) continue;
 
       const payload = {
         env: targetEnv,
-        email: d.email,
+        email,
         full_name: d.full_name || '',
         status: d.status || 'active',
         employee_code: d.employee_code || '',
@@ -92,7 +109,7 @@ Deno.serve(async (req) => {
         airtable_record_id: d.airtable_record_id || '',
       };
 
-      const existing = findExisting(d);
+      const existing = findExisting(d, email);
       if (existing) {
         // Carry the matched record through so the update loop can diff against it and
         // preserve app-managed fields (role/block/access) that Supabase must never overwrite.
