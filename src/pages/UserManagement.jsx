@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { getAppEnv } from '@/lib/appEnv';
 import { base44 } from '@/api/base44Client';
 import { db } from '@/lib/db';
+import { useEmployeeRealtime } from '@/lib/useEmployeeRealtime';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -90,32 +91,41 @@ export default function UserManagement() {
     if (!silent) setLoading(false);
   };
 
-  const handleSyncEmployees = async () => {
-    setSyncing(true);
+  // Guards against overlapping syncs: a realtime burst, the manual button, and the
+  // fallback poll can all fire close together — only one sync should run at a time.
+  const syncingRef = useRef(false);
+
+  // Single entry point for pulling Supabase → Base44 and refreshing the table.
+  // `manual` shows the spinner on the button; automatic syncs run silently.
+  const runSync = async ({ manual = false } = {}) => {
+    if (syncingRef.current) return;
+    syncingRef.current = true;
+    if (manual) setSyncing(true);
     try {
       await base44.functions.invoke('syncEmployeeAccounts', { env: getAppEnv() });
-      await loadData();
+      await loadData({ silent: !manual });
       setLastSynced(new Date());
+    } catch (err) {
+      console.warn('Supabase sync failed (non-critical):', err);
     } finally {
-      setSyncing(false);
+      syncingRef.current = false;
+      if (manual) setSyncing(false);
     }
   };
 
+  const handleSyncEmployees = () => runSync({ manual: true });
+
+  // Real-time: subscribe to Supabase `employeeaccount` changes and sync the instant a
+  // row is inserted/updated/deleted, so User Management mirrors Supabase live.
+  const realtimeStatus = useEmployeeRealtime(() => runSync());
+
   useEffect(() => {
     loadData();
-    // Auto-sync from Supabase every 5 minutes while this page is open, so updated
-    // records (e.g. changed emails) flow in without a manual click. Runs silently —
-    // no full-page loading flash — and never overlaps with a manual sync.
-    const SYNC_INTERVAL_MS = 5 * 60 * 1000;
-    const interval = setInterval(async () => {
-      try {
-        await base44.functions.invoke('syncEmployeeAccounts', { env: getAppEnv() });
-        await loadData({ silent: true });
-        setLastSynced(new Date());
-      } catch (err) {
-        console.warn('Background Supabase sync failed (non-critical):', err);
-      }
-    }, SYNC_INTERVAL_MS);
+    // Safety net: if Realtime isn't delivering (e.g. table not in the realtime
+    // publication, dropped websocket), still reconcile periodically. Realtime is the
+    // primary path, so this can be infrequent and runs silently without overlapping.
+    const FALLBACK_SYNC_MS = 3 * 60 * 1000;
+    const interval = setInterval(() => runSync(), FALLBACK_SYNC_MS);
     return () => clearInterval(interval);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -325,8 +335,23 @@ export default function UserManagement() {
                  {syncing ? <Loader2 className="w-4 h-4 animate-spin" /> : <RefreshCw className="w-4 h-4" />}
                  Sync from Supabase
                </Button>
-               <span className="text-[10px] text-muted-foreground">
-                 {syncing ? 'Syncing…' : lastSynced ? `Auto-syncs every 5 min · last ${formatDistanceToNow(lastSynced, { addSuffix: true })}` : 'Auto-syncs every 5 min'}
+               <span className="text-[10px] text-muted-foreground flex items-center gap-1">
+                 <span
+                   title={
+                     realtimeStatus === 'live' ? 'Live — synced in real time from Supabase'
+                     : realtimeStatus === 'error' ? 'Real-time unavailable — falling back to periodic sync'
+                     : 'Connecting to Supabase real-time…'
+                   }
+                   className={`inline-block w-1.5 h-1.5 rounded-full ${
+                     realtimeStatus === 'live' ? 'bg-green-500 animate-pulse'
+                     : realtimeStatus === 'error' ? 'bg-red-500'
+                     : 'bg-amber-500'
+                   }`}
+                 />
+                 {syncing ? 'Syncing…'
+                   : realtimeStatus === 'live' ? `Real-time on${lastSynced ? ` · last ${formatDistanceToNow(lastSynced, { addSuffix: true })}` : ''}`
+                   : realtimeStatus === 'error' ? `Real-time off · auto-syncs every 3 min${lastSynced ? ` · last ${formatDistanceToNow(lastSynced, { addSuffix: true })}` : ''}`
+                   : 'Connecting…'}
                </span>
              </div>
              {['active', 'inactive', 'non_potb'].includes(empTab) && filteredEmployees.length > 0 && (

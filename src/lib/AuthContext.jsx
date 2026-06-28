@@ -1,6 +1,7 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { db } from '@/lib/db';
+import { fetchLiveEmployeeStatus } from '@/lib/supabaseClient';
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
 
 const getAppParams = () => {
@@ -76,23 +77,46 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener('popstate', handleUrlChange);
   }, []);
 
-  // Background check every 5 minutes (only when authenticated) to detect if user gets blocked
-  // Does NOT refresh the page or interrupt user sessions
+  // Background access check (only when authenticated). Detects mid-session loss of access
+  // and logs the user out silently — does NOT refresh the page or interrupt their work.
+  //
+  // `is_blocked` is app-managed and lives only in Base44. `status` (active/inactive) is
+  // owned by Supabase, so we read it LIVE from Supabase rather than waiting on the sync —
+  // this way an account flipped to inactive ends the session within one interval, even if
+  // no admin has User Management open. Falls back to the Base44 record if Supabase is
+  // unreachable.
   useEffect(() => {
     if (!isAuthenticated) return;
+    const ACCESS_CHECK_MS = 60 * 1000; // 1 min — fast enough for access control, light on load
     const interval = setInterval(async () => {
       try {
         const currentUser = await base44.auth.me();
         const empRecords = await db.EmployeeAccount.filter({ email: currentUser.email }, 1);
-        // Log out if the user has been blocked OR set inactive in Supabase since they logged in.
-        if (empRecords?.length > 0 && (empRecords[0].is_blocked || empRecords[0].status === 'inactive')) {
-          console.warn('User blocked/inactive detected, logging out silently');
+        const emp = empRecords?.[0];
+        if (!emp) return; // unknown to this app — leave platform auth to decide
+
+        // App-managed block (Base44 only).
+        if (emp.is_blocked) {
+          console.warn('User blocked detected, logging out silently');
+          logout(false);
+          return;
+        }
+
+        // Live Supabase status, with Base44 as fallback.
+        const liveStatus = await fetchLiveEmployeeStatus({
+          airtable_record_id: emp.airtable_record_id,
+          employee_code: emp.employee_code,
+          email: currentUser.email,
+        });
+        const isInactive = liveStatus ? liveStatus === 'inactive' : emp.status === 'inactive';
+        if (isInactive) {
+          console.warn('User inactive detected (live from Supabase), logging out silently');
           logout(false);
         }
       } catch (e) {
         // Silent fail - don't interrupt user
       }
-    }, 300000); // 5 minutes
+    }, ACCESS_CHECK_MS);
     return () => clearInterval(interval);
   }, [isAuthenticated]);
 
