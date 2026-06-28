@@ -7,9 +7,18 @@ Deno.serve(async (req) => {
     let isAuthorized = false;
     try {
       const user = await base44.auth.me();
-      if (user?.role === 'admin') isAuthorized = true;
+      if (user?.role === 'admin') {
+        isAuthorized = true; // Base44 platform admin
+      } else if (user?.email) {
+        // Staff who manage users are platform "user" with an APP role (TL/Admin) stored
+        // on their EmployeeAccount — authorize on that so they can trigger the sync
+        // (the realtime auto-sync and the manual button both run as the signed-in user).
+        const recs = await base44.asServiceRole.entities.EmployeeAccount.filter({ email: user.email });
+        const appRole = recs?.[0]?.POTBChatsupportrole;
+        if (appRole === 'admin' || appRole === 'tl_management') isAuthorized = true;
+      }
     } catch {
-      isAuthorized = true; // scheduled/automation calls
+      isAuthorized = true; // scheduled/automation calls (no auth context)
     }
     if (!isAuthorized) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
