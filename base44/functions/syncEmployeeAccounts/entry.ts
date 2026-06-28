@@ -23,7 +23,10 @@ Deno.serve(async (req) => {
     if (!isAuthorized) return Response.json({ error: 'Forbidden' }, { status: 403 });
 
     const body = await req.json().catch(() => ({}));
-    const isProd = body.env === 'published';
+    // App clients pass an explicit env ('published' | 'preview'). Server-to-server
+    // callers (Supabase Database Webhook / scheduled automation) don't send one —
+    // default those to prod, where the live employee data lives.
+    const isProd = body.env ? body.env === 'published' : true;
     const supabaseUrl = isProd ? Deno.env.get('SUPABASE_PROD_URL') : Deno.env.get('SUPABASE_URL');
     const supabaseKey = isProd ? Deno.env.get('SUPABASE_PROD_SERVICE_ROLE_KEY') : Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
     if (!supabaseUrl || !supabaseKey) {
