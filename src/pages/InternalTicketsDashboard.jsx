@@ -134,10 +134,18 @@ export default function InternalTicketsDashboard() {
         if (!prev) return prev;
         const fresh = allTickets.find(t => t.id === prev.id);
         if (!fresh) return prev;
-        const unchanged = fresh.notes === prev.notes
+        // Notes/attachments are append-only, so the longer one is the more complete
+        // version. Keeping the longer of (local, server) prevents a stale read
+        // (read-after-write lag) from dropping a message the sender just added
+        // optimistically, while still pulling in newer messages from other users.
+        const mergedNotes = (fresh.notes?.length || 0) >= (prev.notes?.length || 0)
+          ? fresh.notes : prev.notes;
+        const mergedAttachments = (fresh.attachments?.length || 0) >= (prev.attachments?.length || 0)
+          ? fresh.attachments : prev.attachments;
+        const unchanged = mergedNotes === prev.notes
           && fresh.status === prev.status
-          && (fresh.attachments?.length || 0) === (prev.attachments?.length || 0);
-        return unchanged ? prev : fresh;
+          && (mergedAttachments?.length || 0) === (prev.attachments?.length || 0);
+        return unchanged ? prev : { ...fresh, notes: mergedNotes, attachments: mergedAttachments };
       });
     } catch (err) {
       console.error('Error loading internal tickets:', err);
@@ -173,28 +181,35 @@ export default function InternalTicketsDashboard() {
 
   const handleSend = async () => {
     if (!newMessage.trim() && attachments.length === 0) return;
-    setSending(true);
+    const base = selectedTicket;
     const zonedDate = toZonedTime(new Date(), APP_TIMEZONE);
     const timestamp = format(zonedDate, 'MMM. d, yyyy, h:mm a');
     const newAttachmentUrls = attachments.map(a => a.url);
-    const updatedAttachments = [...(selectedTicket.attachments || []), ...newAttachmentUrls];
+    const updatedAttachments = [...(base.attachments || []), ...newAttachmentUrls];
+    const updatedNotes = (base.notes ? base.notes + '\n\n' : '') +
+      `[${timestamp}] ${user?.full_name}: ${newMessage.trim()}`;
 
-    await db.InternalTicket.update(selectedTicket.id, {
-      notes: (selectedTicket.notes ? selectedTicket.notes + '\n\n' : '') +
-        `[${timestamp}] ${user?.full_name}: ${newMessage.trim()}`,
-      attachments: updatedAttachments,
-    });
-
-    setSelectedTicket(prev => ({
-      ...prev,
-      notes: (prev.notes ? prev.notes + '\n\n' : '') +
-        `[${timestamp}] ${user?.full_name}: ${newMessage.trim()}`,
-      attachments: updatedAttachments,
-    }));
+    // Optimistic: show the sender's message instantly, before the network round-trip.
+    setSelectedTicket(prev => (prev && prev.id === base.id
+      ? { ...prev, notes: updatedNotes, attachments: updatedAttachments } : prev));
+    setTickets(prev => prev.map(t => (t.id === base.id
+      ? { ...t, notes: updatedNotes, attachments: updatedAttachments } : t)));
     setNewMessage('');
     setAttachments([]);
-    setSending(false);
-    await loadData();
+    setSending(true);
+
+    try {
+      await db.InternalTicket.update(base.id, {
+        notes: updatedNotes,
+        attachments: updatedAttachments,
+      });
+    } catch (err) {
+      console.error('Failed to send internal message:', err);
+    } finally {
+      setSending(false);
+    }
+    // Server reconciliation arrives via polling/subscribe; the longer-notes merge in
+    // loadData keeps this just-sent message from being dropped by a stale read.
   };
 
   const handleCloseTicket = async () => {
