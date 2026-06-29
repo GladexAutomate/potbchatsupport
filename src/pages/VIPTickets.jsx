@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import StaffMessenger from '@/components/StaffMessenger';
+import { usePolling } from '@/lib/usePolling';
 import { Crown } from 'lucide-react';
 import { useLocation } from 'react-router-dom';
 
@@ -38,6 +39,9 @@ export default function VIPTickets() {
     });
     return () => { clearTimeout(loadTimer); unsub(); };
   }, [user]);
+
+  // Realtime fallback: poll the ticket list in case the websocket is silent.
+  usePolling(loadVIPTickets, 8000, !!user);
 
   return (
     <div className="p-4 md:p-6 h-full">

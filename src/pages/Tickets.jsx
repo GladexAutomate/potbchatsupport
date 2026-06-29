@@ -3,6 +3,7 @@ import { db } from '@/lib/db';
 import { base44 } from '@/api/base44Client';
 import { useAuth } from '@/lib/AuthContext';
 import StaffMessenger from '@/components/StaffMessenger';
+import { usePolling } from '@/lib/usePolling';
 import { useLocation } from 'react-router-dom';
 import { RefreshCw } from 'lucide-react';
 
@@ -83,6 +84,9 @@ export default function Tickets() {
     });
     return () => { clearTimeout(loadTimer); unsub(); };
   }, [user]);
+
+  // Realtime fallback: poll the ticket list in case the websocket is silent.
+  usePolling(loadTickets, 8000, !!user);
 
   const handleTouchStart = (e) => { touchStartY.current = e.touches[0].clientY; };
   const handleTouchEnd = async (e) => {

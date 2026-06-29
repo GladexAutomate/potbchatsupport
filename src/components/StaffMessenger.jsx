@@ -19,6 +19,7 @@ import { formatDateFull } from '@/lib/timezone';
 
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
+import { usePolling } from '@/lib/usePolling';
 
 const STATUS_COLOR = {
   'Open': 'bg-blue-500/10 text-blue-400 border-blue-500/20',
@@ -164,6 +165,9 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
     const msgs = await db.TicketMessage.filter({ ticket_id: ticketId }, 'created_date');
     setMessages((msgs || []).filter(m => !m.is_internal));
   };
+
+  // Realtime fallback: keep the open conversation fresh even if the websocket is silent.
+  usePolling(() => { if (selectedTicket) loadMessages(selectedTicket.id); }, 6000, !!selectedTicket);
 
   const handleSelectTicket = async (ticket) => {
     setSelectedTicket(ticket);

@@ -19,6 +19,7 @@ import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImageLightbox from '@/components/ImageLightbox';
 import RatingModal from '@/components/RatingModal';
+import { usePolling } from '@/lib/usePolling';
 
 const STATUS_COLOR = {
   'Open': 'bg-blue-500/20 text-blue-300 border-blue-500/30',
@@ -101,6 +102,22 @@ export default function MyTickets() {
     const msgs = await db.TicketMessage.filter({ ticket_id: ticketId }, 'created_date');
     setMessages((msgs || []).filter(m => !m.is_internal));
   };
+
+  // Realtime fallback: pull new staff replies + ticket status changes even if the
+  // websocket is silent, so the customer never has to refresh.
+  usePolling(() => {
+    if (!user?.email) return;
+    if (selectedTicket) loadMessages(selectedTicket.id);
+    db.Ticket.filter({ customer_email: user.email }, '-created_date').then(t => {
+      setTickets(t || []);
+      setSelectedTicket(prev => {
+        if (!prev) return prev;
+        const fresh = (t || []).find(x => x.id === prev.id);
+        if (!fresh) return prev;
+        return fresh.status === prev.status ? prev : fresh;
+      });
+    });
+  }, 6000, !!user);
 
   const handleFileUpload = async (files) => {
     const remaining = 5 - msgAttachments.length;

@@ -7,9 +7,9 @@ import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, ChevronLeft, Plus, CheckCircle2 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, ChevronLeft, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
+import { usePolling } from '@/lib/usePolling';
 import { useNavigate } from 'react-router-dom';
 import { formatDateFull, convertOldTimestampFormat, APP_TIMEZONE } from '@/lib/timezone';
 import CreateInternalTicketModal from '@/components/CreateInternalTicketModal';
@@ -46,6 +46,31 @@ const ROLE_TO_DEPARTMENT = {
 };
 
 const ALL_DEPARTMENTS = ['CSR', 'Sales', 'IT', 'Accounting', 'Sign-Ups', 'On-Boarding', 'Corp/Training', 'Admin', 'TL/Management'];
+
+/**
+ * The `notes` field stores the whole conversation as one string, each message in
+ * the form `[timestamp] Sender Name: message`, entries separated by blank lines.
+ * Parse it back into individual messages so we can render a proper chat thread.
+ */
+function parseInternalMessages(raw) {
+  if (!raw) return [];
+  const text = convertOldTimestampFormat(raw);
+  const entryRe = /^\s*\[([^\]]+)\]\s*([^:]+?):\s*([\s\S]*)$/;
+  const messages = [];
+  for (const chunk of text.split(/\n\n+/)) {
+    if (!chunk.trim()) continue;
+    const m = chunk.match(entryRe);
+    if (m) {
+      messages.push({ time: m[1].trim(), sender: m[2].trim(), text: m[3].trim() });
+    } else if (messages.length) {
+      // A message that itself contained a blank line — append to the previous one.
+      messages[messages.length - 1].text += '\n\n' + chunk.trim();
+    } else {
+      messages.push({ time: '', sender: '', text: chunk.trim() });
+    }
+  }
+  return messages;
+}
 
 export default function InternalTicketsDashboard() {
   const { user } = useAuth();
@@ -102,12 +127,27 @@ export default function InternalTicketsDashboard() {
 
       allTickets.sort((a, b) => new Date(b.created_date) - new Date(a.created_date));
       setTickets(allTickets);
+      // Keep the open conversation in sync so new messages from other users appear
+      // live (the open ticket is a separate snapshot from the list). Only swap when
+      // it actually changed, to avoid re-rendering the thread on every poll.
+      setSelectedTicket(prev => {
+        if (!prev) return prev;
+        const fresh = allTickets.find(t => t.id === prev.id);
+        if (!fresh) return prev;
+        const unchanged = fresh.notes === prev.notes
+          && fresh.status === prev.status
+          && (fresh.attachments?.length || 0) === (prev.attachments?.length || 0);
+        return unchanged ? prev : fresh;
+      });
     } catch (err) {
       console.error('Error loading internal tickets:', err);
     } finally {
       setLoading(false);
     }
   };
+
+  // Realtime fallback: poll for new messages/tickets in case the websocket is silent.
+  usePolling(loadData, 6000, hasAccess);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -351,23 +391,41 @@ export default function InternalTicketsDashboard() {
               </div>
             </div>
 
-            {/* Body */}
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
-              <div>
-                <p className="text-xs text-muted-foreground mb-2">Description</p>
-                <p className="text-sm text-foreground whitespace-pre-wrap">{selectedTicket.description}</p>
-              </div>
+            {/* Conversation */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-muted/10">
+              {(() => {
+                // Render the ticket description as the opening message, then the
+                // parsed conversation, as messenger-style bubbles.
+                const thread = [
+                  {
+                    time: formatDateFull(selectedTicket.created_date),
+                    sender: selectedTicket.created_by_name,
+                    text: selectedTicket.description || '',
+                  },
+                  ...parseInternalMessages(selectedTicket.notes),
+                ].filter(m => m.text || m.sender);
 
-              {selectedTicket.notes && (
-                <div>
-                  <p className="text-xs text-muted-foreground mb-2">Internal Notes</p>
-                  <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3">
-                    <p className="text-xs text-amber-900 dark:text-amber-200 whitespace-pre-wrap font-mono">
-                      {convertOldTimestampFormat(selectedTicket.notes)}
-                    </p>
-                  </div>
-                </div>
-              )}
+                return thread.map((m, i) => {
+                  const isMe = m.sender && user?.full_name
+                    && m.sender.trim().toLowerCase() === user.full_name.trim().toLowerCase();
+                  return (
+                    <div key={i} className={`flex gap-2.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
+                      <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-semibold
+                        ${isMe ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                        {(m.sender?.[0] || '?').toUpperCase()}
+                      </div>
+                      <div className={`max-w-[75%] flex flex-col ${isMe ? 'items-end' : 'items-start'}`}>
+                        <p className="text-xs text-muted-foreground mb-1 px-1">{isMe ? 'You' : (m.sender || 'Unknown')}</p>
+                        <div className={`rounded-2xl px-4 py-2.5 shadow-sm
+                          ${isMe ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-card border border-border/50 rounded-tl-sm'}`}>
+                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{m.text}</p>
+                        </div>
+                        {m.time && <p className="text-xs text-muted-foreground mt-1 px-1">{m.time}</p>}
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
 
               {selectedTicket.attachments?.length > 0 && (
                 <div>
@@ -434,7 +492,7 @@ export default function InternalTicketsDashboard() {
                   value={newMessage}
                   onChange={e => setNewMessage(e.target.value)}
                   onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-                  placeholder="Add internal note..."
+                  placeholder="Type a message..."
                   className="flex-1 rounded-full border-0 focus-visible:ring-1 bg-muted"
                 />
                 <Button onClick={handleSend}

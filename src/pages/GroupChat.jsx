@@ -7,8 +7,9 @@ import { Input } from '@/components/ui/input';
 import { Send, Loader2, Paperclip, X, FileText, Pin, Search, Users, MessageSquare } from 'lucide-react';
 import GroupChatMessageBubble from '@/components/groupchat/GroupChatMessage';
 import { motion, AnimatePresence } from 'framer-motion';
-import { formatDateRelative, APP_TIMEZONE } from '@/lib/timezone';
+import { APP_TIMEZONE } from '@/lib/timezone';
 import { toZonedTime } from 'date-fns-tz';
+import { usePolling } from '@/lib/usePolling';
 
 
 export default function GroupChat() {
@@ -135,6 +136,25 @@ export default function GroupChat() {
     setHasMoreMsgs((msgs || []).length === MSG_PAGE);
     setMsgOffset(MSG_PAGE);
   };
+
+  // Realtime fallback: merge in any new/updated messages even if the websocket is
+  // silent, without dropping older pages the user has loaded.
+  usePolling(async () => {
+    const latest = await db.GroupChatMessage.list('-created_date', MSG_PAGE);
+    setMessages(prev => {
+      const map = new Map(prev.map(m => [m.id, m]));
+      let changed = false;
+      for (const m of (latest || [])) {
+        const existing = map.get(m.id);
+        if (!existing || existing.updated_date !== m.updated_date) {
+          map.set(m.id, m);
+          changed = true;
+        }
+      }
+      if (!changed) return prev;
+      return Array.from(map.values()).sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
+    });
+  }, 6000);
 
   const loadMoreMessages = async () => {
     setLoadingMore(true);
