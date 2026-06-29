@@ -158,19 +158,22 @@ export default function InternalTicketsDashboard() {
   usePolling(loadData, 6000, hasAccess);
 
   const loadMessages = async (ticketId) => {
-    const msgs = await db.TicketMessage.filter({ ticket_id: ticketId }, 'created_date');
+    // InternalTicketMessage is its OWN entity — kept separate from TicketMessage, which
+    // belongs to customer-operations tickets / internal staff notes. These are distinct
+    // workflows and must not share a table.
+    const msgs = await db.InternalTicketMessage.filter({ internal_ticket_id: ticketId }, 'created_date');
     // Keep a just-sent message visible until its real row arrives (no flicker).
     setMessages(prev => mergeOptimistic(msgs || [], prev));
   };
 
-  // Load + live-update the open conversation. Each message is now its own row, so
-  // two people sending at the same time can never overwrite each other.
+  // Load + live-update the open conversation. Each message is its own row, so two
+  // people sending at the same time can never overwrite each other.
   useEffect(() => {
     if (!selectedTicket?.id) { setMessages([]); return undefined; }
     let loadTimer;
     loadMessages(selectedTicket.id);
-    const unsub = db.TicketMessage.subscribe(event => {
-      if (event.data?.ticket_id === selectedTicket.id) {
+    const unsub = db.InternalTicketMessage.subscribe(event => {
+      if (event.data?.internal_ticket_id === selectedTicket.id) {
         clearTimeout(loadTimer);
         loadTimer = setTimeout(() => loadMessages(selectedTicket.id), 100);
       }
@@ -208,10 +211,9 @@ export default function InternalTicketsDashboard() {
     if (!newMessage.trim() && attachments.length === 0) return;
     const optimisticMsg = {
       id: `optimistic-${Date.now()}`,
-      ticket_id: selectedTicket.id,
+      internal_ticket_id: selectedTicket.id,
       sender_email: user?.email || '',
       sender_name: user?.full_name || user?.email || 'Staff',
-      sender_role: 'staff',
       message: newMessage.trim(),
       attachments: attachments.map(a => a.url),
       created_date: new Date().toISOString(),
@@ -224,11 +226,10 @@ export default function InternalTicketsDashboard() {
     setAttachments([]);
     setSending(true);
     try {
-      await db.TicketMessage.create({
-        ticket_id: optimisticMsg.ticket_id,
+      await db.InternalTicketMessage.create({
+        internal_ticket_id: optimisticMsg.internal_ticket_id,
         sender_email: optimisticMsg.sender_email,
         sender_name: optimisticMsg.sender_name,
-        sender_role: 'staff',
         message: optimisticMsg.message,
         attachments: optimisticMsg.attachments,
       });

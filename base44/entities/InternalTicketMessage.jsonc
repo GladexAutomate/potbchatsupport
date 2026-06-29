@@ -1,0 +1,37 @@
+{
+  "name": "InternalTicketMessage",
+  "type": "object",
+  "properties": {
+    "env": {
+      "type": "string",
+      "enum": [
+        "test",
+        "prod"
+      ],
+      "default": "test",
+      "description": "Environment: test or prod"
+    },
+    "internal_ticket_id": {
+      "type": "string",
+      "description": "Reference to InternalTicket id (Internal Operations dept-to-dept ticket). Kept separate from TicketMessage, which is for customer-operations tickets / internal staff notes."
+    },
+    "sender_email": {
+      "type": "string"
+    },
+    "sender_name": {
+      "type": "string"
+    },
+    "message": {
+      "type": "string"
+    },
+    "attachments": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "internal_ticket_id"
+  ]
+}

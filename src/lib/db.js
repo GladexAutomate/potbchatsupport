@@ -121,6 +121,7 @@ function makeEntityProxy(entityName) {
    TicketMessage:    makeEntityProxy('TicketMessage'),
    TicketHistory:    makeEntityProxy('TicketHistory'),
    InternalTicket:   makeEntityProxy('InternalTicket'),
+   InternalTicketMessage: makeEntityProxy('InternalTicketMessage'),
    GroupChatMessage: makeEntityProxy('GroupChatMessage'),
    EmployeeAccount:  makeEntityProxy('EmployeeAccount'),
    StaffDirectory:   makeEntityProxy('StaffDirectory'),
