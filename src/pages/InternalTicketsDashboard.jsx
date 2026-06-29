@@ -10,11 +10,10 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, ChevronLeft, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 import { usePolling } from '@/lib/usePolling';
+import { mergeOptimistic } from '@/lib/chatMessages';
 import { useNavigate } from 'react-router-dom';
-import { formatDateFull, convertOldTimestampFormat, APP_TIMEZONE } from '@/lib/timezone';
+import { formatDateFull, convertOldTimestampFormat } from '@/lib/timezone';
 import CreateInternalTicketModal from '@/components/CreateInternalTicketModal';
-import { toZonedTime } from 'date-fns-tz';
-import { format } from 'date-fns';
 
 const STATUS_COLOR = {
   'Open': 'bg-blue-500/10 text-blue-400 border-blue-500/20',
@@ -78,6 +77,7 @@ export default function InternalTicketsDashboard() {
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState(null);
+  const [messages, setMessages] = useState([]);
   const [newMessage, setNewMessage] = useState('');
   const [sending, setSending] = useState(false);
   const [attachments, setAttachments] = useState([]);
@@ -154,15 +154,40 @@ export default function InternalTicketsDashboard() {
     }
   };
 
-  // Realtime fallback: poll for new messages/tickets in case the websocket is silent.
+  // Realtime fallback: poll for new tickets/status in case the websocket is silent.
   usePolling(loadData, 6000, hasAccess);
+
+  const loadMessages = async (ticketId) => {
+    const msgs = await db.TicketMessage.filter({ ticket_id: ticketId }, 'created_date');
+    // Keep a just-sent message visible until its real row arrives (no flicker).
+    setMessages(prev => mergeOptimistic(msgs || [], prev));
+  };
+
+  // Load + live-update the open conversation. Each message is now its own row, so
+  // two people sending at the same time can never overwrite each other.
+  useEffect(() => {
+    if (!selectedTicket?.id) { setMessages([]); return undefined; }
+    let loadTimer;
+    loadMessages(selectedTicket.id);
+    const unsub = db.TicketMessage.subscribe(event => {
+      if (event.data?.ticket_id === selectedTicket.id) {
+        clearTimeout(loadTimer);
+        loadTimer = setTimeout(() => loadMessages(selectedTicket.id), 100);
+      }
+    });
+    return () => { clearTimeout(loadTimer); unsub(); };
+  }, [selectedTicket?.id]);
+
+  // Realtime fallback for the open conversation's messages.
+  usePolling(() => { if (selectedTicket?.id) loadMessages(selectedTicket.id); }, 6000, !!selectedTicket);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [selectedTicket?.notes]);
+  }, [selectedTicket?.notes, messages]);
 
   const handleSelectTicket = (ticket) => {
     setSelectedTicket(ticket);
+    setMessages([]);
     setNewMessage('');
     setAttachments([]);
   };
@@ -181,35 +206,39 @@ export default function InternalTicketsDashboard() {
 
   const handleSend = async () => {
     if (!newMessage.trim() && attachments.length === 0) return;
-    const base = selectedTicket;
-    const zonedDate = toZonedTime(new Date(), APP_TIMEZONE);
-    const timestamp = format(zonedDate, 'MMM. d, yyyy, h:mm a');
-    const newAttachmentUrls = attachments.map(a => a.url);
-    const updatedAttachments = [...(base.attachments || []), ...newAttachmentUrls];
-    const updatedNotes = (base.notes ? base.notes + '\n\n' : '') +
-      `[${timestamp}] ${user?.full_name}: ${newMessage.trim()}`;
-
-    // Optimistic: show the sender's message instantly, before the network round-trip.
-    setSelectedTicket(prev => (prev && prev.id === base.id
-      ? { ...prev, notes: updatedNotes, attachments: updatedAttachments } : prev));
-    setTickets(prev => prev.map(t => (t.id === base.id
-      ? { ...t, notes: updatedNotes, attachments: updatedAttachments } : t)));
+    const optimisticMsg = {
+      id: `optimistic-${Date.now()}`,
+      ticket_id: selectedTicket.id,
+      sender_email: user?.email || '',
+      sender_name: user?.full_name || user?.email || 'Staff',
+      sender_role: 'staff',
+      message: newMessage.trim(),
+      attachments: attachments.map(a => a.url),
+      created_date: new Date().toISOString(),
+      _optimistic: true,
+    };
+    // Optimistic: show the message instantly, before the network round-trip. Each
+    // message is its own row, so simultaneous sends can't overwrite each other.
+    setMessages(prev => [...prev, optimisticMsg]);
     setNewMessage('');
     setAttachments([]);
     setSending(true);
-
     try {
-      await db.InternalTicket.update(base.id, {
-        notes: updatedNotes,
-        attachments: updatedAttachments,
+      await db.TicketMessage.create({
+        ticket_id: optimisticMsg.ticket_id,
+        sender_email: optimisticMsg.sender_email,
+        sender_name: optimisticMsg.sender_name,
+        sender_role: 'staff',
+        message: optimisticMsg.message,
+        attachments: optimisticMsg.attachments,
       });
     } catch (err) {
       console.error('Failed to send internal message:', err);
+      setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
     } finally {
       setSending(false);
     }
-    // Server reconciliation arrives via polling/subscribe; the longer-notes merge in
-    // loadData keeps this just-sent message from being dropped by a stale read.
+    // Real row arrives via subscription/poll; mergeOptimistic swaps it in cleanly.
   };
 
   const handleCloseTicket = async () => {
@@ -409,20 +438,33 @@ export default function InternalTicketsDashboard() {
             {/* Conversation */}
             <div className="flex-1 overflow-y-auto p-5 space-y-4 bg-muted/10">
               {(() => {
-                // Render the ticket description as the opening message, then the
-                // parsed conversation, as messenger-style bubbles.
+                // Render, as messenger-style bubbles: the ticket description (opening
+                // message), then the historical conversation parsed from `notes`
+                // (messages sent before the per-row migration), then the live message
+                // rows. Historical notes always pre-date any row, so this order is
+                // chronologically correct.
                 const thread = [
                   {
                     time: formatDateFull(selectedTicket.created_date),
                     sender: selectedTicket.created_by_name,
                     text: selectedTicket.description || '',
+                    mine: selectedTicket.created_by_email === user?.email,
                   },
                   ...parseInternalMessages(selectedTicket.notes),
-                ].filter(m => m.text || m.sender);
+                  ...messages.map(m => ({
+                    time: formatDateFull(m.created_date),
+                    sender: m.sender_name,
+                    text: m.message || '',
+                    attachments: m.attachments,
+                    mine: m.sender_email === user?.email,
+                  })),
+                ].filter(m => m.text || m.sender || m.attachments?.length);
 
                 return thread.map((m, i) => {
-                  const isMe = m.sender && user?.full_name
-                    && m.sender.trim().toLowerCase() === user.full_name.trim().toLowerCase();
+                  const isMe = m.mine !== undefined
+                    ? m.mine
+                    : (m.sender && user?.full_name
+                      && m.sender.trim().toLowerCase() === user.full_name.trim().toLowerCase());
                   return (
                     <div key={i} className={`flex gap-2.5 ${isMe ? 'flex-row-reverse' : 'flex-row'}`}>
                       <div className={`w-8 h-8 rounded-full flex-shrink-0 flex items-center justify-center text-xs font-semibold
@@ -433,7 +475,23 @@ export default function InternalTicketsDashboard() {
                         <p className="text-xs text-muted-foreground mb-1 px-1">{isMe ? 'You' : (m.sender || 'Unknown')}</p>
                         <div className={`rounded-2xl px-4 py-2.5 shadow-sm
                           ${isMe ? 'bg-primary text-primary-foreground rounded-tr-sm' : 'bg-card border border-border/50 rounded-tl-sm'}`}>
-                          <p className="text-sm whitespace-pre-wrap leading-relaxed">{m.text}</p>
+                          {m.text && <p className="text-sm whitespace-pre-wrap leading-relaxed">{m.text}</p>}
+                          {m.attachments?.length > 0 && (
+                            <div className="mt-2 space-y-1.5">
+                              {m.attachments.map((url, ai) => {
+                                const isImg = /\.(png|jpg|jpeg|gif|webp)(\?|$)/i.test(url);
+                                return isImg ? (
+                                  <img key={ai} src={url} alt={`attachment-${ai + 1}`}
+                                    className="max-w-[200px] max-h-[160px] rounded-lg object-cover" />
+                                ) : (
+                                  <a key={ai} href={url} target="_blank" rel="noopener noreferrer"
+                                    className="flex items-center gap-1.5 text-xs underline opacity-80 hover:opacity-100">
+                                    <FileText className="w-3 h-3" /> Attachment {ai + 1}
+                                  </a>
+                                );
+                              })}
+                            </div>
+                          )}
                         </div>
                         {m.time && <p className="text-xs text-muted-foreground mt-1 px-1">{m.time}</p>}
                       </div>

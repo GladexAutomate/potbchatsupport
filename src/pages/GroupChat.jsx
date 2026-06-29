@@ -10,6 +10,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { APP_TIMEZONE } from '@/lib/timezone';
 import { toZonedTime } from 'date-fns-tz';
 import { usePolling } from '@/lib/usePolling';
+import { sameContent } from '@/lib/chatMessages';
 
 
 export default function GroupChat() {
@@ -67,7 +68,9 @@ export default function GroupChat() {
         setMessages(prev => {
           const msgIds = new Set(prev.map(m => m.id));
           if (event.data && !msgIds.has(event.data.id)) {
-            const newMessages = [...prev, event.data].sort((a, b) => 
+            // Drop our own optimistic copy now that the real row has arrived.
+            const deduped = prev.filter(m => !(m._optimistic && sameContent(m, event.data)));
+            const newMessages = [...deduped, event.data].sort((a, b) =>
               new Date(a.created_date) - new Date(b.created_date)
             );
             
@@ -141,13 +144,21 @@ export default function GroupChat() {
   // silent, without dropping older pages the user has loaded.
   usePolling(async () => {
     const latest = await db.GroupChatMessage.list('-created_date', MSG_PAGE);
+    const server = latest || [];
     setMessages(prev => {
       const map = new Map(prev.map(m => [m.id, m]));
       let changed = false;
-      for (const m of (latest || [])) {
+      for (const m of server) {
         const existing = map.get(m.id);
         if (!existing || existing.updated_date !== m.updated_date) {
           map.set(m.id, m);
+          changed = true;
+        }
+      }
+      // Drop optimistic copies now confirmed by a real server row.
+      for (const m of prev) {
+        if (m._optimistic && server.some(s => sameContent(s, m))) {
+          map.delete(m.id);
           changed = true;
         }
       }
@@ -168,10 +179,10 @@ export default function GroupChat() {
 
   const handleSend = async () => {
     if (!newMessage.trim() && attachments.length === 0) return;
-    setSending(true);
+    const text = newMessage.trim();
 
     // Extract full mentions from message and match with staff directory
-    const mentionMatches = [...newMessage.matchAll(/@([\w]+(?:\s+[\w]+)*)/g)];
+    const mentionMatches = [...text.matchAll(/@([\w]+(?:\s+[\w]+)*)/g)];
     const mentions = mentionMatches.map(m => {
       const mentionedName = m[1];
       const matchedStaff = allStaff.find(s => s.full_name === mentionedName);
@@ -179,10 +190,10 @@ export default function GroupChat() {
     });
     const uniqueMentions = [...new Set(mentions)];
 
-    await db.GroupChatMessage.create({
+    const payload = {
       sender_email: user?.email || '',
       sender_name: user?.full_name || user?.email || 'Staff',
-      message: newMessage.trim(),
+      message: text,
       message_type: attachments.length > 0 ? 'image' : 'text',
       attachments: attachments.map(a => a.url),
       reply_to_id: replyTo?.id || null,
@@ -191,12 +202,24 @@ export default function GroupChat() {
       reactions: {},
       read_by: [user?.email || ''],
       mentions: uniqueMentions,
-    });
+    };
+    const optimisticMsg = { id: `optimistic-${Date.now()}`, ...payload, created_date: new Date().toISOString(), _optimistic: true };
 
+    // Optimistic: show the message instantly, before the network round-trip.
+    setMessages(prev => [...prev, optimisticMsg]);
     setNewMessage('');
     setAttachments([]);
     setReplyTo(null);
-    setSending(false);
+    setSending(true);
+    try {
+      await db.GroupChatMessage.create(payload);
+    } catch (err) {
+      console.error('Failed to send group message:', err);
+      setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
+    } finally {
+      setSending(false);
+    }
+    // Real row arrives via subscription/poll; the matching optimistic copy is removed.
   };
 
   const handleFileUpload = async (files) => {

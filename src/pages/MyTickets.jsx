@@ -20,6 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import ImageLightbox from '@/components/ImageLightbox';
 import RatingModal from '@/components/RatingModal';
 import { usePolling } from '@/lib/usePolling';
+import { mergeOptimistic } from '@/lib/chatMessages';
 
 const STATUS_COLOR = {
   'Open': 'bg-blue-500/20 text-blue-300 border-blue-500/30',
@@ -73,6 +74,7 @@ export default function MyTickets() {
 
   useEffect(() => {
     if (!selectedTicket) return;
+    setMessages([]); // clear so a pending optimistic message can't leak across tickets
     loadMessages(selectedTicket.id);
     // Subscribe to ticket changes (e.g. auto-close triggers rating modal)
     const unsubTicket = db.Ticket.subscribe(event => {
@@ -100,7 +102,9 @@ export default function MyTickets() {
 
   const loadMessages = async (ticketId) => {
     const msgs = await db.TicketMessage.filter({ ticket_id: ticketId }, 'created_date');
-    setMessages((msgs || []).filter(m => !m.is_internal));
+    const server = (msgs || []).filter(m => !m.is_internal);
+    // Keep a just-sent message visible until its real row arrives (no flicker).
+    setMessages(prev => mergeOptimistic(server, prev));
   };
 
   // Realtime fallback: pull new staff replies + ticket status changes even if the
@@ -133,19 +137,38 @@ export default function MyTickets() {
 
   const handleSend = async () => {
     if (!newMessage.trim() && msgAttachments.length === 0) return;
-    setSending(true);
-    await db.TicketMessage.create({
+    const optimisticMsg = {
+      id: `optimistic-${Date.now()}`,
       ticket_id: selectedTicket.id,
       sender_email: user.email,
       sender_name: user.full_name || user.email,
       sender_role: 'customer',
       message: newMessage.trim(),
       attachments: msgAttachments.map(a => a.url),
-    });
+      created_date: new Date().toISOString(),
+      _optimistic: true,
+    };
+    // Optimistic: show the message instantly, before the network round-trip.
+    setMessages(prev => [...prev, optimisticMsg]);
     setNewMessage('');
     setMsgAttachments([]);
-    await loadMessages(selectedTicket.id);
-    setSending(false);
+    setSending(true);
+    try {
+      await db.TicketMessage.create({
+        ticket_id: optimisticMsg.ticket_id,
+        sender_email: optimisticMsg.sender_email,
+        sender_name: optimisticMsg.sender_name,
+        sender_role: 'customer',
+        message: optimisticMsg.message,
+        attachments: optimisticMsg.attachments,
+      });
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
+    } finally {
+      setSending(false);
+    }
+    // Real row arrives via subscription/poll; mergeOptimistic swaps it in cleanly.
   };
 
   const handleKeyDown = (e) => {

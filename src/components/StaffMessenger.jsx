@@ -20,6 +20,7 @@ import { formatDateFull } from '@/lib/timezone';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 import { usePolling } from '@/lib/usePolling';
+import { mergeOptimistic } from '@/lib/chatMessages';
 
 const STATUS_COLOR = {
   'Open': 'bg-blue-500/10 text-blue-400 border-blue-500/20',
@@ -163,7 +164,10 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
 
   const loadMessages = async (ticketId) => {
     const msgs = await db.TicketMessage.filter({ ticket_id: ticketId }, 'created_date');
-    setMessages((msgs || []).filter(m => !m.is_internal));
+    const server = (msgs || []).filter(m => !m.is_internal);
+    // Preserve any just-sent message until its real row arrives, so a stale read
+    // can't momentarily drop the sender's own message.
+    setMessages(prev => mergeOptimistic(server, prev));
   };
 
   // Realtime fallback: keep the open conversation fresh even if the websocket is silent.
@@ -231,18 +235,25 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
     setNewMessage('');
     setAttachments([]);
     setSending(true);
-    await db.TicketMessage.create({
-      ticket_id: selectedTicket.id,
-      sender_email: optimisticMsg.sender_email,
-      sender_name: optimisticMsg.sender_name,
-      sender_role: 'staff',
-      message: optimisticMsg.message,
-      is_internal: isInternal,
-      attachments: optimisticMsg.attachments,
-    });
-    setLastSeenMap(prev => ({ ...prev, [selectedTicket.id]: new Date().toISOString() }));
-    setSending(false);
-    // Real messages will arrive via subscription — no need to manually reload
+    try {
+      await db.TicketMessage.create({
+        ticket_id: selectedTicket.id,
+        sender_email: optimisticMsg.sender_email,
+        sender_name: optimisticMsg.sender_name,
+        sender_role: 'staff',
+        message: optimisticMsg.message,
+        is_internal: isInternal,
+        attachments: optimisticMsg.attachments,
+      });
+      setLastSeenMap(prev => ({ ...prev, [selectedTicket.id]: new Date().toISOString() }));
+    } catch (err) {
+      console.error('Failed to send message:', err);
+      // Roll back the optimistic message so it doesn't linger as a ghost.
+      setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
+    } finally {
+      setSending(false);
+    }
+    // Real messages will arrive via subscription/poll — no need to manually reload
   };
 
   const toggleTag = async (ticketId, tagName) => {
