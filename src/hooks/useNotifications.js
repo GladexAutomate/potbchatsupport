@@ -56,8 +56,39 @@ export function useNotifications(user) {
     return () => unsub();
   }, [user?.email]);
 
+  // Dedup guard: the same realtime event reaches every open tab/device of the recipient,
+  // and each would otherwise create its own duplicate Notification row. `source_id` is a
+  // unique-per-event id, so we skip if this event was already handled:
+  //  - localStorage claim → instant dedup across tabs of the SAME browser (shared store)
+  //  - DB lookup → backstop for other devices / reconnect re-fires
+  const alreadyNotified = async (type, sourceId) => {
+    if (!sourceId) return false;
+    const key = `${user.email}:${type}:${sourceId}`;
+    try {
+      const now = Date.now();
+      const claims = JSON.parse(localStorage.getItem('notif_claims') || '{}');
+      for (const k of Object.keys(claims)) {
+        if (now - claims[k] > 120000) delete claims[k]; // prune entries older than 2 min
+      }
+      if (claims[key]) {
+        localStorage.setItem('notif_claims', JSON.stringify(claims));
+        return true;
+      }
+      claims[key] = now;
+      localStorage.setItem('notif_claims', JSON.stringify(claims));
+    } catch { /* storage unavailable — fall through to the DB check */ }
+    try {
+      const existing = await db.Notification.filter(
+        { user_email: user.email, type, source_id: sourceId }, '-created_date', 1
+      );
+      if (existing && existing.length > 0) return true;
+    } catch { /* ignore lookup failure and allow the create */ }
+    return false;
+  };
+
   const createNotification = async (type, message, redirectUrl, sourceId = null) => {
     if (!user?.email) return;
+    if (await alreadyNotified(type, sourceId)) return;
     try {
       await db.Notification.create({
         user_email: user.email,
@@ -129,10 +160,12 @@ export function useNotifications(user) {
         try {
           const ticket = await db.Ticket.get(ticketId);
           if (!ticket || ticket.assigned_to !== user.email) continue;
+          // source_id = msg.id (unique per message) so each new reply notifies, but the
+          // same message can't notify twice across tabs/devices.
           if (msg.is_internal) {
-            await createNotification('internal_note', `${msg.sender_name} posted a note on ticket ${ticket.ticket_number}`, `/tickets?ticket_id=${ticket.id}`, ticket.id);
+            await createNotification('internal_note', `${msg.sender_name} posted a note on ticket ${ticket.ticket_number}`, `/tickets?ticket_id=${ticket.id}`, msg.id);
           } else {
-            await createNotification('ticket_reply', `${ticket.customer_name} replied on ticket ${ticket.ticket_number}`, `/tickets?ticket_id=${ticket.id}`, ticket.id);
+            await createNotification('ticket_reply', `${ticket.customer_name} replied on ticket ${ticket.ticket_number}`, `/tickets?ticket_id=${ticket.id}`, msg.id);
           }
         } catch (e) {
           console.error('[useNotifications] Ticket message error:', e);

@@ -6,14 +6,13 @@ import { useAuth } from '@/lib/AuthContext';
 import {
   LayoutDashboard, Ticket, BarChart2, Settings, MessageSquare,
   ChevronLeft, ChevronRight, LogOut, Menu, X, Users,
-  MessageSquareText, Tag, Star, MessagesSquare, Crown, UserCheck, Shield, Lock, Send, FolderOpen, Clock, AlertCircle, Bell
+  MessageSquareText, Tag, Star, MessagesSquare, Crown, UserCheck, Shield, Lock, Send, FolderOpen, Clock, Bell
 } from 'lucide-react';
 import { useNotifications } from '@/hooks/useNotifications';
 import { toZonedTime } from 'date-fns-tz';
 import { APP_TIMEZONE } from '@/lib/timezone';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'framer-motion';
 import BottomTabNav from '@/components/BottomTabNav';
 
 
@@ -67,8 +66,6 @@ export default function Layout() {
   const [ticketUnread, setTicketUnread] = useState(0);
   const [internalTicketUnread, setInternalTicketUnread] = useState(0);
   const [permissions, setPermissions] = useState([]);
-  const [mentionNotification, setMentionNotification] = useState(null);
-  const mentionTimerRef = useRef(null);
   const location = useLocation();
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -621,34 +618,6 @@ export default function Layout() {
 
   return (
     <div className="flex h-screen bg-background overflow-hidden relative">
-      {/* Mention notification - global */}
-      <AnimatePresence>
-        {mentionNotification && (
-          <motion.div
-            initial={{ scale: 0.9, opacity: 0, y: -20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0, y: -20 }}
-            className="fixed top-8 right-8 z-40 max-w-md bg-white dark:bg-slate-900 border border-blue-200 dark:border-blue-800 rounded-lg shadow-lg p-4 pointer-events-auto"
-          >
-            <div className="flex items-start gap-3">
-              <AlertCircle className="w-5 h-5 text-blue-500 flex-shrink-0 mt-0.5" />
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm text-foreground">{mentionNotification.sender} mentioned you</p>
-                <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{mentionNotification.message}</p>
-              </div>
-              <button
-                onClick={() => {
-                  clearInterval(mentionTimerRef.current);
-                  setMentionNotification(null);
-                }}
-                className="text-muted-foreground hover:text-foreground flex-shrink-0"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
       {/* Desktop Sidebar */}
       <aside
         className={cn(
