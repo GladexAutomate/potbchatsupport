@@ -39,7 +39,7 @@ export default function CustomerPortal() {
         console.log('[CP] Logged in user:', { email: u.email, role: u.role, emailLower });
 
         try {
-          const res = await base44.functions.invoke('getStaffStatus', {});
+          const res = await base44.functions.invoke('getStaffStatus', { env: getAppEnv() });
           if (res.data?.employee) {
             console.log('[CP] Found employee record:', res.data.employee.email, 'from', res.data.source);
             setEmployeeRecord(res.data.employee);

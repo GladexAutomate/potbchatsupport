@@ -1,5 +1,28 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
+// Normalizes whatever the caller sends ('preview' | 'published' | 'test' | 'prod')
+// into the stored env value. Unknown / missing → null (no env preference).
+function resolvePreferredEnv(raw) {
+  if (raw === 'test' || raw === 'preview') return 'test';
+  if (raw === 'prod' || raw === 'published') return 'prod';
+  return null;
+}
+
+// Picks the single most-usable record for a person out of all their matches across
+// both environments. Source of truth = User Management, so we want the record that
+// actually grants access: prefer the caller's env, then a non-blocked / active /
+// role-bearing record. This makes login work regardless of which env (test/prod)
+// the admin happened to save the role under.
+function pickBest(matches, preferredEnv) {
+  if (!matches.length) return null;
+  const score = (e) =>
+    (preferredEnv && e.env === preferredEnv ? 8 : 0) +
+    (!e.is_blocked ? 4 : 0) +
+    (e.status === 'active' ? 2 : 0) +
+    (e.POTBChatsupportrole || e.current_role ? 1 : 0);
+  return [...matches].sort((a, b) => score(b) - score(a))[0];
+}
+
 Deno.serve(async (req) => {
   try {
     const base44 = createClientFromRequest(req);
@@ -9,26 +32,44 @@ Deno.serve(async (req) => {
     const emailLower = user.email?.toLowerCase()?.trim();
     if (!emailLower) return Response.json({ error: 'No email found' }, { status: 400 });
 
-    // Check EmployeeAccount first
-    const empAccount = await base44.asServiceRole.entities.EmployeeAccount.filter(
-      { env: 'test' },
-      'email',
-      1000
+    // Caller tells us which env it's running in so we can prefer that record when a
+    // person exists in both. We still fall back to the other env so a role saved in
+    // only one env still resolves.
+    const body = await req.json().catch(() => ({}));
+    const preferredEnv = resolvePreferredEnv(body?.env);
+
+    // EmployeeAccount first — search BOTH envs, not just 'test'.
+    const [empTest, empProd] = await Promise.all([
+      base44.asServiceRole.entities.EmployeeAccount.filter({ env: 'test' }, 'email', 1000),
+      base44.asServiceRole.entities.EmployeeAccount.filter({ env: 'prod' }, 'email', 1000),
+    ]);
+    const empMatches = [...(empTest || []), ...(empProd || [])].filter(
+      (e) => e.email?.toLowerCase()?.trim() === emailLower
     );
-    const employee = empAccount?.find(e => e.email?.toLowerCase()?.trim() === emailLower && !e.is_blocked);
+    const employee = pickBest(empMatches, preferredEnv);
     if (employee) {
-      return Response.json({ employee, source: 'EmployeeAccount' });
+      // Return blocked/inactive records too (don't hide them) so callers can enforce
+      // the right message instead of silently treating the user as "not staff".
+      return Response.json({
+        employee: { ...employee, resolved_role: employee.POTBChatsupportrole || null },
+        source: 'EmployeeAccount',
+      });
     }
 
-    // Check StaffDirectory
-    const staffDir = await base44.asServiceRole.entities.StaffDirectory.filter(
-      { env: 'test' },
-      'email',
-      1000
+    // Fall back to StaffDirectory — also across both envs.
+    const [staffTest, staffProd] = await Promise.all([
+      base44.asServiceRole.entities.StaffDirectory.filter({ env: 'test' }, 'email', 1000),
+      base44.asServiceRole.entities.StaffDirectory.filter({ env: 'prod' }, 'email', 1000),
+    ]);
+    const staffMatches = [...(staffTest || []), ...(staffProd || [])].filter(
+      (s) => s.email?.toLowerCase()?.trim() === emailLower
     );
-    const staff = staffDir?.find(s => s.email?.toLowerCase()?.trim() === emailLower && !s.is_blocked);
+    const staff = pickBest(staffMatches, preferredEnv);
     if (staff) {
-      return Response.json({ employee: staff, source: 'StaffDirectory' });
+      return Response.json({
+        employee: { ...staff, resolved_role: staff.current_role || null },
+        source: 'StaffDirectory',
+      });
     }
 
     return Response.json({ employee: null, source: null });

@@ -215,14 +215,17 @@ export const AuthProvider = ({ children }) => {
       setIsLoadingAuth(true);
       const currentUser = await base44.auth.me();
 
-      // Overlay the custom role from EmployeeAccount or StaffDirectory (source of truth for app roles)
+      // Overlay role + access from the employee record — the single source of truth
+      // (User Management). We resolve it through `getStaffStatus`, the SAME server-side
+      // resolver the staff-login modal uses, so login is governed by whatever is set in
+      // User Management — independent of the Base44 platform role and resilient to the
+      // test/prod env split (the resolver searches both envs, case-insensitive).
       try {
         const appEnv = window.location.hostname.startsWith('preview.') || window.location.hostname.includes('.dev.base44.app') ? 'test' : 'prod';
-        const empRecords = await db.EmployeeAccount.filter({ email: currentUser.email, env: appEnv }, 1);
-        console.log('Loaded EmployeeAccount for role:', empRecords);
-        if (empRecords && empRecords.length > 0) {
-          const emp = empRecords[0];
-
+        const res = await base44.functions.invoke('getStaffStatus', { env: appEnv });
+        const emp = res?.data?.employee;
+        console.log('Resolved staff record for role:', emp, 'source:', res?.data?.source);
+        if (emp) {
           // If blocked or inactive — force logout immediately, clear any pending redirect.
           // Inactive is enforced here too so the OAuth/Google login path matches the
           // staff-code login (StaffLoginModal), where inactive accounts are denied.
@@ -235,31 +238,12 @@ export const AuthProvider = ({ children }) => {
             return;
           }
 
-          if (emp.POTBChatsupportrole) {
-            currentUser.role = emp.POTBChatsupportrole;
-            console.log('Set role from EmployeeAccount:', currentUser.role);
-          }
-        } else {
-          // Fall back to StaffDirectory if not in EmployeeAccount
-          const staffRecords = await db.StaffDirectory.filter({ email: currentUser.email, env: appEnv }, 1);
-          console.log('Loaded StaffDirectory for role:', staffRecords);
-          if (staffRecords && staffRecords.length > 0) {
-            const staff = staffRecords[0];
-
-            // If blocked in StaffDirectory too
-            if (staff.is_blocked) {
-              console.warn('User is blocked in StaffDirectory. Forcing logout.');
-              sessionStorage.removeItem('loginRedirect');
-              setIsLoadingAuth(false);
-              setAuthChecked(true);
-              base44.auth.logout('/');
-              return;
-            }
-
-            if (staff.current_role) {
-              currentUser.role = staff.current_role;
-              console.log('Set role from StaffDirectory:', currentUser.role);
-            }
+          // `resolved_role` is the normalized field from the resolver; fall back to the
+          // raw fields so this keeps working regardless of frontend/function deploy order.
+          const appRole = emp.resolved_role || emp.POTBChatsupportrole || emp.current_role;
+          if (appRole) {
+            currentUser.role = appRole;
+            console.log('Set role from User Management:', currentUser.role);
           }
         }
       } catch (e) {
