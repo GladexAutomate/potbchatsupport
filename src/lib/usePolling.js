@@ -1,3 +1,4 @@
+// Realtime fallback poller used across all chat surfaces (re-sync nudge).
 import { useEffect, useRef } from 'react';
 
 /**
