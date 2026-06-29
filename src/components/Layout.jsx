@@ -2,15 +2,13 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import { base44 } from '@/api/base44Client';
 import { db } from '@/lib/db';
-import { getAppEnv } from '@/lib/appEnv';
 import { useAuth } from '@/lib/AuthContext';
 import {
   LayoutDashboard, Ticket, BarChart2, Settings, MessageSquare,
-  ChevronLeft, ChevronRight, LogOut, Menu, X, ShieldCheck, Users,
+  ChevronLeft, ChevronRight, LogOut, Menu, X, Users,
   MessageSquareText, Tag, Star, MessagesSquare, Crown, UserCheck, Shield, Lock, Send, FolderOpen, Clock, AlertCircle, Bell
 } from 'lucide-react';
 import { useNotifications } from '@/hooks/useNotifications';
-import { formatDistanceToNow } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { APP_TIMEZONE } from '@/lib/timezone';
 import { Button } from '@/components/ui/button';
@@ -140,15 +138,42 @@ export default function Layout() {
 
 
 
-  // Unread count — only load on mount, update unread badge from subscription events
+  // Track unread group chat messages — last-seen timestamp + realtime, mirroring the
+  // ticket badges. Location-aware so that viewing the chat reliably clears the badge
+  // (and keeps it cleared) instead of a stale count sticking around.
   useEffect(() => {
     if (!user) return;
-    const computeUnread = (msgs) => {
-      const count = (msgs || []).filter(m => !m.read_by?.includes(user.email)).length;
+    const SEEN_KEY = `group_chat_seen_${user.email}`;
+    const getLastSeen = () => parseInt(localStorage.getItem(SEEN_KEY) || '0', 10);
+    const setLastSeen = (ts) => localStorage.setItem(SEEN_KEY, String(ts));
+
+    // On the group chat page: mark everything seen and hold the badge at 0, even as
+    // new messages stream in while the user is reading.
+    if (location.pathname === '/group-chat') {
+      setLastSeen(Date.now());
+      setGroupChatUnread(0);
+      const unsub = db.GroupChatMessage.subscribe((event) => {
+        if (event.type === 'create') setLastSeen(Date.now());
+      });
+      return () => unsub();
+    }
+
+    const computeUnread = async () => {
+      const lastSeen = getLastSeen();
+      const msgs = await db.GroupChatMessage.list('-created_date', 100);
+      const count = (msgs || []).filter(m =>
+        m.sender_email !== user.email && new Date(m.created_date).getTime() > lastSeen
+      ).length;
       setGroupChatUnread(count);
     };
-    db.GroupChatMessage.list('created_date', 100).then(computeUnread);
-  }, [user]);
+    computeUnread();
+    const unsub = db.GroupChatMessage.subscribe((event) => {
+      if (event.type !== 'create') return;
+      if (event.data?.sender_email === user.email) return;
+      setGroupChatUnread(prev => prev + 1);
+    });
+    return () => unsub();
+  }, [user, location.pathname]);
 
   // Load permissions for this role — ignore env so permissions sync across test/prod
   useEffect(() => {
@@ -190,11 +215,8 @@ export default function Layout() {
     return () => unsub();
   }, [user, role, isSuperAdmin]);
 
-  // Clear badge when on group chat page
+  // Clear ticket badges when on their pages (group chat is handled in its own effect)
   useEffect(() => {
-    if (location.pathname === '/group-chat') {
-      setGroupChatUnread(0);
-    }
     if (location.pathname === '/tickets' || location.pathname === '/vip-tickets') {
       setTicketUnread(0);
     }
