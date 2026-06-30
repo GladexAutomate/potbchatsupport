@@ -179,6 +179,10 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
   usePolling(() => { if (selectedTicket) loadMessages(selectedTicket.id); }, 6000, !!selectedTicket);
 
   const handleSelectTicket = async (ticket) => {
+    // Re-clicking the already-open ticket must NOT wipe the thread: the message-load
+    // effect is keyed on selectedTicket.id, so clearing messages without an id change
+    // would leave it on "No messages yet" until the next poll. No-op when already open.
+    if (selectedTicket?.id === ticket.id) return;
     setSelectedTicket(ticket);
     setMessages([]);
     setNewMessage('');
