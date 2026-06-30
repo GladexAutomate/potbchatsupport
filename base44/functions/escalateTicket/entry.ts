@@ -34,6 +34,33 @@ Deno.serve(async (req) => {
       new_value: `Escalated (${escalationNumber})`,
     });
 
+    // Post the escalation notice to the staff Group Chat. We do this HERE rather than
+    // relying on the autoEndorseEscalatedTicket trigger, because that trigger only fires
+    // on ticket CREATE — but escalation is an UPDATE of an existing ticket, so it never
+    // posted. Guard on the ticket not already being escalated so a re-escalation can't
+    // post a duplicate card.
+    if (!ticket.escalated) {
+      const escalatedPriority = toPriority || ticket.priority || 'High';
+      await base44.asServiceRole.entities.GroupChatMessage.create({
+        env: ticket.env || 'prod',
+        sender_email: 'system@potb.com',
+        sender_name: '🚨 Escalation Alert',
+        message: `🚨 **Escalated** Ticket #${ticket.ticket_number} from "${ticket.customer_name}" needs immediate attention!${escalationNote ? `\nNote: ${escalationNote}` : ''}`,
+        message_type: 'ticket_endorsement',
+        ticket_ref: {
+          ticket_id: ticket.id,
+          ticket_number: ticket.ticket_number || '',
+          subject: ticket.subject,
+          status: ticket.status || 'Open',
+          priority: escalatedPriority,
+          department: ticket.department || '',
+          customer_name: ticket.customer_name,
+          is_vip: ticket.is_vip || false,
+        },
+        reactions: {},
+      });
+    }
+
     return Response.json({ success: true, escalationNumber });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
