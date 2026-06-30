@@ -7,8 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Send, Loader2, Paperclip, X, FileText, Pin, Search, Users, MessageSquare } from 'lucide-react';
 import GroupChatMessageBubble from '@/components/groupchat/GroupChatMessage';
 import { motion, AnimatePresence } from 'framer-motion';
-import { APP_TIMEZONE } from '@/lib/timezone';
-import { toZonedTime } from 'date-fns-tz';
+import { formatDateDay } from '@/lib/timezone';
 import { usePolling } from '@/lib/usePolling';
 import { sameContent } from '@/lib/chatMessages';
 
@@ -382,14 +381,14 @@ export default function GroupChat() {
           {displayMessages.map((msg, idx) => {
             const isMe = msg.sender_email === user?.email;
             const prevMsg = displayMessages[idx - 1];
-            const showDateSep = !prevMsg || new Date(msg.created_date).toDateString() !== new Date(prevMsg.created_date).toDateString();
+            const showDateSep = !prevMsg || formatDateDay(msg.created_date) !== formatDateDay(prevMsg.created_date);
             return (
               <div key={msg.id}>
                 {showDateSep && (
                    <div className="flex items-center gap-3 my-4">
                      <div className="flex-1 h-px bg-border/50" />
                      <span className="text-xs text-muted-foreground px-2 bg-background rounded-full border border-border/50 py-0.5">
-                       {toZonedTime(new Date(msg.created_date), APP_TIMEZONE).toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' })}
+                       {formatDateDay(msg.created_date)}
                      </span>
                      <div className="flex-1 h-px bg-border/50" />
                    </div>

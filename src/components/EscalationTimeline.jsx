@@ -1,5 +1,6 @@
 import React from 'react';
 import { Clock, AlertCircle } from 'lucide-react';
+import { formatDateFull } from '@/lib/timezone';
 
 export default function EscalationTimeline({ ticket }) {
   if (!ticket.escalated) return null;
@@ -10,16 +11,7 @@ export default function EscalationTimeline({ ticket }) {
   const hoursUntilEscalation = Math.floor(timeUntilEscalation / (1000 * 60 * 60));
   const minutesUntilEscalation = Math.floor((timeUntilEscalation % (1000 * 60 * 60)) / (1000 * 60));
 
-  const formatDate = (dateStr) => {
-    const date = new Date(dateStr);
-    return date.toLocaleDateString('en-US', { 
-      month: 'short', 
-      day: 'numeric', 
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
+  const formatDate = (dateStr) => formatDateFull(dateStr);
 
   return (
     <div className="bg-blue-500/5 border border-blue-500/20 rounded-lg p-4 space-y-4">

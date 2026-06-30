@@ -5,16 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { ShieldCheck, ArrowLeft, Send, Loader2, ChevronRight, Paperclip, X, FileText, ThumbsUp, ThumbsDown } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-
-const formatPHTime = (dateStr) => {
-  const d = new Date(new Date(dateStr).getTime() + 8 * 60 * 60 * 1000);
-  const month = d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
-  const day = d.getUTCDate();
-  const hours = String(d.getUTCHours()).padStart(2, '0');
-  const mins = String(d.getUTCMinutes()).padStart(2, '0');
-  return `${month} ${day}, ${hours}:${mins}`;
-};
+import { formatDateShort, formatRelative } from '@/lib/timezone';
 import { Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import ImageLightbox from '@/components/ImageLightbox';
@@ -364,7 +355,7 @@ export default function MyTickets() {
                   <Badge className={`text-xs border shrink-0 ${STATUS_COLOR[ticket.status]}`}>{ticket.status}</Badge>
                 </div>
                 <p className="text-white text-sm font-medium line-clamp-1">{ticket.subject}</p>
-                <p className="text-white/40 text-xs mt-1">{formatDistanceToNow(new Date(ticket.created_date), { addSuffix: true })}</p>
+                <p className="text-white/40 text-xs mt-1">{formatRelative(ticket.created_date)}</p>
                 <ChevronRight className="w-4 h-4 text-white/20 ml-auto -mt-4" />
               </button>
             ))
@@ -418,7 +409,7 @@ export default function MyTickets() {
                       )}
                     </div>
                     <p className="text-white/30 text-xs mt-1 text-right">
-                      {formatPHTime(selectedTicket.created_date)} · You
+                      {formatDateShort(selectedTicket.created_date)} · You
                     </p>
                   </div>
                 </div>
@@ -479,7 +470,7 @@ export default function MyTickets() {
                             </div>
                           )}
                           <p className="text-white/30 text-xs mt-1 text-right">
-                            {formatPHTime(msg.created_date)}
+                            {formatDateShort(msg.created_date)}
                           </p>
                         </div>
                       </motion.div>

@@ -9,8 +9,7 @@ import {
   MessageSquareText, Tag, Star, MessagesSquare, Crown, UserCheck, Shield, Lock, Send, FolderOpen, Clock, Bell
 } from 'lucide-react';
 import { useNotifications } from '@/hooks/useNotifications';
-import { toZonedTime } from 'date-fns-tz';
-import { APP_TIMEZONE } from '@/lib/timezone';
+import { formatMonthDay } from '@/lib/timezone';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import BottomTabNav from '@/components/BottomTabNav';
@@ -96,19 +95,18 @@ export default function Layout() {
   const formatNotifTime = (dateStr) => {
     if (!dateStr) return '';
     try {
-      const date = new Date(dateStr);
-      const zonedDate = toZonedTime(date, APP_TIMEZONE);
-      const now = toZonedTime(new Date(), APP_TIMEZONE);
-      const diffMs = now - zonedDate;
+      // Relative age is just an instant diff (timezone-independent). Only the
+      // >7-day fallback needs a date, which we render in the app timezone.
+      const diffMs = Date.now() - new Date(dateStr).getTime();
       const diffMins = Math.floor(diffMs / 60000);
       const diffHours = Math.floor(diffMs / 3600000);
       const diffDays = Math.floor(diffMs / 86400000);
-      
+
       if (diffMins < 1) return 'now';
       if (diffMins < 60) return `${diffMins}m`;
       if (diffHours < 24) return `${diffHours}h`;
       if (diffDays < 7) return `${diffDays}d`;
-      return zonedDate.toLocaleDateString();
+      return formatMonthDay(dateStr);
     } catch {
       return '';
     }

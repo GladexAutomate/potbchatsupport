@@ -1,20 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/db';
 import { X, Clock, Tag, ArrowRightLeft, AlertTriangle, CheckCircle2, User, Loader2, Plus } from 'lucide-react';
-
-const toPHTime = (dateStr) => {
-  const date = new Date(dateStr);
-  return new Date(date.getTime() + 8 * 60 * 60 * 1000);
-};
-
-const formatPHTime = (dateStr) => {
-  const d = toPHTime(dateStr);
-  const month = d.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' });
-  const day = d.getUTCDate();
-  const hours = String(d.getUTCHours()).padStart(2, '0');
-  const mins = String(d.getUTCMinutes()).padStart(2, '0');
-  return `${month} ${day}, ${hours}:${mins}`;
-};
+import { formatDateShort } from '@/lib/timezone';
 
 const EVENT_ICON = {
   created: { icon: Plus, color: 'text-green-400 bg-green-500/10' },
@@ -87,7 +74,7 @@ export default function TicketHistoryModal({ ticket, onClose }) {
                           </p>
                         )}
                         <div className="flex items-center gap-2 mt-1">
-                          <span className="text-xs text-muted-foreground">{formatPHTime(item.created_date)}</span>
+                          <span className="text-xs text-muted-foreground">{formatDateShort(item.created_date)}</span>
                           {item.actor && <span className="text-xs text-muted-foreground">· {item.actor}</span>}
                         </div>
                       </div>

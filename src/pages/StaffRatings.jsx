@@ -2,9 +2,8 @@ import { useState, useEffect } from 'react';
 import { db } from '@/lib/db';
 import { Star, TrendingUp, Users, Award } from 'lucide-react';
 import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
-import { startOfDay, startOfWeek, startOfMonth, subDays, format, isAfter } from 'date-fns';
-import { toZonedTime } from 'date-fns-tz';
-import { APP_TIMEZONE } from '@/lib/timezone';
+import { startOfDay, startOfWeek, startOfMonth, subDays, isAfter } from 'date-fns';
+import { formatInAppTz } from '@/lib/timezone';
 
 const PERIODS = ['Daily', 'Weekly', 'Monthly'];
 
@@ -75,10 +74,10 @@ export default function StaffRatings() {
     const buckets = {};
     filteredRatings.forEach(r => {
       const key = period === 'Daily'
-        ? format(new Date(r.rated_at), 'MMM d')
+        ? formatInAppTz(r.rated_at, 'MMM d')
         : period === 'Weekly'
-          ? `W${format(new Date(r.rated_at), 'w')}`
-          : format(new Date(r.rated_at), 'MMM');
+          ? `W${formatInAppTz(r.rated_at, 'w')}`
+          : formatInAppTz(r.rated_at, 'MMM');
       if (!buckets[key]) buckets[key] = { label: key, total: 0, count: 0 };
       buckets[key].total += r.rating;
       buckets[key].count += 1;
@@ -212,7 +211,7 @@ export default function StaffRatings() {
                              )}
                              {r.remarks && <p className="text-xs text-muted-foreground">"{r.remarks}"</p>}
                            </div>
-                           <span className="text-xs text-muted-foreground/50 shrink-0">{format(toZonedTime(new Date(r.rated_at), APP_TIMEZONE), 'MMM d')}</span>
+                           <span className="text-xs text-muted-foreground/50 shrink-0">{formatInAppTz(r.rated_at, 'MMM d')}</span>
                          </div>
                       );
                     })}

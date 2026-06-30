@@ -3,15 +3,9 @@ import { base44 } from '@/api/base44Client';
 import { db } from '@/lib/db';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Clock, ChevronRight, ChevronLeft, AlertTriangle, Send, Loader2, Paperclip, X, FileText, History } from 'lucide-react';
-import { differenceInMinutes, formatDistanceToNow, format } from 'date-fns';
-import { toZonedTime } from 'date-fns-tz';
+import { differenceInMinutes } from 'date-fns';
 import { useAuth } from '@/lib/AuthContext';
-import { APP_TIMEZONE } from '@/lib/timezone';
-
-const formatPHTime = (dateStr) => {
-  const zonedDate = toZonedTime(new Date(dateStr), APP_TIMEZONE);
-  return format(zonedDate, 'MMM d, HH:mm');
-};
+import { formatDateShort, formatRelative } from '@/lib/timezone';
 
 const STATUS_OPTIONS = ['Open', 'In Progress', 'Pending Department', 'Resolved'];
 const PRIORITY_OPTIONS = ['Low', 'Medium', 'High', 'Critical'];
@@ -188,7 +182,7 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
   const slaBreached = slaDeadline && now > slaDeadline;
   const slaMinutesLeft = slaDeadline ? differenceInMinutes(slaDeadline, now) : null;
   const slaLabel = slaBreached
-    ? `Breached ${formatDistanceToNow(toZonedTime(new Date(ticket.sla_deadline), APP_TIMEZONE), { addSuffix: true })}`
+    ? `Breached ${formatRelative(ticket.sla_deadline)}`
     : slaMinutesLeft !== null
       ? slaMinutesLeft < 60
         ? `${slaMinutesLeft}m left`
@@ -284,7 +278,7 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
               <Clock className="w-3.5 h-3.5" />
               <span>{slaLabel}</span>
             </div>
-            <p className="text-xs text-muted-foreground mt-0.5">{formatPHTime(ticket.sla_deadline)}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">{formatDateShort(ticket.sla_deadline)}</p>
           </div>
         )}
 
@@ -343,7 +337,7 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
         {/* Created */}
         <div>
           <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Created</p>
-          <p className="text-xs text-muted-foreground">{formatPHTime(ticket.created_date)}</p>
+          <p className="text-xs text-muted-foreground">{formatDateShort(ticket.created_date)}</p>
         </div>
 
         {/* History Log */}
@@ -357,7 +351,7 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
               {history.map(entry => (
                 <div key={entry.id} className="text-xs border-l-2 border-muted-foreground/30 pl-2.5 py-0.5">
                   <p className="font-medium text-foreground">{entry.description}</p>
-                  <p className="text-muted-foreground text-[10px] mt-0.5">{entry.actor} · {formatPHTime(entry.created_date)}</p>
+                  <p className="text-muted-foreground text-[10px] mt-0.5">{entry.actor} · {formatDateShort(entry.created_date)}</p>
                 </div>
               ))}
             </div>
@@ -399,7 +393,7 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
                       </div>
                     )}
                   </div>
-                  <span className="text-[10px] text-muted-foreground mt-0.5 px-1">{formatPHTime(msg.created_date)}</span>
+                  <span className="text-[10px] text-muted-foreground mt-0.5 px-1">{formatDateShort(msg.created_date)}</span>
                 </div>
               );
             })}

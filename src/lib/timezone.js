@@ -1,56 +1,84 @@
-import { formatDistanceToNow, format } from 'date-fns';
-import { toZonedTime, fromZonedTime } from 'date-fns-tz';
+import { formatDistanceToNow as fnsFormatDistanceToNow, format } from 'date-fns';
+import { formatInTimeZone, toZonedTime, fromZonedTime } from 'date-fns-tz';
 
-// Centralized timezone for the app: Philippines (Asia/Manila)
+/**
+ * THE single timezone for the ENTIRE app: Philippines (Asia/Manila).
+ *
+ * Every date shown anywhere in the app MUST be formatted through one of the
+ * helpers below. Do NOT write component-local date formatters (no manual
+ * `+ 8 * 60 * 60 * 1000`, no `toLocaleString`, no inline `toZonedTime`) — those
+ * drift out of sync and produce wrong times. Add a new helper here if you need a
+ * new format, then use it everywhere.
+ *
+ * All helpers take a UTC instant (ISO string, ms, or Date) and render it in
+ * Asia/Manila via `formatInTimeZone`, which is unambiguous (no double-offset).
+ */
 export const APP_TIMEZONE = 'Asia/Manila';
 
-/**
- * Format a date for display in Philippines timezone
- * Returns formatted date string (e.g., "Jun. 19, 2026")
- */
-export const formatDateRelative = (date) => {
-  if (!date) return '';
-  const zonedDate = toZonedTime(new Date(date), APP_TIMEZONE);
-  return format(zonedDate, 'MMM. d, yyyy h:mm a');
-};
+const toDate = (date) => (date instanceof Date ? date : new Date(date));
 
-/**
- * Format a date for display in Philippines timezone with time
- * Returns formatted date string (e.g., "Jun. 19, 2026 2:30 PM")
- */
+// "Jun. 30, 2026 2:22 PM" — full date + time. Default for chat/message timestamps.
 export const formatDateFull = (date) => {
   if (!date) return '';
-  const zonedDate = toZonedTime(new Date(date), APP_TIMEZONE);
-  return format(zonedDate, 'MMM. d, yyyy h:mm a');
+  return formatInTimeZone(toDate(date), APP_TIMEZONE, 'MMM. d, yyyy h:mm a');
+};
+
+// Alias kept for existing callers (same output as full).
+export const formatDateRelative = formatDateFull;
+
+// "Jun 30, 2:22 PM" — compact date + time (no year). For tight chat bubbles.
+export const formatDateShort = (date) => {
+  if (!date) return '';
+  return formatInTimeZone(toDate(date), APP_TIMEZONE, 'MMM d, h:mm a');
+};
+
+// "Tue, Jun 30" — day label (chat day separators).
+export const formatDateDay = (date) => {
+  if (!date) return '';
+  return formatInTimeZone(toDate(date), APP_TIMEZONE, 'EEE, MMM d');
+};
+
+// "Jun 30" — month + day only.
+export const formatMonthDay = (date) => {
+  if (!date) return '';
+  return formatInTimeZone(toDate(date), APP_TIMEZONE, 'MMM d');
+};
+
+// Escape hatch: format with ANY date-fns pattern, always in Asia/Manila. Use this
+// instead of importing date-fns `format` so no component invents its own timezone.
+export const formatInAppTz = (date, pattern) => {
+  if (!date) return '';
+  return formatInTimeZone(toDate(date), APP_TIMEZONE, pattern);
+};
+
+// Relative ("about 8 hours ago"). Timezone-agnostic by nature, but centralized
+// here so callers never import date-fns directly for app dates.
+export const formatRelative = (date) => {
+  if (!date) return '';
+  return fnsFormatDistanceToNow(toDate(date), { addSuffix: true });
 };
 
 /**
- * Get current time in Philippines timezone
+ * Current time as a Date whose local fields equal Manila wall-clock (for
+ * day/“today” comparisons). Prefer the format helpers above for display.
  */
-export const getNowInTimezone = () => {
-  return toZonedTime(new Date(), APP_TIMEZONE);
-};
+export const getNowInTimezone = () => toZonedTime(new Date(), APP_TIMEZONE);
 
 /**
- * Convert a local date to UTC for storage
+ * Convert a Manila wall-clock date to the equivalent UTC instant for storage.
  */
-export const localToUTC = (localDate) => {
-  return fromZonedTime(new Date(localDate), APP_TIMEZONE);
-};
+export const localToUTC = (localDate) => fromZonedTime(new Date(localDate), APP_TIMEZONE);
 
 /**
- * Convert old 24-hour timestamp format to 12-hour AM/PM format in note text
- * Converts "[DD/MM/YYYY, HH:MM:SS]" to "[MMM. DD, YYYY, h:mm a]"
+ * Convert old "[DD/MM/YYYY, HH:MM:SS]" note timestamps to "[MMM. DD, YYYY, h:mm a]".
+ * These components are ALREADY Philippine wall-clock time, so they are reformatted
+ * as-is (no timezone conversion, which would double-shift them).
  */
 export const convertOldTimestampFormat = (text) => {
   if (!text) return text;
   return text.replace(/\[(\d{2})\/(\d{2})\/(\d{4}),\s(\d{2}):(\d{2}):(\d{2})\]/g, (match, day, month, year, hours, mins, secs) => {
-    // These components are ALREADY Philippine wall-clock time, so we must NOT run them
-    // through toZonedTime (that re-applied the Manila offset a second time, displaying
-    // the wrong hour for any non-Manila viewer). Just reformat the literal components.
     const date = new Date(Number(year), Number(month) - 1, Number(day), Number(hours), Number(mins), Number(secs));
     if (Number.isNaN(date.getTime())) return match;
-    const formatted = format(date, 'MMM. d, yyyy, h:mm a');
-    return `[${formatted}]`;
+    return `[${format(date, 'MMM. d, yyyy, h:mm a')}]`;
   });
 };

@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Ticket, Clock, AlertTriangle, CheckCircle, ArrowRight, Copy, Check } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
-import { formatDistanceToNow } from 'date-fns';
+import { formatRelative } from '@/lib/timezone';
 
 function usePagePermissions(role) {
   const [permissions, setPermissions] = useState(null);
@@ -171,7 +171,7 @@ export default function Dashboard() {
                         {!slaOk && <span className="text-xs text-red-500 font-medium">⚠ SLA Breached</span>}
                       </div>
                       <p className="text-sm font-medium text-foreground truncate">{t.subject}</p>
-                      <p className="text-xs text-muted-foreground">{t.customer_name} · {formatDistanceToNow(new Date(t.created_date), { addSuffix: true })}</p>
+                      <p className="text-xs text-muted-foreground">{t.customer_name} · {formatRelative(t.created_date)}</p>
                     </div>
                     <div className="flex items-center gap-2 flex-shrink-0">
                       <Badge className={`text-xs border ${PRIORITY_COLOR[t.priority]}`}>{t.priority}</Badge>
