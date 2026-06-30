@@ -11,7 +11,12 @@ export default function RatingModal({ ticket, onClose, onRated }) {
    const [submitting, setSubmitting] = useState(false);
    const [done, setDone] = useState(false);
 
-   const staffName = ticket.resolution_requested_by_name || ticket.assigned_to || 'Support Team';
+   // Attribution: the ASSIGNED agent takes precedence; if the ticket was never
+   // assigned, credit the staffer who requested resolution.
+   const ratedEmail = ticket.assigned_to || ticket.resolution_requested_by || '';
+   const staffName = ticket.assigned_to
+     ? (ticket.assigned_to_name || ticket.assigned_to)
+     : (ticket.resolution_requested_by_name || ticket.resolution_requested_by || 'Support Team');
 
    const handleSubmit = async () => {
      if (!rating) return;
@@ -26,15 +31,25 @@ export default function RatingModal({ ticket, onClose, onRated }) {
        }
        await db.StaffRating.create({
          ticket_id: ticket.id,
-         staff_email: ticket.resolution_requested_by || ticket.assigned_to || '',
+         staff_email: ratedEmail,
          staff_name: staffName,
          rating,
          remarks: remarks.trim(),
          rated_at: new Date().toISOString(),
        });
-       // Close the ticket after rating is submitted
+       // If the ticket had no assignee, assign it to whoever resolved it (so the
+       // ticket reflects who actually handled it) — and close it if pending.
+       const ticketUpdates = {};
+       if (!ticket.assigned_to && ticket.resolution_requested_by) {
+         ticketUpdates.assigned_to = ticket.resolution_requested_by;
+       }
        if (ticket._pendingSLALog) {
-         await db.Ticket.update(ticket.id, { status: 'Closed', resolved_at: new Date().toISOString(), dept_sla_log: ticket._pendingSLALog });
+         ticketUpdates.status = 'Closed';
+         ticketUpdates.resolved_at = new Date().toISOString();
+         ticketUpdates.dept_sla_log = ticket._pendingSLALog;
+       }
+       if (Object.keys(ticketUpdates).length > 0) {
+         await db.Ticket.update(ticket.id, ticketUpdates);
        }
        setDone(true);
        setSubmitting(false);
