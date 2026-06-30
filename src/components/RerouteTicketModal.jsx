@@ -13,7 +13,7 @@ import CenterToast from './CenterToast';
 
 const CSR_ROLES = ['admin', 'csr'];
 const ESCALATE_ROLES = ['admin', 'csr', 'tl_management'];
-const ALL_DEPARTMENTS = ['Sales', 'IT', 'Accounting', 'Sign-Ups', 'On-Boarding', 'Corp/Training', 'Admin', 'TL/Management'];
+const ALL_DEPARTMENTS = ['CSR', 'Sales', 'IT', 'Accounting', 'Sign-Ups', 'On-Boarding', 'Corp/Training', 'Admin', 'TL/Management'];
 // Non-CSR roles can only route back to L1/CSR queue (General = no dept, or these specific ones)
 const CSR_BACK_DEPARTMENTS = ['General'];
 const DEPARTMENTS = ALL_DEPARTMENTS; // used conditionally below
@@ -34,6 +34,7 @@ const DEPT_TO_ROLES = {
 };
 
 const DEPT_NOTES = {
+  'CSR': 'L1 front-line support / general inquiries',
   'Sales': 'Domestic / International inquiries',
   'IT': 'Technical issues, Bugs, System support (L2)',
   'Accounting': 'Payment verification, Credit transfer, Clawbacks',
@@ -68,9 +69,13 @@ export default function RerouteTicketModal({ ticket, onClose, onSaved }) {
     if (!department) { setDeptStaff([]); return; }
     const roles = DEPT_TO_ROLES[department] || [];
     if (roles.length === 0) { setDeptStaff([]); return; }
-    db.EmployeeAccount.filter({ portal_access_granted: true }).then(all => {
+    // Assignment follows APP ROLE + DEPARTMENT: list every active employee whose
+    // POTBChatsupportrole belongs to the chosen department. We do NOT gate on
+    // portal_access_granted — that flag was hiding valid staff (e.g. Sales agents),
+    // which is why the list showed "No staff found".
+    db.EmployeeAccount.filter({}).then(all => {
       const filtered = (all || []).filter(e =>
-        e.status === 'active' && roles.includes(e.POTBChatsupportrole)
+        e.status === 'active' && roles.includes((e.POTBChatsupportrole || '').toLowerCase())
       );
       setDeptStaff(filtered);
     });

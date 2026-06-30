@@ -52,12 +52,17 @@ export default function TicketInfoSidebar({ ticket, onTicketUpdate }) {
     const dept = ticket.department;
     const roles = dept ? (DEPT_TO_ROLES[dept] || []) : [];
     if (roles.length > 0) {
-      db.EmployeeAccount.filter({ portal_access_granted: true }).then(all => {
-        setAgents((all || []).filter(e => e.status === 'active' && roles.includes(e.POTBChatsupportrole)));
+      // Assignment follows APP ROLE + DEPARTMENT: every active employee whose
+      // POTBChatsupportrole belongs to this ticket's department. Not gated on
+      // portal_access_granted (that flag was hiding valid staff like Sales agents).
+      db.EmployeeAccount.filter({}).then(all => {
+        setAgents((all || []).filter(e =>
+          e.status === 'active' && roles.includes((e.POTBChatsupportrole || '').toLowerCase())
+        ));
       });
     } else {
-      // No department set — show all staff
-      db.User.list().then(d => setAgents(d || []));
+      // No department set — show all active employees so the ticket can still be assigned.
+      db.EmployeeAccount.filter({}).then(all => setAgents((all || []).filter(e => e.status === 'active')));
     }
     db.SLAPolicy.filter({ priority: ticket.priority }).then(d => {
       if (d?.length) setSlaPolicy(d[0]);
