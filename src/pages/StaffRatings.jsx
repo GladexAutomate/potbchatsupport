@@ -21,14 +21,16 @@ function StarDisplay({ rating, size = 'sm' }) {
 export default function StaffRatings() {
   const [ratings, setRatings] = useState([]);
   const [tickets, setTickets] = useState({});
+  const [nameByEmail, setNameByEmail] = useState({});
   const [loading, setLoading] = useState(true);
   const [period, setPeriod] = useState('Weekly');
 
   useEffect(() => {
     Promise.all([
       db.StaffRating.list('-rated_at', 500),
-      db.Ticket.list('-created_date', 500)
-    ]).then(([ratingData, ticketData]) => {
+      db.Ticket.list('-created_date', 500),
+      db.EmployeeAccount.list('', 500)
+    ]).then(([ratingData, ticketData, empData]) => {
       // Show ALL submitted ratings. (Previously this was filtered to POTB-coded
       // employees only, which silently hid every rating whose rated staff wasn't a
       // POTB employee — e.g. tickets handled by an admin/system account.)
@@ -39,9 +41,22 @@ export default function StaffRatings() {
         ticketMap[t.id] = t;
       });
       setTickets(ticketMap);
+      // Resolve display names from User Management (EmployeeAccount) by email, so
+      // the leaderboard shows the employee's NAME instead of their email.
+      const nameMap = {};
+      (empData || []).forEach(e => {
+        const email = e.email?.toLowerCase();
+        if (email && e.full_name) nameMap[email] = e.full_name;
+      });
+      setNameByEmail(nameMap);
       setLoading(false);
     }).catch(() => setLoading(false));
   }, []);
+
+  // Resolve a rating's display name: prefer the User Management name, then the
+  // name stored on the rating, then the email.
+  const resolveName = (r) =>
+    nameByEmail[r.staff_email?.toLowerCase()] || r.staff_name || r.staff_email;
 
   const getPeriodStart = () => {
     const now = new Date();
@@ -61,7 +76,7 @@ export default function StaffRatings() {
   const staffMap = {};
   filteredRatings.forEach(r => {
     if (!staffMap[r.staff_email]) {
-      staffMap[r.staff_email] = { name: r.staff_name || r.staff_email, email: r.staff_email, total: 0, count: 0, remarks: [] };
+      staffMap[r.staff_email] = { name: resolveName(r), email: r.staff_email, total: 0, count: 0, remarks: [] };
     }
     staffMap[r.staff_email].total += r.rating;
     staffMap[r.staff_email].count += 1;
