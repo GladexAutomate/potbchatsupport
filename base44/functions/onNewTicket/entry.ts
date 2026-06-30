@@ -10,12 +10,13 @@ Deno.serve(async (req) => {
       return Response.json({ ok: true, skipped: 'no ticket data' });
     }
 
-    // Inherit env from the ticket so records stay in the same environment
-    const env = ticket.env || 'test';
+    // Single env: stamp new records 'prod'.
+    const env = ticket.env || 'prod';
 
-    // Check if customer is VIP (scoped to same env)
-    const vips = await base44.asServiceRole.entities.VIPCustomer.filter({ email: ticket.customer_email, env }, 'created_date', 5);
-    const isVIP = vips && vips.length > 0;
+    // Check if customer is VIP. Don't scope by env (single data pool) and also honor
+    // an is_vip flag the client already set, so VIP detection can't be missed.
+    const vips = await base44.asServiceRole.entities.VIPCustomer.filter({ email: ticket.customer_email }, 'created_date', 5);
+    const isVIP = ticket.is_vip === true || (vips && vips.length > 0);
 
     if (isVIP) {
       // 1. Auto-escalate to Critical and mark as VIP
