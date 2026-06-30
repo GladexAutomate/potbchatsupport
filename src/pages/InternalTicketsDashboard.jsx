@@ -205,6 +205,11 @@ export default function InternalTicketsDashboard() {
   }, [selectedTicket?.notes, messages]);
 
   const handleSelectTicket = (ticket) => {
+    // Re-clicking the already-open ticket must NOT wipe the thread: the message-load
+    // effect is keyed on selectedTicket.id, so clearing messages here without an id
+    // change would leave the conversation empty (only the description shows) until the
+    // next poll. No-op when it's already selected.
+    if (selectedTicket?.id === ticket.id) return;
     setSelectedTicket(ticket);
     setMessages([]);
     setNewMessage('');
