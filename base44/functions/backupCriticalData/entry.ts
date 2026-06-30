@@ -1,6 +1,23 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 /**
+ * APP-WIDE TIMEZONE RULE (server side):
+ *  - STORE every timestamp as a UTC instant via `new Date().toISOString()`.
+ *  - When formatting a timestamp for HUMANS (notes, messages, labels), always
+ *    render it in APP_TIMEZONE (Philippines). Never emit a server-formatted local
+ *    time in any other zone. The frontend mirrors this via src/lib/timezone.js.
+ */
+export const APP_TIMEZONE = 'Asia/Manila';
+
+// Format a UTC instant as a Philippine-time display string, e.g. "Jun 30, 2026 02:22 PM PHT".
+export function formatManila(date = new Date()) {
+  const d = date instanceof Date ? date : new Date(date);
+  const dateStr = d.toLocaleDateString('en-PH', { timeZone: APP_TIMEZONE, year: 'numeric', month: 'short', day: 'numeric' });
+  const timeStr = d.toLocaleTimeString('en-PH', { timeZone: APP_TIMEZONE, hour: '2-digit', minute: '2-digit' });
+  return `${dateStr} ${timeStr} PHT`;
+}
+
+/**
  * Automated backup: exports TicketHistory + StaffRatings to a JSON summary
  * and posts a confirmation message to internal group chat.
  * Runs on schedule (daily) — triggered via automation.
@@ -40,11 +57,8 @@ Deno.serve(async (req) => {
       ? (recentRatings.reduce((s, r) => s + r.rating, 0) / recentRatings.length).toFixed(2)
       : 'N/A';
 
-    const dateStr = now.toLocaleDateString('en-PH', { timeZone: 'Asia/Manila', year: 'numeric', month: 'short', day: 'numeric' });
-    const timeStr = now.toLocaleTimeString('en-PH', { timeZone: 'Asia/Manila', hour: '2-digit', minute: '2-digit' });
-
     const summary = {
-      backup_date: `${dateStr} ${timeStr} PHT`,
+      backup_date: formatManila(now),
       ticket_history_events_24h: recentHistory.length,
       staff_ratings_24h: recentRatings.length,
       avg_rating_24h: avgRating,
