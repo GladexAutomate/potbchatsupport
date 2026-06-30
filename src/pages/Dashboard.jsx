@@ -42,11 +42,17 @@ const PRIORITY_COLOR = {
 
 export default function Dashboard() {
   const [tickets, setTickets] = useState([]);
+  const [vipEmails, setVipEmails] = useState(new Set());
   const [loading, setLoading] = useState(true);
   const [copied, setCopied] = useState(false);
   const [copiedMsg, setCopiedMsg] = useState(false);
   const { user } = useAuth();
   const { hasAccess } = usePagePermissions(user?.role);
+
+  // A VIP ticket lives on the VIP Tickets page (it's filtered out of All Tickets),
+  // so a recent-ticket link must point there or it lands on an empty list.
+  const isVipTicket = (t) => t.is_vip === true || vipEmails.has(t.customer_email?.toLowerCase());
+  const ticketHref = (t) => `${isVipTicket(t) ? '/vip-tickets' : '/tickets'}?open=${t.id}`;
 
   const ticketUrl = `${window.location.origin}/submit-ticket`;
   const internalTicketUrl = `${window.location.origin}/submit-internal-ticket`;
@@ -71,6 +77,9 @@ export default function Dashboard() {
       setTickets(data || []);
       setLoading(false);
     });
+    db.VIPCustomer.list().then(vips => {
+      setVipEmails(new Set((vips || []).map(v => v.email?.toLowerCase())));
+    }).catch(() => {});
   }, []);
 
   const open = tickets.filter(t => t.status === 'Open').length;
@@ -154,7 +163,7 @@ export default function Dashboard() {
               {recent.map(t => {
                 const slaOk = !t.sla_deadline || new Date(t.sla_deadline) > now || t.status === 'Resolved' || t.status === 'Closed';
                 return (
-                  <Link to={`/tickets?open=${t.id}`} key={t.id}
+                  <Link to={ticketHref(t)} key={t.id}
                     className="flex items-center gap-4 px-5 py-3.5 hover:bg-muted/30 transition-colors">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-0.5">
