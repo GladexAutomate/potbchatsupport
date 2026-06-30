@@ -52,6 +52,11 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
   // unread: ticketId -> count of unread customer messages
   const [unread, setUnread] = useState({});
   const [lastSeenMap, setLastSeenMap] = useState({});
+  // Mirror lastSeenMap in a ref so the unread-badge effect can read the latest values
+  // WITHOUT listing lastSeenMap as a dependency (which would tear down and re-create
+  // the message subscription on every ticket open/send — a fetch storm).
+  const lastSeenMapRef = useRef(lastSeenMap);
+  useEffect(() => { lastSeenMapRef.current = lastSeenMap; }, [lastSeenMap]);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
   const [rerouteOpen, setRerouteOpen] = useState(false);
@@ -116,7 +121,7 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
         const msgs = await db.TicketMessage.filter({ ticket_id: t.id }, '-created_date', 20);
         const sorted = (msgs || []).sort((a, b) => new Date(a.created_date) - new Date(b.created_date));
         const lastStaffReply = sorted.filter(m => m.sender_role === 'staff').pop();
-        const lastSeen = lastSeenMap[t.id];
+        const lastSeen = lastSeenMapRef.current[t.id];
         const unreadCustomer = sorted.filter(m => {
           if (m.sender_role !== 'customer') return false;
           if (m.message_type === 'system_auto_close' || m.message_type === 'resolution_request') return false;
@@ -136,7 +141,7 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
       loadTimer = setTimeout(() => computeUnread(), 3000);
     });
     return () => { clearTimeout(loadTimer); unsub(); };
-  }, [tickets, lastSeenMap]);
+  }, [tickets]);
 
   // Load messages for selected ticket with real-time updates (debounced)
   useEffect(() => {
@@ -354,7 +359,7 @@ export default function StaffMessenger({ tickets, loading, autoOpenTicketId, isV
             <div className="flex items-center gap-2">
               {(() => {
                 const nonClosedUnread = Object.entries(unread).filter(([tid]) => {
-                  const t = tickets.find(tk => tk.id === tid);
+                  const t = tickets.find(tk => String(tk.id) === String(tid));
                   return t && t.status !== 'Closed';
                 });
                 return nonClosedUnread.length > 0 ? (

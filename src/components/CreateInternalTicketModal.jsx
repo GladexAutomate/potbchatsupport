@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/db';
 import { useAuth } from '@/lib/AuthContext';
+import { generateInternalTicketNumber } from '@/lib/ticketNumbers';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -51,13 +52,14 @@ export default function CreateInternalTicketModal({ onTicketCreated }) {
     setLoading(true);
     try {
       const newTicket = await db.InternalTicket.create({
-        ticket_number: `INT-${new Date().getFullYear()}${String(new Date().getMonth() + 1).padStart(2, '0')}${String(new Date().getDate()).padStart(2, '0')}-${Math.floor(Math.random() * 9000 + 1000)}`,
+        ticket_number: await generateInternalTicketNumber(),
         from_department: formData.from_department,
         to_department: formData.to_department,
         subject: formData.subject,
         description: formData.description,
         priority: formData.priority,
         status: 'Open',
+        escalated: false,
         created_by_email: user?.email || '',
         created_by_name: user?.full_name || '',
       });

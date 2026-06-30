@@ -30,6 +30,8 @@ const STATUS_COLOR = {
   'Closed': 'bg-slate-500/20 text-slate-400 border-slate-500/30',
 };
 
+const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB per file
+
 export default function MyTickets() {
   const [user, setUser] = useState(null);
   const [tickets, setTickets] = useState([]);
@@ -45,8 +47,14 @@ export default function MyTickets() {
   const [ratingTicket, setRatingTicket] = useState(null);
   const [ratedTicketIds, setRatedTicketIds] = useState(new Set());
   const [showResolveConfirm, setShowResolveConfirm] = useState(false);
+  const [resolving, setResolving] = useState(false);
   const messagesEndRef = useRef(null);
   const fileInputRef = useRef(null);
+  // Mirror ratedTicketIds in a ref so subscription callbacks (which close over the
+  // value at subscribe time) always see the latest set — prevents the rating modal
+  // re-popping for a ticket the customer just rated.
+  const ratedTicketIdsRef = useRef(ratedTicketIds);
+  useEffect(() => { ratedTicketIdsRef.current = ratedTicketIds; }, [ratedTicketIds]);
 
   useEffect(() => {
     base44.auth.me().then(u => {
@@ -82,7 +90,7 @@ export default function MyTickets() {
         setSelectedTicket(event.data);
         setTickets(prev => prev.map(t => t.id === event.data.id ? event.data : t));
         // Show rating modal only if closed and not yet rated
-        if (event.data?.status === 'Closed' && !ratedTicketIds.has(event.data.id)) {
+        if (event.data?.status === 'Closed' && !ratedTicketIdsRef.current.has(event.data.id)) {
           setRatingTicket(event.data);
           setShowRatingModal(true);
         }
@@ -126,13 +134,23 @@ export default function MyTickets() {
   const handleFileUpload = async (files) => {
     const remaining = 5 - msgAttachments.length;
     const toUpload = Array.from(files).slice(0, remaining);
-    if (!toUpload.length) return;
+    const valid = toUpload.filter(f => {
+      if (f.size > MAX_FILE_BYTES) { alert(`"${f.name}" is larger than 10 MB and was skipped.`); return false; }
+      return true;
+    });
+    if (!valid.length) return;
     setUploading(true);
-    for (const file of toUpload) {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      setMsgAttachments(prev => [...prev, { name: file.name, url: file_url }]);
+    try {
+      for (const file of valid) {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        setMsgAttachments(prev => [...prev, { name: file.name, url: file_url }]);
+      }
+    } catch (err) {
+      console.error('Upload failed:', err);
+      alert('A file failed to upload. Please try again.');
+    } finally {
+      setUploading(false);
     }
-    setUploading(false);
   };
 
   const handleSend = async () => {
@@ -185,10 +203,17 @@ export default function MyTickets() {
       if (item.type.startsWith('image/')) {
         const file = item.getAsFile();
         if (file) {
+          if (file.size > MAX_FILE_BYTES) { alert('Pasted image is larger than 10 MB.'); continue; }
           setUploading(true);
-          const { file_url } = await base44.integrations.Core.UploadFile({ file });
-          setMsgAttachments(prev => [...prev, { name: 'pasted-image.png', url: file_url }]);
-          setUploading(false);
+          try {
+            const { file_url } = await base44.integrations.Core.UploadFile({ file });
+            setMsgAttachments(prev => [...prev, { name: 'pasted-image.png', url: file_url }]);
+          } catch (err) {
+            console.error('Paste upload failed:', err);
+            alert('Failed to upload the pasted image.');
+          } finally {
+            setUploading(false);
+          }
         }
       }
     }
@@ -197,8 +222,11 @@ export default function MyTickets() {
   const isImageUrl = (url) => /\.(png|jpg|jpeg|gif|webp)(\?|$)/i.test(url);
 
   const handleResolutionConfirm = async () => {
+    if (resolving) return; // guard against double-submit
+    setResolving(true);
     // Proceed with resolution after confirmation
     setShowResolveConfirm(false);
+    try {
     const log = [...(selectedTicket.dept_sla_log || [])];
     const activeIdx = log.findIndex(e => e.grade === 'Active');
     if (activeIdx !== -1) {
@@ -225,6 +253,12 @@ export default function MyTickets() {
       await db.Ticket.update(selectedTicket.id, { status: 'Closed', resolved_at: new Date().toISOString(), dept_sla_log: log });
       setSelectedTicket(prev => ({ ...prev, status: 'Closed' }));
       setTickets(prev => prev.map(t => t.id === selectedTicket.id ? { ...t, status: 'Closed' } : t));
+    }
+    } catch (err) {
+      console.error('Failed to confirm resolution:', err);
+      alert('Something went wrong. Please try again.');
+    } finally {
+      setResolving(false);
     }
   };
 
@@ -430,13 +464,15 @@ export default function MyTickets() {
                             <div className="flex gap-2 mt-2 ml-1">
                               <button
                                 onClick={() => handleResolutionResponse(true)}
-                                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-500 text-white text-sm font-medium hover:bg-green-600 transition-colors"
+                                disabled={resolving || showResolveConfirm}
+                                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-green-500 text-white text-sm font-medium hover:bg-green-600 transition-colors disabled:opacity-50"
                               >
                                 <ThumbsUp className="w-4 h-4" /> Yes, Resolved!
                               </button>
                               <button
                                 onClick={() => handleResolutionResponse(false)}
-                                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/10 text-white/80 text-sm font-medium hover:bg-white/20 transition-colors"
+                                disabled={resolving}
+                                className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-white/10 text-white/80 text-sm font-medium hover:bg-white/20 transition-colors disabled:opacity-50"
                               >
                                 <ThumbsDown className="w-4 h-4" /> No, Still Need Help
                               </button>

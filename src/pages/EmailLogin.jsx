@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { base44 } from '@/api/base44Client';
+import { db } from '@/lib/db';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
@@ -21,8 +22,11 @@ export default function EmailLogin() {
     setLoading(true);
 
     try {
-       // Check if email exists in EmployeeAccount
-       const employees = await base44.entities.EmployeeAccount.filter({ email }).catch(() => []);
+       // Check if email exists in EmployeeAccount. Match case-insensitively so a
+       // blocked user can't slip past this guard by varying the email's case.
+       const target = email.trim().toLowerCase();
+       const all = await db.EmployeeAccount.filter({}).catch(() => []);
+       const employees = (all || []).filter(e => e.email?.trim().toLowerCase() === target);
 
        if (employees && employees.length > 0) {
          const emp = employees[0];

@@ -105,15 +105,12 @@ export function useNotifications(user) {
 
   const markAllRead = async () => {
     if (!user?.email) return;
-    try {
-      for (const notif of items) {
-        await db.Notification.update(notif.id, { is_read: true });
-      }
-      setItems([]);
-      setCount(0);
-    } catch (e) {
-      console.error('[useNotifications] Failed to mark read:', e);
-    }
+    const unread = items.filter(n => !n.is_read);
+    // Update all in parallel; allSettled so one failure can't abort the rest and
+    // leave the badge stuck. Reflect the cleared state regardless.
+    await Promise.allSettled(unread.map(n => db.Notification.update(n.id, { is_read: true })));
+    setItems(prev => prev.map(n => ({ ...n, is_read: true })));
+    setCount(0);
   };
 
   // --- GROUP CHAT MENTIONS ---
@@ -214,6 +211,47 @@ export function useNotifications(user) {
       }
     });
     return () => { clearTimeout(debounceTimer); unsubInternal(); };
+  }, [user?.email, user?.role]);
+
+  // --- NEW REPLIES ON INTERNAL TICKETS this user's department is part of ---
+  // Previously only ticket CREATION notified anyone; replies were silent, so the
+  // other department never learned a response had arrived unless they had the
+  // ticket open. This notifies both the sender's and recipient's departments
+  // (and TL/Management) on every new message, except the message's own author.
+  useEffect(() => {
+    if (!user?.email || !user?.role) return;
+    const userDept = ROLE_TO_DEPT[user.role] ?? null;
+    let debounceTimer = null;
+    const pending = [];
+
+    const processBatch = async () => {
+      const batch = pending.splice(0);
+      for (const msg of batch) {
+        try {
+          const ticket = await db.InternalTicket.get(msg.internal_ticket_id);
+          if (!ticket) continue;
+          const involved = user.role === 'super_admin' || user.role === 'tl_management'
+            || (userDept && (ticket.from_department === userDept || ticket.to_department === userDept));
+          if (!involved) continue;
+          const preview = (msg.message || '').slice(0, 60) || 'sent an attachment';
+          const redirectUrl = `/internal-tickets?ticket_id=${ticket.id}`;
+          // source_id = message id so EACH reply notifies once (not just the first).
+          createNotification('internal_ticket_message', `New reply on ${ticket.ticket_number}: ${preview}`, redirectUrl, msg.id);
+        } catch (e) {
+          console.error('[useNotifications] internal reply lookup failed:', e);
+        }
+      }
+    };
+
+    const unsubReplies = db.InternalTicketMessage.subscribe((event) => {
+      if (event.type !== 'create') return;
+      const msg = event.data;
+      if (!msg || msg.sender_email === user.email) return;
+      pending.push(msg);
+      clearTimeout(debounceTimer);
+      debounceTimer = setTimeout(processBatch, 1500 + Math.random() * 500);
+    });
+    return () => { clearTimeout(debounceTimer); unsubReplies(); };
   }, [user?.email, user?.role]);
 
   // --- TICKET ASSIGNMENT (newly assigned to this user) ---

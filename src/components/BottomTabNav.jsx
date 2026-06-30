@@ -1,6 +1,5 @@
 import { useNavigate, useLocation } from 'react-router-dom';
 import { LayoutDashboard, Ticket, BarChart2, Settings } from 'lucide-react';
-import { cn } from '@/lib/utils';
 
 const TABS = [
   { label: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },

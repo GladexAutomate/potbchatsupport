@@ -4,7 +4,6 @@ import { base44 } from '@/api/base44Client';
 import { db } from '@/lib/db';
 import { useEmployeeRealtime } from '@/lib/useEmployeeRealtime';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -85,8 +84,9 @@ export default function UserManagement() {
 
   const loadData = async ({ silent = false } = {}) => {
     if (!silent) setLoading(true);
-    const env = getAppEnv() === 'preview' ? 'test' : 'prod';
-    const empData = await db.EmployeeAccount.filter({ env }, '-created_date', 500);
+    // Single env: show every account so no staffer is hidden from management,
+    // regardless of how their record was stamped historically.
+    const empData = await db.EmployeeAccount.filter({}, '-created_date', 500);
     setEmployees(empData || []);
     if (!silent) setLoading(false);
   };
@@ -127,7 +127,7 @@ export default function UserManagement() {
     const FALLBACK_SYNC_MS = 3 * 60 * 1000;
     const interval = setInterval(() => runSync(), FALLBACK_SYNC_MS);
     return () => clearInterval(interval);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+     
   }, []);
 
   const filteredEmployees = employees.filter(e => {

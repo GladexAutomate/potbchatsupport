@@ -1,7 +1,5 @@
 import { User } from 'lucide-react';
 import { formatDateRelative } from '@/lib/timezone';
-import { formatDistanceToNow } from 'date-fns';
-import { toZonedTime } from 'date-fns-tz';
 
 const STATUS_COLOR = {
   'Open': 'bg-blue-500/10 text-blue-400 border-blue-500/20',

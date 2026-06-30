@@ -9,6 +9,9 @@ import { Card, CardContent } from '@/components/ui/card';
 import { CheckCircle, Loader2, ShieldCheck, Upload, X, FileText, ClipboardList } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
+import { generateCustomerTicketNumber } from '@/lib/ticketNumbers';
+
+const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB per file
 
 export default function SubmitTicket() {
   const [view, setView] = useState('form'); // form | success
@@ -30,21 +33,26 @@ export default function SubmitTicket() {
     }).catch(() => {});
   }, []);
 
-  const generateTicketNumber = () => {
-    const now = new Date();
-    return `TKT-${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}-${Math.floor(Math.random()*9000+1000)}`;
-  };
-
   const handleFiles = async (files) => {
     const remaining = 5 - attachments.length;
     const toUpload = Array.from(files).slice(0, remaining);
-    if (!toUpload.length) return;
+    const valid = toUpload.filter(f => {
+      if (f.size > MAX_FILE_BYTES) { alert(`"${f.name}" is larger than 10 MB and was skipped.`); return false; }
+      return true;
+    });
+    if (!valid.length) return;
     setUploading(true);
-    for (const file of toUpload) {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      setAttachments(prev => [...prev, { name: file.name, url: file_url }]);
+    try {
+      for (const file of valid) {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        setAttachments(prev => [...prev, { name: file.name, url: file_url }]);
+      }
+    } catch (err) {
+      console.error('Upload failed:', err);
+      alert('A file failed to upload. Please try again.');
+    } finally {
+      setUploading(false);
     }
-    setUploading(false);
   };
 
   const handleDrop = (e) => {
@@ -54,38 +62,43 @@ export default function SubmitTicket() {
   };
 
   const handleSubmitTicket = async () => {
-    if (!form.customer_name || !form.subject || !form.description) return;
+    if (!form.customer_name.trim() || !form.subject.trim() || !form.description.trim()) return;
     setSubmitting(true);
-    const num = generateTicketNumber();
-    const deadline = new Date(Date.now() + 24 * 3600000);
-    const now = new Date().toISOString();
+    try {
+      const num = await generateCustomerTicketNumber();
+      const deadline = new Date(Date.now() + 24 * 3600000);
+      const now = new Date().toISOString();
 
-    // Check if customer email is in VIP list (use base44 directly to avoid env-scoping issues)
-    const email = user?.email || '';
-    let isVIP = false;
-    if (email) {
-      const vips = await base44.entities.VIPCustomer.filter({ email: email });
-      isVIP = (vips || []).length > 0;
+      const email = user?.email || '';
+      let isVIP = false;
+      if (email) {
+        const vips = await db.VIPCustomer.filter({ email });
+        isVIP = (vips || []).length > 0;
+      }
+
+      await db.Ticket.create({
+        customer_name: form.customer_name.trim(),
+        customer_email: email,
+        subject: form.subject.trim(),
+        description: form.description.trim(),
+        attachments: attachments.map(a => a.url),
+        ticket_number: num,
+        status: 'Open',
+        priority: isVIP ? 'Critical' : 'Medium',
+        source: 'Customer Portal',
+        sla_deadline: deadline.toISOString(),
+        escalated: false,
+        is_vip: isVIP,
+        dept_sla_log: [{ department: 'CSR', started_at: now, grade: 'Active' }],
+      });
+      setTicketNum(num);
+      setView('success');
+    } catch (err) {
+      console.error('Failed to submit ticket:', err);
+      alert('Failed to submit your ticket. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
-
-    await db.Ticket.create({
-      customer_name: form.customer_name,
-      customer_email: email,
-      subject: form.subject,
-      description: form.description,
-      attachments: attachments.map(a => a.url),
-      ticket_number: num,
-      status: 'Open',
-      priority: isVIP ? 'Critical' : 'Medium',
-      source: 'Customer Portal',
-      sla_deadline: deadline.toISOString(),
-      escalated: false,
-      is_vip: isVIP,
-      dept_sla_log: [{ department: 'CSR', started_at: now, grade: 'Active' }],
-    });
-    setTicketNum(num);
-    setSubmitting(false);
-    setView('success');
   };
 
   return (

@@ -8,6 +8,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAuth } from '@/lib/AuthContext';
 import { formatDateFull } from '@/lib/timezone';
 
+const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB per file
+
 export default function TicketChat({ ticketId }) {
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
@@ -42,13 +44,23 @@ export default function TicketChat({ ticketId }) {
   const handleFileUpload = async (files) => {
     const remaining = 5 - attachments.length;
     const toUpload = Array.from(files).slice(0, remaining);
-    if (!toUpload.length) return;
+    const valid = toUpload.filter(f => {
+      if (f.size > MAX_FILE_BYTES) { alert(`"${f.name}" is larger than 10 MB and was skipped.`); return false; }
+      return true;
+    });
+    if (!valid.length) return;
     setUploading(true);
-    for (const file of toUpload) {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      setAttachments(prev => [...prev, { name: file.name, url: file_url }]);
+    try {
+      for (const file of valid) {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        setAttachments(prev => [...prev, { name: file.name, url: file_url }]);
+      }
+    } catch (err) {
+      console.error('Upload failed:', err);
+      alert('A file failed to upload. Please try again.');
+    } finally {
+      setUploading(false);
     }
-    setUploading(false);
   };
 
   const handleSend = async () => {
@@ -68,16 +80,26 @@ export default function TicketChat({ ticketId }) {
     setNewMessage('');
     setAttachments([]);
     setSending(true);
-    await db.TicketMessage.create({
-      ticket_id: ticketId,
-      sender_email: optimisticMsg.sender_email,
-      sender_name: optimisticMsg.sender_name,
-      sender_role: 'staff',
-      message: optimisticMsg.message,
-      attachments: optimisticMsg.attachments,
-    });
-    setSending(false);
-    // Real messages arrive via subscription — subscription will replace optimistic with real
+    try {
+      await db.TicketMessage.create({
+        ticket_id: ticketId,
+        sender_email: optimisticMsg.sender_email,
+        sender_name: optimisticMsg.sender_name,
+        sender_role: 'staff',
+        message: optimisticMsg.message,
+        attachments: optimisticMsg.attachments,
+      });
+      // Real messages arrive via subscription — it replaces the optimistic copy.
+    } catch (err) {
+      // Roll back the optimistic message and restore the draft so nothing is lost.
+      console.error('Failed to send message:', err);
+      setMessages(prev => prev.filter(m => m.id !== optimisticMsg.id));
+      setNewMessage(optimisticMsg.message);
+      setAttachments(optimisticMsg.attachments.map((url, i) => ({ name: `Attachment ${i + 1}`, url })));
+      alert('Failed to send your message. Please try again.');
+    } finally {
+      setSending(false);
+    }
   };
 
   return (

@@ -1,7 +1,12 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
 import { base44 } from '@/api/base44Client';
 import { db } from '@/lib/db';
+import { getAppEnv } from '@/lib/appEnv';
 import { fetchLiveEmployeeStatus } from '@/lib/supabaseClient';
+
+// Single env: 'prod' for the published app, 'test' only on the editor/preview host.
+// getStaffStatus searches BOTH envs regardless, so this is only a tiebreaker hint.
+const resolveEnvHint = () => (getAppEnv() === 'published' ? 'prod' : 'test');
 import { createAxiosClient } from '@base44/sdk/dist/utils/axios-client';
 
 const getAppParams = () => {
@@ -91,8 +96,11 @@ export const AuthProvider = ({ children }) => {
     const interval = setInterval(async () => {
       try {
         const currentUser = await base44.auth.me();
-        const empRecords = await db.EmployeeAccount.filter({ email: currentUser.email }, 1);
-        const emp = empRecords?.[0];
+        // Use the SAME authoritative resolver as login (case-insensitive, cross-env)
+        // so a block/deactivate is detected no matter how the email was cased or
+        // which env the record was saved under.
+        const res = await base44.functions.invoke('getStaffStatus', { env: resolveEnvHint() });
+        const emp = res?.data?.employee;
         if (!emp) return; // unknown to this app — leave platform auth to decide
 
         // App-managed block (Base44 only).
@@ -221,8 +229,7 @@ export const AuthProvider = ({ children }) => {
       // User Management — independent of the Base44 platform role and resilient to the
       // test/prod env split (the resolver searches both envs, case-insensitive).
       try {
-        const appEnv = window.location.hostname.startsWith('preview.') || window.location.hostname.includes('.dev.base44.app') ? 'test' : 'prod';
-        const res = await base44.functions.invoke('getStaffStatus', { env: appEnv });
+        const res = await base44.functions.invoke('getStaffStatus', { env: resolveEnvHint() });
         const emp = res?.data?.employee;
         console.log('Resolved staff record for role:', emp, 'source:', res?.data?.source);
         if (emp) {
@@ -241,7 +248,10 @@ export const AuthProvider = ({ children }) => {
           // `resolved_role` is the normalized field from the resolver; fall back to the
           // raw fields so this keeps working regardless of frontend/function deploy order.
           const appRole = emp.resolved_role || emp.POTBChatsupportrole || emp.current_role;
-          if (appRole) {
+          // Never downgrade a platform super_admin: their EmployeeAccount role is one
+          // of the regular department roles (super_admin isn't a selectable app role),
+          // so overlaying it would strip their all-access powers.
+          if (appRole && currentUser.role !== 'super_admin') {
             currentUser.role = appRole;
             console.log('Set role from User Management:', currentUser.role);
           }

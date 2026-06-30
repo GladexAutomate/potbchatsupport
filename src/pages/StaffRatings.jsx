@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { db } from '@/lib/db';
 import { Star, TrendingUp, Users, Award } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
+import { XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts';
 import { startOfDay, startOfWeek, startOfMonth, subDays, format, isAfter } from 'date-fns';
 import { toZonedTime } from 'date-fns-tz';
 import { APP_TIMEZONE } from '@/lib/timezone';

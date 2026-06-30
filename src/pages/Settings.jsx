@@ -4,8 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
-import { Loader2, CheckCircle, Clock, ShieldCheck, Trash2, AlertTriangle } from 'lucide-react';
+import { Loader2, CheckCircle, Clock, ShieldCheck } from 'lucide-react';
 import { useAuth } from '@/lib/AuthContext';
 
 const DEFAULT_SLA = [
@@ -17,8 +16,6 @@ const DEFAULT_SLA = [
 
 export default function Settings() {
   const { user } = useAuth();
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleteConfirm, setDeleteConfirm] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [policies, setPolicies] = useState(DEFAULT_SLA);
   const [policyIds, setPolicyIds] = useState({});
@@ -96,6 +93,22 @@ export default function Settings() {
     'High': 'border-l-amber-500',
     'Critical': 'border-l-red-500',
   };
+
+  // Only TL/Management and super admins may edit production SLA policies.
+  const hasAccess = user && ['super_admin', 'tl_management'].includes(user.role);
+  if (!hasAccess) {
+    return (
+      <div className="p-6 max-w-2xl mx-auto">
+        <Card className="border-border/50">
+          <CardContent className="p-8 text-center">
+            <ShieldCheck className="w-8 h-8 text-muted-foreground mx-auto mb-3" />
+            <p className="font-semibold mb-1">Access Restricted</p>
+            <p className="text-sm text-muted-foreground">Only TL/Management and administrators can change SLA settings.</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
@@ -177,58 +190,25 @@ export default function Settings() {
         ) : 'Save SLA Policies'}
       </Button>
 
-      {/* Delete Account */}
-      <Card className="border-destructive/30 mt-8">
+      {/* Sign Out — this only ends the current session. (Account deletion is an HR/
+          admin action handled in User Management, not a self-service data wipe, so we
+          no longer claim to "permanently delete all data" here.) */}
+      <Card className="border-border/50 mt-8">
         <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2 text-destructive">
-            <Trash2 className="w-4 h-4" /> Delete Account
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <ShieldCheck className="w-4 h-4 text-muted-foreground" /> Session
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-xs text-muted-foreground mb-3">
-            Permanently delete your account and all associated data. This action cannot be undone.
+            Sign out of your account on this device.
           </p>
-          <Button variant="destructive" size="sm" onClick={() => setDeleteOpen(true)} className="gap-2">
-            <Trash2 className="w-4 h-4" /> Delete My Account
+          <Button variant="outline" size="sm" disabled={deleting} onClick={async () => { setDeleting(true); await base44.auth.logout('/'); }} className="gap-2">
+            {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+            Sign Out
           </Button>
         </CardContent>
       </Card>
-
-      <Dialog open={deleteOpen} onOpenChange={v => { setDeleteOpen(v); setDeleteConfirm(''); }}>
-        <DialogContent className="max-w-sm">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2 text-destructive">
-              <AlertTriangle className="w-5 h-5" /> Confirm Account Deletion
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-2">
-            <p className="text-sm text-muted-foreground">
-              This will permanently delete your account <strong>{user?.email}</strong>. Type <strong>DELETE</strong> to confirm.
-            </p>
-            <Input
-              value={deleteConfirm}
-              onChange={e => setDeleteConfirm(e.target.value)}
-              placeholder="Type DELETE to confirm"
-              className="border-destructive/40 focus-visible:ring-destructive"
-            />
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setDeleteOpen(false); setDeleteConfirm(''); }}>Cancel</Button>
-            <Button
-              variant="destructive"
-              disabled={deleteConfirm !== 'DELETE' || deleting}
-              onClick={async () => {
-                setDeleting(true);
-                await base44.auth.logout('/');
-              }}
-              className="gap-2"
-            >
-              {deleting ? <Loader2 className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-              Delete Account
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

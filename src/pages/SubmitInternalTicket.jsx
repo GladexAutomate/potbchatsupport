@@ -11,6 +11,9 @@ import { CheckCircle, Loader2, ShieldCheck, Upload, X, FileText, ArrowLeft } fro
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
+import { generateInternalTicketNumber } from '@/lib/ticketNumbers';
+
+const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB per file
 
 export default function SubmitInternalTicket() {
   const navigate = useNavigate();
@@ -20,7 +23,7 @@ export default function SubmitInternalTicket() {
   const [ticketNum, setTicketNum] = useState('');
   const [user, setUser] = useState(null);
   const [departments, setDepartments] = useState([]);
-  const [form, setForm] = useState({ from_department: '', to_department: '', subject: '', description: '' });
+  const [form, setForm] = useState({ from_department: '', to_department: '', subject: '', description: '', priority: 'Medium' });
   const [formInitialized, setFormInitialized] = useState(false);
   const [attachments, setAttachments] = useState([]);
   const [uploading, setUploading] = useState(false);
@@ -49,25 +52,27 @@ export default function SubmitInternalTicket() {
      }
    }, [authUser]);
 
-  const generateTicketNumber = async () => {
-    const recent = await db.InternalTicket.list('-created_date', 100);
-    const nums = (recent || [])
-      .map(t => parseInt(t.ticket_number?.replace(/^INT-/, ''), 10))
-      .filter(n => !isNaN(n));
-    const next = nums.length > 0 ? Math.max(...nums) + 1 : 1;
-    return `INT-${String(next).padStart(8, '0')}`;
-  };
-
   const handleFiles = async (files) => {
     const remaining = 5 - attachments.length;
     const toUpload = Array.from(files).slice(0, remaining);
     if (!toUpload.length) return;
+    const valid = toUpload.filter(f => {
+      if (f.size > MAX_FILE_BYTES) { alert(`"${f.name}" is larger than 10 MB and was skipped.`); return false; }
+      return true;
+    });
+    if (!valid.length) return;
     setUploading(true);
-    for (const file of toUpload) {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      setAttachments(prev => [...prev, { name: file.name, url: file_url }]);
+    try {
+      for (const file of valid) {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        setAttachments(prev => [...prev, { name: file.name, url: file_url }]);
+      }
+    } catch (err) {
+      console.error('Upload failed:', err);
+      alert('A file failed to upload. Please try again.');
+    } finally {
+      setUploading(false);
     }
-    setUploading(false);
   };
 
   const handleDrop = (e) => {
@@ -80,8 +85,8 @@ export default function SubmitInternalTicket() {
     if (!form.from_department || !form.to_department || !form.subject || !form.description) return;
     setSubmitting(true);
     try {
-      const num = await generateTicketNumber();
-      
+      const num = await generateInternalTicketNumber();
+
       await db.InternalTicket.create({
         ticket_number: num,
         from_department: form.from_department,
@@ -92,7 +97,7 @@ export default function SubmitInternalTicket() {
         created_by_name: user?.full_name || '',
         attachments: attachments.map(a => a.url),
         status: 'Open',
-        priority: 'Medium',
+        priority: form.priority || 'Medium',
         escalated: false,
       });
       
@@ -178,6 +183,20 @@ export default function SubmitInternalTicket() {
                       className="bg-white/10 border-white/20 text-white placeholder:text-white/30 min-h-[100px]" />
                   </div>
 
+                  <div className="space-y-1.5">
+                    <Label className="text-white/70 text-xs">Priority</Label>
+                    <Select value={form.priority} onValueChange={val => setForm({...form, priority: val})}>
+                      <SelectTrigger className="bg-white/10 border-white/20 text-white">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {['Low', 'Medium', 'High', 'Critical'].map(p => (
+                          <SelectItem key={p} value={p}>{p}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
                   <div className="space-y-2">
                     <Label className="text-white/70 text-xs">Attachments <span className="text-white/30">(max 5 files)</span></Label>
                     <div
@@ -245,7 +264,7 @@ export default function SubmitInternalTicket() {
                 <Button variant="outline" onClick={() => navigate('/dashboard')} className="border-white/20 text-white hover:bg-white/10">
                   Back to Dashboard
                 </Button>
-                <Button onClick={() => { setView('form'); setForm(f => ({ from_department: f.from_department, to_department: '', subject:'', description:''})); setAttachments([]); }}
+                <Button onClick={() => { setView('form'); setForm(f => ({ from_department: f.from_department, to_department: '', subject:'', description:'', priority: 'Medium'})); setAttachments([]); }}
                   className="bg-primary hover:bg-primary/90">Submit Another</Button>
               </div>
             </motion.div>

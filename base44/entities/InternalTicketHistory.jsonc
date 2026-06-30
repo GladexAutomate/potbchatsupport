@@ -1,0 +1,38 @@
+{
+  "name": "InternalTicketHistory",
+  "type": "object",
+  "properties": {
+    "internal_ticket_id": {
+      "type": "string"
+    },
+    "event_type": {
+      "type": "string",
+      "enum": [
+        "created",
+        "status_changed",
+        "priority_changed",
+        "assigned",
+        "escalated",
+        "reopened",
+        "sla_breached"
+      ]
+    },
+    "description": {
+      "type": "string"
+    },
+    "actor": {
+      "type": "string"
+    },
+    "old_value": {
+      "type": "string"
+    },
+    "new_value": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "internal_ticket_id",
+    "event_type",
+    "description"
+  ]
+}

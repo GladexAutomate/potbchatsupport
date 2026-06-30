@@ -6,11 +6,14 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent } from '@/components/ui/card';
-import { MessageSquare, Ticket, CheckCircle, ChevronRight, Bot, Loader2, ShieldCheck, Upload, X, FileText, ClipboardList } from 'lucide-react';
+import { CheckCircle, ChevronRight, Bot, Loader2, ShieldCheck, Upload, X, FileText, ClipboardList } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from 'react-router-dom';
 import StaffLoginModal from '@/components/StaffLoginModal';
 import { getAppEnv } from '@/lib/appEnv';
+import { generateCustomerTicketNumber } from '@/lib/ticketNumbers';
+
+const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB per file
 
 export default function CustomerPortal() {
   const [view, setView] = useState('home'); // home | chat | ticket | success
@@ -64,25 +67,26 @@ export default function CustomerPortal() {
     }
   };
 
-  const generateTicketNumber = async () => {
-    const recent = await db.Ticket.list('-created_date', 100);
-    const nums = (recent || [])
-      .map(t => parseInt(t.ticket_number?.replace(/^TKT-/, ''), 10))
-      .filter(n => !isNaN(n));
-    const next = nums.length > 0 ? Math.max(...nums) + 1 : 1;
-    return `TKT-${String(next).padStart(8, '0')}`;
-  };
-
   const handleFiles = async (files) => {
     const remaining = 5 - attachments.length;
     const toUpload = Array.from(files).slice(0, remaining);
-    if (!toUpload.length) return;
+    const valid = toUpload.filter(f => {
+      if (f.size > MAX_FILE_BYTES) { alert(`"${f.name}" is larger than 10 MB and was skipped.`); return false; }
+      return true;
+    });
+    if (!valid.length) return;
     setUploading(true);
-    for (const file of toUpload) {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      setAttachments(prev => [...prev, { name: file.name, url: file_url }]);
+    try {
+      for (const file of valid) {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        setAttachments(prev => [...prev, { name: file.name, url: file_url }]);
+      }
+    } catch (err) {
+      console.error('Upload failed:', err);
+      alert('A file failed to upload. Please try again.');
+    } finally {
+      setUploading(false);
     }
-    setUploading(false);
   };
 
   const handleDrop = (e) => {
@@ -92,35 +96,45 @@ export default function CustomerPortal() {
   };
 
   const handleSubmitTicket = async () => {
-    if (!form.customer_name || !form.subject || !form.description) return;
+    if (!form.customer_name.trim() || !form.subject.trim() || !form.description.trim()) return;
     setSubmitting(true);
-    const num = await generateTicketNumber();
-    const deadline = new Date(Date.now() + 24 * 3600000); // default 24h SLA, CSR will update priority
-    
-    // Check if customer is VIP
-    let isVIP = false;
-    if (user?.email) {
-      const vipList = await db.VIPCustomer.filter({ email: user.email });
-      isVIP = vipList && vipList.length > 0;
+    try {
+      const num = await generateCustomerTicketNumber();
+      const deadline = new Date(Date.now() + 24 * 3600000); // default 24h SLA, CSR will update priority
+      const now = new Date().toISOString();
+
+      // Check if customer is VIP
+      let isVIP = false;
+      if (user?.email) {
+        const vipList = await db.VIPCustomer.filter({ email: user.email });
+        isVIP = vipList && vipList.length > 0;
+      }
+
+      await db.Ticket.create({
+        customer_name: form.customer_name.trim(),
+        customer_email: user?.email || '',
+        subject: form.subject.trim(),
+        description: form.description.trim(),
+        attachments: attachments.map(a => a.url),
+        ticket_number: num,
+        status: 'Open',
+        priority: isVIP ? 'Critical' : 'Medium',
+        source: 'Customer Portal',
+        sla_deadline: deadline.toISOString(),
+        escalated: false,
+        is_vip: isVIP,
+        // Seed the SLA tracking log so portal tickets start SLA tracking just like
+        // the dedicated Submit Ticket page (previously portal tickets never did).
+        dept_sla_log: [{ department: 'CSR', started_at: now, grade: 'Active' }],
+      });
+      setTicketNum(num);
+      setView('success');
+    } catch (err) {
+      console.error('Failed to submit ticket:', err);
+      alert('Failed to submit your ticket. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
-    
-    await db.Ticket.create({
-      customer_name: form.customer_name,
-      customer_email: user?.email || '',
-      subject: form.subject,
-      description: form.description,
-      attachments: attachments.map(a => a.url),
-      ticket_number: num,
-      status: 'Open',
-      priority: 'Medium',
-      source: 'Customer Portal',
-      sla_deadline: deadline.toISOString(),
-      escalated: false,
-      is_vip: isVIP,
-    });
-    setTicketNum(num);
-    setSubmitting(false);
-    setView('success');
   };
 
   return (
@@ -291,7 +305,7 @@ export default function CustomerPortal() {
                     )}
                   </div>
 
-                  <Button onClick={handleSubmitTicket} disabled={submitting || uploading} className="w-full bg-primary hover:bg-primary/90">
+                  <Button onClick={handleSubmitTicket} disabled={submitting || uploading || !form.customer_name.trim() || !form.subject.trim() || !form.description.trim()} className="w-full bg-primary hover:bg-primary/90">
                     {submitting ? <><Loader2 className="w-4 h-4 mr-2 animate-spin" /> Submitting...</> : 'Submit Ticket'}
                   </Button>
                 </CardContent>

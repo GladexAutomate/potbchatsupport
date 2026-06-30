@@ -1,11 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { db } from '@/lib/db';
-import { getAppEnv } from '@/lib/appEnv';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ChevronDown, ChevronUp, Lock, Zap, Shield, Save, RotateCcw, CheckCircle2, AlertCircle, Copy } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 

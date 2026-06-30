@@ -4,8 +4,8 @@ import { useAuth } from '@/lib/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend } from 'recharts';
-import { TrendingDown, TrendingUp, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
+import { TrendingUp, Clock, AlertTriangle, CheckCircle } from 'lucide-react';
 
 const DEPARTMENTS = ['Sales', 'IT', 'Accounting', 'Sign-Ups', 'On-Boarding', 'Corp/Training', 'Admin', 'TL/Management'];
 const COLORS = ['#7C3AED','#2563EB','#D97706','#DC2626','#059669','#7C3AED','#DB2777','#0891B2'];
@@ -53,7 +53,10 @@ export default function KPI() {
         .filter(e => e.employee_code?.toUpperCase().startsWith('POTB'))
         .map(e => e.email?.toLowerCase())
       );
-      const potbFiltered = (ticketData || []).filter(t => potbEmails.has(t.assigned_to?.toLowerCase()));
+      // Include UNASSIGNED tickets (the most SLA-risky backlog) in the dataset;
+      // only exclude tickets explicitly assigned to non-POTB staff. Previously the
+      // unassigned backlog was dropped before totals/SLA were computed.
+      const potbFiltered = (ticketData || []).filter(t => !t.assigned_to || potbEmails.has(t.assigned_to?.toLowerCase()));
       const userFiltered = filterTicketsForUser(potbFiltered);
       setTickets(userFiltered);
       setLoading(false);

@@ -15,11 +15,14 @@ function resolvePreferredEnv(raw) {
 // the admin happened to save the role under.
 function pickBest(matches, preferredEnv) {
   if (!matches.length) return null;
+  // Access-granting fields must outrank env preference: a usable (unblocked,
+  // active, role-bearing) record in EITHER env must win over a blocked/inactive
+  // record that merely matches the caller's env. Env is only a final tiebreaker.
   const score = (e) =>
-    (preferredEnv && e.env === preferredEnv ? 8 : 0) +
-    (!e.is_blocked ? 4 : 0) +
-    (e.status === 'active' ? 2 : 0) +
-    (e.POTBChatsupportrole || e.current_role ? 1 : 0);
+    (!e.is_blocked ? 8 : 0) +
+    (e.status === 'active' ? 4 : 0) +
+    (e.POTBChatsupportrole || e.current_role ? 2 : 0) +
+    (preferredEnv && e.env === preferredEnv ? 1 : 0);
   return [...matches].sort((a, b) => score(b) - score(a))[0];
 }
 

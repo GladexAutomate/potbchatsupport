@@ -1,16 +1,20 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 
 export default function CenterToast({ message, duration = 2000, onComplete }) {
   const [visible, setVisible] = useState(true);
+  // Hold onComplete in a ref so an inline (non-memoized) callback from the parent
+  // doesn't restart the dismiss timer on every parent re-render.
+  const onCompleteRef = useRef(onComplete);
+  useEffect(() => { onCompleteRef.current = onComplete; }, [onComplete]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
       setVisible(false);
-      setTimeout(() => onComplete?.(), 300); // Wait for fade to complete
+      setTimeout(() => onCompleteRef.current?.(), 300); // Wait for fade to complete
     }, duration);
     return () => clearTimeout(timer);
-  }, [duration, onComplete]);
+  }, [duration]);
 
   return (
     <motion.div

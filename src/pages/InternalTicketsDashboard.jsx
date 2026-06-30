@@ -11,7 +11,7 @@ import { Send, Loader2, Paperclip, X, FileText, Search, MessageSquare, ChevronLe
 import { useAuth } from '@/lib/AuthContext';
 import { usePolling } from '@/lib/usePolling';
 import { mergeOptimistic } from '@/lib/chatMessages';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { formatDateFull, convertOldTimestampFormat } from '@/lib/timezone';
 import CreateInternalTicketModal from '@/components/CreateInternalTicketModal';
 
@@ -45,6 +45,8 @@ const ROLE_TO_DEPARTMENT = {
 };
 
 const ALL_DEPARTMENTS = ['CSR', 'Sales', 'IT', 'Accounting', 'Sign-Ups', 'On-Boarding', 'Corp/Training', 'Admin', 'TL/Management'];
+const STATUS_OPTIONS = ['Open', 'In Progress', 'Pending', 'Resolved', 'Closed'];
+const MAX_FILE_BYTES = 10 * 1024 * 1024; // 10 MB per file
 
 /**
  * The `notes` field stores the whole conversation as one string, each message in
@@ -74,6 +76,7 @@ function parseInternalMessages(raw) {
 export default function InternalTicketsDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [tickets, setTickets] = useState([]);
   const [loading, setLoading] = useState(true);
   const [selectedTicket, setSelectedTicket] = useState(null);
@@ -157,6 +160,19 @@ export default function InternalTicketsDashboard() {
   // Realtime fallback: poll for new tickets/status in case the websocket is silent.
   usePolling(loadData, 6000, hasAccess);
 
+  // Deep-link: a notification links to /internal-tickets?ticket_id=X. Once tickets
+  // are loaded, auto-open that ticket and clear the param.
+  useEffect(() => {
+    const targetId = searchParams.get('ticket_id');
+    if (!targetId || !tickets.length) return;
+    const match = tickets.find(t => String(t.id) === String(targetId));
+    if (match) {
+      handleSelectTicket(match);
+      searchParams.delete('ticket_id');
+      setSearchParams(searchParams, { replace: true });
+    }
+  }, [tickets, searchParams]);
+
   const loadMessages = async (ticketId) => {
     // InternalTicketMessage is its OWN entity — kept separate from TicketMessage, which
     // belongs to customer-operations tickets / internal staff notes. These are distinct
@@ -198,13 +214,23 @@ export default function InternalTicketsDashboard() {
   const handleFileUpload = async (files) => {
     const remaining = 5 - attachments.length;
     const toUpload = Array.from(files).slice(0, remaining);
-    if (!toUpload.length) return;
+    const valid = toUpload.filter(f => {
+      if (f.size > MAX_FILE_BYTES) { alert(`"${f.name}" is larger than 10 MB and was skipped.`); return false; }
+      return true;
+    });
+    if (!valid.length) return;
     setUploading(true);
-    for (const file of toUpload) {
-      const { file_url } = await base44.integrations.Core.UploadFile({ file });
-      setAttachments(prev => [...prev, { name: file.name, url: file_url }]);
+    try {
+      for (const file of valid) {
+        const { file_url } = await base44.integrations.Core.UploadFile({ file });
+        setAttachments(prev => [...prev, { name: file.name, url: file_url }]);
+      }
+    } catch (err) {
+      console.error('Upload failed:', err);
+      alert('A file failed to upload. Please try again.');
+    } finally {
+      setUploading(false);
     }
-    setUploading(false);
   };
 
   const handleSend = async () => {
@@ -242,21 +268,34 @@ export default function InternalTicketsDashboard() {
     // Real row arrives via subscription/poll; mergeOptimistic swaps it in cleanly.
   };
 
-  const handleCloseTicket = async () => {
+  // Generic status transition (Open / In Progress / Pending / Resolved / Closed /
+  // reopened). Writes to the dedicated InternalTicketHistory entity — NOT the
+  // customer-ticket TicketHistory — so the two audit trails stay separate.
+  const handleChangeStatus = async (newStatus) => {
+    if (!selectedTicket || newStatus === selectedTicket.status) return;
+    const prevStatus = selectedTicket.status;
     setSending(true);
-    await db.InternalTicket.update(selectedTicket.id, { status: 'Closed' });
-    await db.TicketHistory.create({
-      ticket_id: selectedTicket.id,
-      event_type: 'status_changed',
-      description: 'Internal ticket closed',
-      actor: user?.full_name || user?.email || 'Staff',
-      old_value: selectedTicket.status,
-      new_value: 'Closed',
-    });
-    setSelectedTicket(prev => ({ ...prev, status: 'Closed' }));
-    setSending(false);
-    await loadData();
+    try {
+      await db.InternalTicket.update(selectedTicket.id, { status: newStatus });
+      await db.InternalTicketHistory.create({
+        internal_ticket_id: selectedTicket.id,
+        event_type: (prevStatus === 'Closed' && newStatus !== 'Closed') ? 'reopened' : 'status_changed',
+        description: `Status changed from ${prevStatus} to ${newStatus}`,
+        actor: user?.full_name || user?.email || 'Staff',
+        old_value: prevStatus,
+        new_value: newStatus,
+      });
+      setSelectedTicket(prev => ({ ...prev, status: newStatus }));
+      await loadData();
+    } catch (err) {
+      console.error('Failed to change internal ticket status:', err);
+      alert('Failed to update status. Please try again.');
+    } finally {
+      setSending(false);
+    }
   };
+
+  const handleCloseTicket = () => handleChangeStatus('Closed');
 
   const getTicketSLAStatus = (ticket) => {
     const policy = slaPolicies.find(p => p.priority === ticket.priority);
@@ -406,12 +445,20 @@ export default function InternalTicketsDashboard() {
                 </div>
                 <p className="text-xs text-muted-foreground truncate">{selectedTicket.subject}</p>
               </div>
-              {selectedTicket.status !== 'Closed' && (
-                <Button onClick={handleCloseTicket} disabled={sending} size="sm" variant="outline" className="gap-1.5 text-xs h-8 ml-2">
-                  {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
-                  Close
-                </Button>
-              )}
+              <div className="flex items-center gap-2 ml-2">
+                <Select value={selectedTicket.status} onValueChange={handleChangeStatus} disabled={sending}>
+                  <SelectTrigger className="h-8 text-xs w-[130px]"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {STATUS_OPTIONS.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+                {selectedTicket.status !== 'Closed' && (
+                  <Button onClick={handleCloseTicket} disabled={sending} size="sm" variant="outline" className="gap-1.5 text-xs h-8">
+                    {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <CheckCircle2 className="w-3.5 h-3.5" />}
+                    Close
+                  </Button>
+                )}
+              </div>
             </div>
 
             {/* Details Card */}
@@ -551,8 +598,12 @@ export default function InternalTicketsDashboard() {
 
             {/* Input */}
             {selectedTicket.status === 'Closed' ? (
-              <div className="p-4 text-center text-sm text-muted-foreground bg-muted/30 border-t border-border/50">
-                This ticket is closed. No further updates allowed.
+              <div className="p-4 flex flex-col items-center gap-2 text-sm text-muted-foreground bg-muted/30 border-t border-border/50">
+                <span>This ticket is closed.</span>
+                <Button onClick={() => handleChangeStatus('In Progress')} disabled={sending} size="sm" variant="outline" className="gap-1.5 text-xs h-8">
+                  {sending ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : null}
+                  Reopen ticket
+                </Button>
               </div>
             ) : (
               <div className="p-4 pt-2 flex items-end gap-2 bg-card border-t border-border/50">

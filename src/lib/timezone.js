@@ -45,9 +45,12 @@ export const localToUTC = (localDate) => {
 export const convertOldTimestampFormat = (text) => {
   if (!text) return text;
   return text.replace(/\[(\d{2})\/(\d{2})\/(\d{4}),\s(\d{2}):(\d{2}):(\d{2})\]/g, (match, day, month, year, hours, mins, secs) => {
-    const date = new Date(year, month - 1, day, hours, mins, secs);
-    const zonedDate = toZonedTime(date, APP_TIMEZONE);
-    const formatted = format(zonedDate, 'MMM. d, yyyy, h:mm a');
+    // These components are ALREADY Philippine wall-clock time, so we must NOT run them
+    // through toZonedTime (that re-applied the Manila offset a second time, displaying
+    // the wrong hour for any non-Manila viewer). Just reformat the literal components.
+    const date = new Date(Number(year), Number(month) - 1, Number(day), Number(hours), Number(mins), Number(secs));
+    if (Number.isNaN(date.getTime())) return match;
+    const formatted = format(date, 'MMM. d, yyyy, h:mm a');
     return `[${formatted}]`;
   });
 };

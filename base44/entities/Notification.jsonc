@@ -17,7 +17,8 @@
         "ticket_reply",
         "internal_note",
         "ticket_assignment",
-        "internal_ticket"
+        "internal_ticket",
+        "internal_ticket_message"
       ],
       "description": "Type of notification"
     },
