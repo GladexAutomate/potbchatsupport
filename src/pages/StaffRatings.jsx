@@ -27,14 +27,12 @@ export default function StaffRatings() {
   useEffect(() => {
     Promise.all([
       db.StaffRating.list('-rated_at', 500),
-      db.EmployeeAccount.list('', 500),
       db.Ticket.list('-created_date', 500)
-    ]).then(([ratingData, empData, ticketData]) => {
-      const potbEmails = new Set((empData || [])
-        .filter(e => e.employee_code?.toUpperCase().startsWith('POTB'))
-        .map(e => e.email?.toLowerCase())
-      );
-      setRatings((ratingData || []).filter(r => potbEmails.has(r.staff_email?.toLowerCase())));
+    ]).then(([ratingData, ticketData]) => {
+      // Show ALL submitted ratings. (Previously this was filtered to POTB-coded
+      // employees only, which silently hid every rating whose rated staff wasn't a
+      // POTB employee — e.g. tickets handled by an admin/system account.)
+      setRatings(ratingData || []);
       // Create ticket map for quick lookup
       const ticketMap = {};
       (ticketData || []).forEach(t => {
@@ -52,7 +50,12 @@ export default function StaffRatings() {
     return startOfMonth(subDays(now, 89));
   };
 
-  const filteredRatings = ratings.filter(r => isAfter(new Date(r.rated_at), getPeriodStart()));
+  const filteredRatings = ratings.filter(r => {
+    const d = r.rated_at ? new Date(r.rated_at) : null;
+    // Never hide a rating just because its date is missing/invalid — show it in
+    // every period rather than silently dropping it.
+    return !d || Number.isNaN(d.getTime()) || isAfter(d, getPeriodStart());
+  });
 
   // Per-staff stats
   const staffMap = {};
